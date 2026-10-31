@@ -497,13 +497,13 @@ const MODS={
     {k:'details',l:'تفاصيل الطلب',t:'area',w:1},{k:'comments',l:'تعليقات المتابعة',t:'area',w:1}],
     st:REQ_ST_LIST,closed:['مغلق','مرفوض','ملغى'],cols:['title','dept','kind','priority','due','assignee']},
   cases:{t:'القضايا',one:'قضية',grp:'التقاضي',main:'filed',fields:[
-    {k:'caseNo',l:'رقم القضية',t:'ltr',req:1},{k:'court',l:'المحكمة',t:'text'},{k:'circuit',l:'الدائرة',t:'text'},
+    {k:'plaintiff',l:'المدعي',t:'text',req:1},{k:'defendant',l:'المدعى عليه',t:'text'},{k:'caseNo',l:'رقم القضية',t:'ltr'},{k:'court',l:'المحكمة',t:'text'},{k:'circuit',l:'الدائرة',t:'text'},
     {k:'subject',l:'موضوع النزاع',t:'text',w:1},{k:'parties',l:'الأطراف وصفاتهم',t:'area',w:1,hint:'سطر لكل طرف: الاسم — الصفة (مدعٍ، مدعى عليه، متدخل…)'},
     {k:'claims',l:'المطالبات',t:'area',w:1},{k:'claimAmount',l:'قيمة المطالبة',t:'money'},{k:'currency',l:'العملة',t:'select',o:CUR},
     {k:'side',l:'صفة الشركة',t:'select',o:['مدعية','مدعى عليها','متدخلة','أخرى']},{k:'filed',l:'تاريخ القيد',t:'date'},
     {k:'owner',l:'المسؤول',t:'text'},{k:'lawyerId',l:'المحامي (من سجل المحامين)',t:'ref',ref:'lawyers'},{k:'lawyer',l:'اسم المحامي نصًا (سجلات قديمة)',t:'text',hint:'اختر المحامي من الخانة السابقة؛ هذه الخانة للبيانات القديمة فقط'},
     {k:'judgmentNo',l:'رقم الحكم',t:'ltr'},{k:'judgmentDate',l:'تاريخ الحكم',t:'date'},{k:'judgment',l:'منطوق الحكم',t:'area',w:1,hint:'أرفق صك الحكم من قسم المرفقات بتصنيف «حكم»'},{k:'awarded',l:'المبلغ المحكوم به',t:'money'}],
-    st:['قيد الإعداد','منظورة','محجوزة للحكم','صدر حكم','في الاستئناف','في التنفيذ','منتهية'],closed:['منتهية'],cols:['caseNo','subject','court','side','owner']},
+    st:['قيد الإعداد','منظورة','محجوزة للحكم','صدر حكم','في الاستئناف','في التنفيذ','منتهية'],closed:['منتهية'],cols:['plaintiff','defendant','caseNo','subject','side']},
   hearings:{t:'الجلسات',one:'جلسة',grp:'التقاضي',main:'date',fields:[
     {k:'caseId',l:'القضية',t:'ref',ref:'cases',req:1},{k:'date',l:'تاريخ الجلسة',t:'date',req:1},{k:'time',l:'الوقت (بتوقيت الرياض)',t:'time',req:1},
     {k:'place',l:'المكان أو القاعة',t:'text'},{k:'link',l:'رابط الجلسة المرئية',t:'ltr'},{k:'attendee',l:'الحاضر عن الشركة',t:'text'},
@@ -565,9 +565,10 @@ const NAV=[
 const COLS=[...Object.keys(MODS),'docs','sources','articles'];
 function recs(mod,incDeleted=false){const m=S.data[mod];if(!m)return[];const a=[...m.values()];return incDeleted?a:a.filter(r=>!r.deleted)}
 function rec(mod,id){return S.data[mod]?.get(id)}
+function partyOf(r,role){const l=String(r.parties||'').split('\n').find(x=>x.includes('— '+role));return l?l.split(' — ')[0].trim():''}
 function titleOf(mod,r){if(!r)return'(غير متاح)';switch(mod){
-  case'cases':return`قضية ${r.caseNo||''}${r.subject?' — '+r.subject:''}`;
-  case'hearings':{const c=rec('cases',r.caseId);return`جلسة ${fmtDate(r.date,false)}${c?' — قضية '+(c.caseNo||''):''}`}
+  case'cases':{const pl=r.plaintiff||partyOf(r,'مدعٍ');return pl?`${pl}${r.subject?' — '+r.subject:''}`:`قضية ${r.caseNo||''}${r.subject?' — '+r.subject:''}`}
+  case'hearings':{const c=rec('cases',r.caseId);return`جلسة ${fmtDate(r.date,false)}${c?' — '+(c.plaintiff||partyOf(c,'مدعٍ')||'قضية '+(c.caseNo||'')):''}`}
   case'bonds':return`${r.kind||'سند'} ${r.bondNo||'(بدون رقم)'}${r.debtor?' — '+r.debtor:''}`;
   case'violations':return`${r.authority||'مخالفة'} ${r.number||''}`;
   case'poa':return`${r.kind||''} ${r.number||''}${r.holder?' — '+r.holder:''}`;
@@ -786,7 +787,7 @@ function quickPanel(mod,r){const rows=[];const add=(k,v)=>rows.push(h('dt',null,
   add('عمر السجل',ageDays(r)!=null?`${ageDays(r)} يوم`:'—');add('المرفقات',String(docs));add('روابط',String((r.links||[]).length));
   return h('div',{class:'panel'},ph('ملخص سريع','info','#8b8ff5'),bar,h('dl',{class:'kv'},rows))}
 
-const CORE={requests:['title','requester','dept','kind','priority','due','details'],cases:['caseNo','court','subject','side','lawyerId'],hearings:['caseId','date','time','place'],contracts:['title','counterparty','value','end'],bonds:['bondNo','kind','debtor','creditor','currency','issueDate','dueType','dueDate'],violations:['authority','number','reason','amount','objDeadline','objSource','payDeadline','paySource'],consults:['title','question'],investigations:['title','opened'],poa:['kind','number','holder','expiry','owner','renewal'],lawyers:['name','firm','phone']};
+const CORE={requests:['title','requester','dept','kind','priority','due','details'],cases:['plaintiff','defendant','caseNo','court','subject','side','lawyerId'],hearings:['caseId','date','time','place'],contracts:['title','counterparty','value','end'],bonds:['bondNo','kind','debtor','creditor','currency','issueDate','dueType','dueDate'],violations:['authority','number','reason','amount','objDeadline','objSource','payDeadline','paySource'],consults:['title','question'],investigations:['title','opened'],poa:['kind','number','holder','expiry','owner','renewal'],lawyers:['name','firm','phone']};
 const DEFAULTS={currency:'ريال سعودي',priority:'عادية',kind:null};
 const filled=v=>v!=null&&v!==''&&!(typeof v==='object'&&!Array.isArray(v)&&!v.g&&!v.h);
 /** يعرض الحقول الأساسية فقط، والباقي في قسم قابل للفتح */
@@ -1593,7 +1594,7 @@ function dateField(f,val,onCh,ro){
   paint();
   return h('div',{class:'f'+(f.w?' wide':'')},h('label',{for:id},f.l,f.req?h('span',{class:'req'},' *'):null),h('div',{class:'dual'},cal,box),other,ver);
 }
-function cellVal(mod,f,r){const v=r[f.k];if(f.t==='date')return fmtDate(v,false);if(f.t==='money')return money(v,r.currency)||'—';if(f.t==='ref'){const x=rec(f.ref,v);return x?titleOf(f.ref,x):'—'}return v==null||v===''?'—':String(v)}
+function cellVal(mod,f,r){const v=mod==='cases'&&(f.k==='plaintiff'||f.k==='defendant')&&!r[f.k]?partyOf(r,f.k==='plaintiff'?'مدعٍ':'مدعى عليه'):r[f.k];if(f.t==='date')return fmtDate(v,false);if(f.t==='money')return money(v,r.currency)||'—';if(f.t==='ref'){const x=rec(f.ref,v);return x?titleOf(f.ref,x):'—'}return v==null||v===''?'—':String(v)}
 
 /* ============ قائمة السجلات ============ */
 function viewList(mod,mk){
