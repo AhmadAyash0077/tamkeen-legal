@@ -1217,18 +1217,31 @@ td .num,td.num{font-variant-numeric:tabular-nums;letter-spacing:.02em}
   .page-head h1{font-size:1.85rem!important}
   .sum-p{padding-inline-start:14px;font-size:1.06rem!important}
 }
+
+/* ===== الشعار يسارًا، إظهار/إخفاء القائمة، زر الرجوع ===== */
+.menu-btn{display:inline-flex!important;align-items:center;justify-content:center;width:42px;height:42px;padding:0!important;border-radius:12px!important}
+.app{transition:grid-template-columns .25s ease}
+.app.rail-off{grid-template-columns:0 minmax(0,1fr)!important}
+.app.rail-off .rail{display:none!important}
+.back-btn{font-weight:700!important;white-space:nowrap}
+.back-btn[hidden]{display:none!important}
+.top-logo{display:block!important;height:54px!important;width:auto;flex:none;margin-inline-start:auto;order:99}
+.who{order:98}
+.rail-title{font-weight:700;font-size:.95rem!important;padding:6px 8px 2px!important;color:var(--rail-ink)!important;opacity:.85}
+@media (max-width:700px){.top-logo{height:34px!important}.who{display:none}}
 </style>
 
 <div class="app" id="app" dir="rtl">
   <aside class="rail" id="rail" aria-label="القائمة"></aside>
   <div class="main">
     <header class="topbar">
-      <button class="btn ghost menu-btn" id="menuBtn" aria-label="فتح القائمة"></button>
-      <img class="top-logo" id="topLogo" alt="تمكين الدولية">
+      <button class="btn ghost menu-btn" id="menuBtn" aria-label="إظهار القائمة أو إخفاؤها" title="إظهار القائمة أو إخفاؤها"></button>
+      <button class="btn ghost back-btn" id="backBtn" aria-label="رجوع" hidden>→ رجوع</button>
       <div class="search"><input id="gsearch" type="search" placeholder="بحث شامل: رقم قضية، سند، طرف، مادة…" autocomplete="off" aria-label="بحث شامل"></div>
       <span class="save-pill" id="savePill" data-s="idle" role="status" aria-live="polite">جاهز</span>
       <button class="btn ghost sm" id="themeBtn" aria-label="تبديل الوضع"></button>
       <div class="who" id="who"></div>
+      <img class="top-logo" id="topLogo" alt="تمكين الدولية">
     </header>
     <main class="content" id="view"><div class="loading">جارٍ الاتصال بقاعدة البيانات…</div></main>
   </div>
@@ -1494,7 +1507,7 @@ function applyTheme(){const t=LS.get('theme','dark');if(t==='system')delete docu
 function renderShell(){
   $('#topLogo').src=LOGO;$('#menuBtn').append(icon('menu'));$('#themeBtn').append(icon('moon'));$('.search').prepend(icon('search'));
   $('#themeBtn').onclick=()=>{const cur=document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');const n=cur==='dark'?'light':'dark';LS.set('theme',n);applyTheme()};
-  $('#menuBtn').onclick=()=>toggleRail(true);
+  $('#menuBtn').onclick=()=>{if(matchMedia('(max-width:820px)').matches)toggleRail(true);else{const off=!$('#app').classList.contains('rail-off');$('#app').classList.toggle('rail-off',off);LS.set('railOff',off)}};if(LS.get('railOff',false))$('#app').classList.add('rail-off');$('#backBtn').onclick=()=>{if(history.length>1)history.back();else location.hash='home'};
   const gs=$('#gsearch');gs.addEventListener('keydown',e=>{if(e.key==='Enter'){S.gq=gs.value.trim();location.hash='search';if(location.hash==='#search')route()}});
   renderNav();
 }
@@ -1507,7 +1520,7 @@ function renderNav(){
     for(const[k,l]of g.items){if(MODS[k]&&!canSee(k))continue;const label=l||MODS[k].t;const n=c[k];
       nav.append(h('a',{href:'#'+k,'aria-current':cur===k?'page':null,onclick:()=>toggleRail(false)},h('span',{class:'nav-l'},chip(k,'sm'),h('span',null,label)),n?h('span',{class:'count'+(ALERT_NAV.has(k)?' alert':''),title:METRICS[NAV_METRIC[k]].l+' — '+METRICS[NAV_METRIC[k]].p},String(n)):null))}}
   $('#rail').replaceChildren(
-    h('div',{class:'brand'},h('img',{class:'brand-logo',src:LOGO,alt:'تمكين الدولية للأجهزة المنزلية'})),h('div',{class:'brand-sub'},'المساعد القانوني — الشؤون القانونية'),
+    h('div',{class:'brand-sub rail-title'},'المساعد القانوني — الشؤون القانونية'),
     nav,
     h('div',{class:'rail-foot'},h('span',null,'إدارة الشؤون القانونية — تمكين الدولية'),h('span',null,'الإصدار 3.0')))
 }
@@ -1534,7 +1547,7 @@ function route(){
   else if(a==='prefs')v=viewPrefs();
   else if(a==='search')v=viewSearch();
   else v=viewHome();
-  S.view=v;$('#view').replaceChildren(v.el);{const vw=$('#view');vw.classList.add('enter');clearTimeout(S._enterT);S._enterT=setTimeout(()=>vw.classList.remove('enter'),1100)}window.scrollTo(0,0);renderNav();
+  S.view=v;{const bb=$('#backBtn');if(bb)bb.hidden=hsh==='home'||a==='home'}$('#view').replaceChildren(v.el);{const vw=$('#view');vw.classList.add('enter');clearTimeout(S._enterT);S._enterT=setTimeout(()=>vw.classList.remove('enter'),1100)}window.scrollTo(0,0);renderNav();
 }
 function pageHead(title,sub,...actions){const k=(location.hash.slice(1)||'home').split('~')[0].split('-');const mk=k[0]==='new'?k[1]:k[0]==='source'?'library':k[0];return h('div',{class:'page-head'},h('div',{style:'min-width:0'},h('h1',{class:'ph'},META[mk]?chip(mk,'lg'):null,title),sub?h('p',null,sub):null),h('div',{class:'row'},actions))}
 function loadingAll(){return COLS.some(c=>!S.loaded[c])}
@@ -1576,7 +1589,7 @@ function execAnalytics(){const cs=statRecs('cases');const cnt=(a,f)=>{const m={}
 function execHero(over,noRes){const[lv,txt,cls]=riskLevel(over,noRes);const t=todayISO();
   return h('section',{class:'exec-hero','aria-label':'لوحة القرار'},
     h('div',{class:'exec-top'},h('div',{style:'min-width:0'},h('div',{class:'exec-kicker'},'لوحة القرار · الشؤون القانونية'),h('h1',null,`${greet()}${S.me.name?'، '+S.me.name.split(' ')[0]:''}`),
-      h('div',{class:'exec-sub'},`${fmtH(g2h(t))} · ${fmtG(t)} · ${roleName()}`)),h('img',{class:'exec-logo',src:LOGO,alt:'تمكين'})),
+      h('div',{class:'exec-sub'},`${fmtH(g2h(t))} · ${fmtG(t)} · ${roleName()}`)),null),
     h('div',{class:'exec-status '+cls},h('i'),h('span',null,'الحالة: '),h('b',null,`خطر ${lv}`),h('span',null,' — '+txt)),
     h('div',{class:'quick'},[['new-cases','cases','قضية'],['new-hearings','hearings','جلسة'],['new-contracts','contracts','عقد']].map(([href,m,l])=>h('a',{class:'qa',href:'#'+href},chip(m,'sm'),h('span',null,'+ '+l)))))}
 function kpiBoard(){const vals=Object.fromEntries(KPI.map(x=>[x.k,x.f()]));const prev=kpiSnapshot(vals);
