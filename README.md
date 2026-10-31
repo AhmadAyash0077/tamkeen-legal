@@ -1,1 +1,5 @@
-# tamkeen-legal
+# المساعد القانوني — تمكين الدولية
+
+الرابط: https://ahmadayash0077.github.io/tamkeen-legal/
+
+البيانات تُحفظ في متصفح الجهاز فقط (IndexedDB) ولا تُرفع إلى هذا المستودع.
