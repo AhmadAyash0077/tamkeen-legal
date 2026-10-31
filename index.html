@@ -538,6 +538,61 @@ tbody tr{transition:background .15s}
 #view.enter .stats>.stat{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
 #view.enter .stats>.stat:nth-child(2){animation-delay:.05s}#view.enter .stats>.stat:nth-child(3){animation-delay:.1s}#view.enter .stats>.stat:nth-child(4){animation-delay:.15s}#view.enter .stats>.stat:nth-child(5){animation-delay:.2s}#view.enter .stats>.stat:nth-child(6){animation-delay:.25s}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* ===== لوحة القرار ===== */
+.exec-hero{position:relative;overflow:hidden;border-radius:24px;padding:28px 30px 22px;color:#fff;isolation:isolate;
+  background:radial-gradient(120% 140% at 0% 0%,#0b1d3a 0%,transparent 60%),linear-gradient(125deg,#0a2a5e 0%,#3a1c7a 38%,#6d1f7a 62%,#0f6f78 100%);
+  box-shadow:0 20px 60px -20px rgba(58,28,122,.55),inset 0 1px 0 rgba(255,255,255,.15)}
+.exec-hero::before{content:"";position:absolute;inset:-40%;z-index:-1;background:conic-gradient(from var(--glow-a),rgba(10,132,255,.35),rgba(191,90,242,.35),rgba(255,55,95,.25),rgba(48,209,88,.25),rgba(10,132,255,.35));filter:blur(70px);animation:glowspin 18s linear infinite;opacity:.8}
+.exec-hero::after{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:36px 36px;mask:linear-gradient(180deg,#000,transparent 85%)}
+.exec-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.exec-kicker{font-size:.8rem;font-weight:600;color:#ffd479;letter-spacing:.01em}
+.exec-hero h1{font-size:2.5rem;font-weight:800;margin:6px 0 4px;color:#fff;background:linear-gradient(90deg,#fff 0%,#dfe7ff 50%,#ffd6f0 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.02em}
+.exec-sub{color:rgba(255,255,255,.75);font-size:.92rem}
+.exec-logo{height:56px;width:auto;filter:brightness(0) invert(1);opacity:.95;flex:none}
+.exec-status{display:inline-flex;align-items:center;gap:6px;margin:18px 0 16px;padding:8px 16px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(12px);font-size:.92rem;flex-wrap:wrap}
+.exec-status i{width:9px;height:9px;border-radius:50%;background:#30d158;box-shadow:0 0 0 4px rgba(48,209,88,.25);animation:pulse 2s ease-in-out infinite}
+.exec-status.bad i{background:#ff453a;box-shadow:0 0 0 4px rgba(255,69,58,.3)}.exec-status.warn i{background:#ff9f0a;box-shadow:0 0 0 4px rgba(255,159,10,.3)}
+.exec-status b{color:#ffd479}
+@keyframes pulse{50%{transform:scale(1.35);opacity:.7}}
+.exec-hero .quick{display:flex;flex-wrap:wrap;gap:8px}
+.exec-hero .qa{background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.2)!important;color:#fff!important;border-radius:999px!important;padding:7px 14px!important;display:inline-flex;gap:6px;align-items:center;text-decoration:none;font-weight:500;backdrop-filter:blur(10px);transition:background .2s,transform .2s}
+.exec-hero .qa{flex-direction:row!important;min-height:0!important}
+.exec-hero .qa:hover{background:rgba(255,255,255,.22)!important;transform:translateY(-1px)}
+/* التبويبات */
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.seg-b{border:1px solid color-mix(in srgb,var(--ink) 8%,transparent);background:color-mix(in srgb,var(--surface) 78%,transparent);backdrop-filter:blur(20px);border-radius:16px;padding:14px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink);transition:all .25s}
+.seg-b b{font-size:1.05rem}.seg-b small{color:var(--ink-2);font-size:.78rem}
+.seg-b.on{background:linear-gradient(135deg,#0a84ff,#5e5ce6 60%,#bf5af2);color:#fff;border-color:transparent;box-shadow:0 10px 30px -8px rgba(94,92,230,.6)}
+.seg-b.on small{color:rgba(255,255,255,.85)}
+/* المؤشرات */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.kpi{position:relative;overflow:hidden;text-decoration:none;color:var(--ink);border-radius:20px;padding:18px 18px 14px;display:flex;flex-direction:column;gap:6px;
+  background:color-mix(in srgb,var(--surface) 80%,transparent);backdrop-filter:blur(24px);border:1px solid color-mix(in srgb,var(--ink) 7%,transparent);transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}
+.kpi::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,transparent,var(--c),transparent);box-shadow:0 0 18px var(--c)}
+.kpi::after{content:"";position:absolute;width:160px;height:160px;inset:auto auto -70px -50px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--c) 30%,transparent),transparent 70%);pointer-events:none}
+.kpi:hover{transform:translateY(-4px);box-shadow:0 18px 40px -12px color-mix(in srgb,var(--c) 45%,transparent)}
+.kpi-h{display:flex;align-items:center;gap:8px;font-size:.86rem;color:var(--ink-2);font-weight:500}
+.kpi-v{font-size:2.6rem;font-weight:800;letter-spacing:-.03em;line-height:1.1;background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 60%,var(--ink)));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-variant-numeric:tabular-nums}
+.kpi-f{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.kpi-sub{font-size:.78rem;color:var(--ink-2)}
+.delta{font-size:.74rem;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.delta.up-good{background:color-mix(in srgb,#30d158 18%,transparent);color:#30d158}.delta.up-bad{background:color-mix(in srgb,#ff453a 18%,transparent);color:#ff453a}
+.delta.eq,.delta.new{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink-2)}
+/* الخلاصة */
+.summary .sum-h{display:flex;align-items:center;gap:10px;font-size:1.25rem;font-weight:800}
+.summary .dot{width:10px;height:10px;border-radius:50%;background:#30d158;box-shadow:0 0 12px #30d158}
+.sum-p{margin:0;font-size:1.04rem;line-height:2;color:var(--ink)}
+/* الأشرطة */
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:minmax(90px,38%) 1fr 34px;gap:10px;align-items:center;text-decoration:none;color:var(--ink);font-size:.88rem}
+.bar-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-t{display:flex;justify-content:flex-start;height:10px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent);overflow:hidden}
+.bar-t i{display:block;height:100%;border-radius:999px;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{width:0!important}}
+.grid-dash.ana{grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr))}
+.bar-v{text-align:left;font-variant-numeric:tabular-nums}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.exec-hero{padding:20px 18px;border-radius:20px}.exec-hero h1{font-size:1.8rem}.exec-logo{height:38px}.kpi-v{font-size:2rem}.seg-b small{display:none}.kpis{gap:10px}.kpi{padding:14px}}
 </style>
 
 <div class="app" id="app" dir="rtl">
@@ -861,6 +916,52 @@ function pageHead(title,sub,...actions){const k=(location.hash.slice(1)||'home')
 function loadingAll(){return COLS.some(c=>!S.loaded[c])}
 
 /* ============ الرئيسية ============ */
+/* ===== لوحة القرار: رأس تنفيذي، مؤشرات بمقارنة، خلاصة مكتوبة، تحليلات ===== */
+const KPI=[
+  {k:'cases_open',l:'قضايا منظورة',ic:'gavel',c:'#ff375f',f:()=>statRecs('cases').filter(r=>isOpen('cases',r)).length,sub:()=>{const s=sumBy(statRecs('cases').filter(r=>isOpen('cases',r)),'claimAmount');return s?nfi(s)+' ر.س مطالبات':'بدون مطالبات مالية مسجلة'},href:'#cases',bad:false},
+  {k:'h_30',l:'جلسات خلال 30 يومًا',ic:'calendar',c:'#ff9f0a',f:()=>mcount('h_30'),sub:()=>{const n=nextHearing();return n?'أقربها '+fmtG(dateG(n.date))+' · '+(n.time||''):'لا جلسات قادمة'},href:()=>mlink('h_30')},
+  {k:'late',l:'بنود فائتة',ic:'clock',c:'#ff453a',f:()=>overdueCount(),sub:()=>'مهل وطلبات ومهام تجاوزت موعدها',href:'#home',bad:true},
+  {k:'h_result',l:'جلسات بلا نتيجة',ic:'list',c:'#bf5af2',f:()=>mcount('h_result'),sub:()=>'مضى موعدها ولم تُسجل نتيجتها',href:()=>mlink('h_result'),bad:true},
+];
+const nfi=n=>new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(n);
+const sumBy=(a,k)=>a.reduce((s,r)=>s+(Number(r[k])||0),0);
+function nextHearing(){const now=Date.now();return statRecs('hearings').filter(r=>r.status==='مجدولة'&&(hearingTs(r)||0)>=now).sort((a,b)=>hearingTs(a)-hearingTs(b))[0]||null}
+function overdueCount(){const t=todayISO();let n=mcount('req_late')+mcount('ct_missed')+mcount('poa_exp');for(const r of statRecs('cases'))n+=caseDl(r).filter(d=>dateG(d.date)<t).length;for(const r of statRecs('violations')){const x=violNext(r);if(x&&x.g<t)n++}for(const r of statRecs('hearings'))n+=hearingTasks(r).filter(k=>!k.done&&k.due&&k.due<t).length;return n}
+function kpiSnapshot(vals){const t=todayISO();let S0={};try{S0=JSON.parse(localStorage.getItem('tl_kpi')||'{}')}catch(e){}
+  const prevDay=Object.keys(S0).filter(d=>d<t).sort().pop();if(!loadingAll()){S0[t]=vals;const keep=Object.keys(S0).sort().slice(-40);const o={};for(const d of keep)o[d]=S0[d];try{localStorage.setItem('tl_kpi',JSON.stringify(o))}catch(e){}}
+  return prevDay?{day:prevDay,vals:S0[prevDay]}:null}
+function riskLevel(over,noRes){if(over>=3)return['مرتفع','بنود فائتة تحتاج قرارًا هذا الأسبوع','bad'];if(over||noRes)return['متوسط','يوجد ما يحتاج متابعة','warn'];return['منخفض','لا مهل فائتة','ok']}
+function execSummary(){const cs=statRecs('cases');const open=cs.filter(r=>isOpen('cases',r));const L=[];
+  if(!cs.length)return'لا توجد قضايا مسجلة بعد. ابدأ بإضافة قضية أو استيراد جدول القضايا من الإعدادات.';
+  const claims=sumBy(open,'claimAmount');const def=open.filter(r=>r.side==='مدعى عليها').length,pl=open.filter(r=>r.side==='مدعية').length;
+  L.push(`لدى الشؤون القانونية ${cs.length} قضية، منها ${open.length} منظورة${claims?` بمطالبات مسجلة قدرها ${nfi(claims)} ر.س`:''}؛ الشركة مدعى عليها في ${def} ومدعية في ${pl}.`);
+  const n=nextHearing();if(n){const c=rec('cases',n.caseId);L.push(`أقرب جلسة ${fmtG(dateG(n.date))} الساعة ${n.time||'—'}${c?' في قضية '+(c.plaintiff||partyOf(c,'مدعٍ')||c.caseNo):''}${n.attendee?' ويحضرها '+n.attendee:''}.`)}
+  const nr=mcount('h_result');if(nr)L.push(`${nr} جلسات مضى موعدها ولم تُسجل نتيجتها — تسجيلها أول ما يُنجز.`);
+  const ov=overdueCount();if(ov)L.push(`يوجد ${ov} بنود تجاوزت موعدها.`);
+  const lw=recs('lawyers').map(l=>[l.name,lawyerCases(l).byId.filter(c=>isOpen('cases',c)).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);if(lw.length)L.push('توزيع القضايا المنظورة: '+lw.map(([n,c])=>`${n} ${c}`).join('، ')+'.');
+  const closed=cs.filter(r=>!isOpen('cases',r));const rej=closed.filter(r=>/رد الدعو/.test(r.judgment||'')).length;if(closed.length)L.push(`من ${closed.length} قضية منتهية، رُدت ${rej} دعوى لصالح الشركة.`);
+  return L.join(' ')}
+function bars(title,rows,color){const max=Math.max(1,...rows.map(r=>r[1]));return h('div',{class:'panel'},h('h2',null,title),rows.length?h('div',{class:'bars'},rows.map(([l,v,href])=>h(href?'a':'div',{class:'bar-row',href:href||null},h('span',{class:'bar-l'},l),h('span',{class:'bar-t'},h('i',{style:`width:${Math.max(3,v/max*100)}%;background:linear-gradient(90deg,${color},color-mix(in srgb,${color} 55%,#fff))`})),h('b',{class:'bar-v'},String(v))))):h('div',{class:'empty'},'لا بيانات.'))}
+function execAnalytics(){const cs=statRecs('cases');const cnt=(a,f)=>{const m={};for(const r of a){const k=f(r)||'غير محدد';m[k]=(m[k]||0)+1}return Object.entries(m).sort((x,y)=>y[1]-x[1])};
+  const open=cs.filter(r=>isOpen('cases',r));
+  const byLaw=cnt(open,r=>caseLawyer(r)?.name||r.owner||'بلا محامٍ');
+  const bySubj=cnt(cs,r=>(r.subject||'').replace(/\s*(معرض|فرع)\s.+$/,'').replace(/ ال(احساء|شوقية|خميس مشيط).*/,'').trim()).slice(0,8);
+  const outcome=cnt(cs.filter(r=>!isOpen('cases',r)),r=>{const j=r.judgment||'';if(/رد الدعو|كأنها لم تكن/.test(j))return'رُدت / لصالح الشركة';if(/الحكم له|لعدم حضور|بـ \d|سجن/.test(j))return'حُكم للخصم';if(/تحويل|تنفيذ|دفع/.test(j))return'تنفيذ أو سداد';if(/حكم/.test(j))return'حكم (يُراجع)';return'أخرى'});
+  const bySide=cnt(cs,r=>r.side==='مدعى عليها'?'الشركة مدعى عليها':r.side==='مدعية'?'الشركة مدعية':'ليست طرفًا');
+  return h('div',{class:'grid-dash ana'},bars('القضايا المنظورة حسب المحامي',byLaw,'#ff375f'),bars('القضايا حسب سبب التقاضي',bySubj,'#5e5ce6'),bars('نتائج القضايا المنتهية',outcome,'#30d158'),bars('صفة الشركة',bySide,'#ff9f0a'))}
+function execHero(over,noRes){const[lv,txt,cls]=riskLevel(over,noRes);const t=todayISO();
+  return h('section',{class:'exec-hero','aria-label':'لوحة القرار'},
+    h('div',{class:'exec-top'},h('div',{style:'min-width:0'},h('div',{class:'exec-kicker'},'لوحة القرار · الشؤون القانونية'),h('h1',null,`${greet()}${S.me.name?'، '+S.me.name.split(' ')[0]:''}`),
+      h('div',{class:'exec-sub'},`${fmtH(g2h(t))} · ${fmtG(t)} · ${roleName()}`)),h('img',{class:'exec-logo',src:LOGO,alt:'تمكين'})),
+    h('div',{class:'exec-status '+cls},h('i'),h('span',null,'الحالة: '),h('b',null,`خطر ${lv}`),h('span',null,' — '+txt)),
+    h('div',{class:'quick'},[['new-cases','cases','قضية'],['new-hearings','hearings','جلسة'],['new-contracts','contracts','عقد'],['new-bonds','bonds','سند'],['new-requests','requests','طلب'],['docs','docs','مستند']].map(([href,m,l])=>h('a',{class:'qa',href:'#'+href},chip(m,'sm'),h('span',null,'+ '+l)))))}
+function kpiBoard(){const vals=Object.fromEntries(KPI.map(x=>[x.k,x.f()]));const prev=kpiSnapshot(vals);
+  return h('div',null,h('div',{class:'kpis'},KPI.map(x=>{const v=vals[x.k];const p=prev?.vals?.[x.k];const d=p==null?null:v-p;
+    const dc=d==null?'new':d===0?'eq':((d>0)===!!x.bad?'up-bad':'up-good');
+    return h('a',{class:'kpi',href:typeof x.href==='function'?x.href():x.href,style:`--c:${x.c}`},h('div',{class:'kpi-h'},chip(x.ic,'sm',x.c),h('span',null,x.l)),h('div',{class:'kpi-v'},nfi(v)),
+      h('div',{class:'kpi-f'},h('span',{class:'kpi-sub'},x.sub()),h('span',{class:'delta '+dc},d==null?'لا مقارنة':d===0?'بدون تغيير':(d>0?'▲ ':'▼ ')+Math.abs(d))))})),
+    h('div',{class:'small muted',style:'margin-top:8px'},prev?`الأسهم مقارنة بآخر يوم مسجل على هذا الجهاز (${fmtG(prev.day)}).`:'تظهر المقارنة بدءًا من الغد (يُحفظ ملخص يومي على هذا الجهاز).'))}
+
 function viewHome(){
   const el=h('div',{style:'display:flex;flex-direction:column;gap:16px'});
   function refresh(){
@@ -883,21 +984,24 @@ function viewHome(){
     const hs=statRecs('hearings').filter(r=>r.status==='مجدولة'&&hearingTs(r)&&hearingTs(r)>=now).sort((a,b)=>hearingTs(a)-hearingTs(b)).slice(0,6);
     const cards=[['h_30','calendar','#ff9f0a'],['req_late','clock','#ff453a'],['ct_notice','bell','#ff9f0a'],['b_pending','banknote','#bf8a30'],['v_due','alert','#ff375f'],['poa_exp','shield','#0a84ff']];
     const nAct=act.length;
+    const tab=LS.get('homeTab','dec');const setTab=v=>{LS.set('homeTab',v);refresh()};
+    const seg=h('div',{class:'seg',role:'tablist'},[['dec','القرار','الخلاصة والمؤشرات'],['ana','التحليلات','القضايا بالأرقام'],['tasks','المهام','ما يتطلب إجراء'+(nAct?' ('+nAct+')':'')]].map(([v,l,s2])=>h('button',{class:'seg-b'+(tab===v?' on':''),role:'tab','aria-selected':String(tab===v),onclick:()=>setTab(v)},h('b',null,l),h('small',null,s2))));
+    const summary=h('div',{class:'panel summary ai-glow'},h('div',{class:'panel-head'},h('h2',{class:'sum-h'},h('i',{class:'dot'}),'الخلاصة'),h('span',{class:'small muted'},'تُكتب تلقائيًا من بياناتك')),h('p',{class:'sum-p'},execSummary()));
+    let body;
+    if(tab==='ana')body=[execAnalytics()];
+    else if(tab==='tasks')body=[h('div',{class:'stats'},cards.map(([k,ic,c])=>{const n=mcount(k);const M=METRICS[k];return h('a',{class:'stat'+(n&&['req_late','ct_notice','v_due','poa_exp'].includes(k)?' alert':''),href:mlink(k),style:`--c:${c}`,title:M.p,'aria-label':`${M.l}: ${n}. ${M.p}`},chip(ic,'lg',c),h('span',{class:'txt'},h('span',{class:'v'},String(n)),h('span',{class:'l'},M.l),h('span',{class:'p'},M.p)))})),
+h('div',{class:'panel today'},h('div',{class:'panel-head'},ph('يتطلب إجراء اليوم','bell','#ff453a'),h('span',{class:'pill '+(nAct?'bad':'ok')},String(nAct))),
+        nAct?h('div',{class:'today-grid'},groups.filter(g=>act.some(a=>a.grp===g)).map(g=>{const items=act.filter(a=>a.grp===g);return h('div',{class:'tg'},h('h3',null,g,' ',h('span',{class:'pill'},String(items.length))),h('div',{class:'list'},items.slice(0,8).map(a=>li(a.m,a.r,a.s,a.cls,MODS[a.m].one))),items.length>8?h('div',{class:'small muted'},`و${items.length-8} أخرى`):null)})):h('div',{class:'empty-ill'},h('span',{class:'chip',style:'--c:#34d399'},icon('check')),'لا مهل فائتة ولا جلسات اليوم ولا اعتمادات معلقة.'))];
+    else body=[kpiBoard(),summary,
+h('div',{class:'grid-dash'},
+        box('الجلسات القادمة',hs.map(r=>li('hearings',r,`${fmtDate(r.date)} · ${r.time||''}${r.place?' · '+r.place:''}`,hearingTs(r)-now<864e5?'warn':'info',relTime(hearingTs(r)))),'لا جلسات مجدولة.','calendar','#ff9f0a'),
+        box('مواعيد العقود',mrecs('ct_attn').map(r=>{const nd=noticeDeadline(r),dn=daysUntil(nd),de=daysUntil(dateG(r.end));return li('contracts',r,[nd?`آخر موعد للإشعار: ${fmtG(nd)}${dn<0?' (فات)':''}`:null,`الانتهاء: ${fmtDate(r.end,false)}`].filter(Boolean).join(' · '),dn!=null&&dn<0?'bad':(de??99)<=30||(dn??99)<=14?'warn':'info',dn!=null&&dn<0?'فات الإشعار':de!=null?`ينتهي ${rel(de)}`:'')}),'لا عقود تقترب من الانتهاء أو موعد الإشعار.','contract','#30d158'))];
     el.replaceChildren(
-      h('section',{class:'hero compact','aria-label':'الترحيب'},
-        h('div',{class:'hero-row'},h('h1',null,`${greet()}${S.me.name?'، '+S.me.name.split(' ')[0]:''}`),h('div',{class:'dates'},h('span',null,fmtH(g2h(t))),h('span',null,fmtG(t)),h('span',null,roleName()))),
-        h('p',{class:'sum'},nAct?`${nAct} بندًا يتطلب إجراء اليوم`:'لا شيء يتطلب إجراء اليوم.'),
-        h('div',{class:'quick'},[['new-requests','requests','طلب'],['new-cases','cases','قضية'],['new-hearings','hearings','جلسة'],['new-contracts','contracts','عقد'],['new-bonds','bonds','سند'],['docs','docs','مستند']].map(([href,m,l])=>h('a',{class:'qa',href:'#'+href},chip(m,'sm'),h('span',null,'+ '+l))))),
+      execHero(overdueCount(),mcount('h_result')),
       loadingAll()?h('div',{class:'banner info'},'جارٍ تحميل السجلات…'):null,
       synToggle(),
       noData()?emptyStart():null,
-      h('div',{class:'stats'},cards.map(([k,ic,c])=>{const n=mcount(k);const M=METRICS[k];return h('a',{class:'stat'+(n&&['req_late','ct_notice','v_due','poa_exp'].includes(k)?' alert':''),href:mlink(k),style:`--c:${c}`,title:M.p,'aria-label':`${M.l}: ${n}. ${M.p}`},chip(ic,'lg',c),h('span',{class:'txt'},h('span',{class:'v'},String(n)),h('span',{class:'l'},M.l),h('span',{class:'p'},M.p)))})),
-      h('div',{class:'panel today'},h('div',{class:'panel-head'},ph('يتطلب إجراء اليوم','bell','#ff453a'),h('span',{class:'pill '+(nAct?'bad':'ok')},String(nAct))),
-        nAct?h('div',{class:'today-grid'},groups.filter(g=>act.some(a=>a.grp===g)).map(g=>{const items=act.filter(a=>a.grp===g);return h('div',{class:'tg'},h('h3',null,g,' ',h('span',{class:'pill'},String(items.length))),h('div',{class:'list'},items.slice(0,8).map(a=>li(a.m,a.r,a.s,a.cls,MODS[a.m].one))),items.length>8?h('div',{class:'small muted'},`و${items.length-8} أخرى`):null)})):h('div',{class:'empty-ill'},h('span',{class:'chip',style:'--c:#34d399'},icon('check')),'لا مهل فائتة ولا جلسات اليوم ولا اعتمادات معلقة.')),
-      h('div',{class:'grid-dash'},
-        box('الجلسات القادمة',hs.map(r=>li('hearings',r,`${fmtDate(r.date)} · ${r.time||''}${r.place?' · '+r.place:''}`,hearingTs(r)-now<864e5?'warn':'info',relTime(hearingTs(r)))),'لا جلسات مجدولة.','calendar','#ff9f0a'),
-        box('مواعيد العقود',mrecs('ct_attn').map(r=>{const nd=noticeDeadline(r),dn=daysUntil(nd),de=daysUntil(dateG(r.end));return li('contracts',r,[nd?`آخر موعد للإشعار: ${fmtG(nd)}${dn<0?' (فات)':''}`:null,`الانتهاء: ${fmtDate(r.end,false)}`].filter(Boolean).join(' · '),dn!=null&&dn<0?'bad':(de??99)<=30||(dn??99)<=14?'warn':'info',dn!=null&&dn<0?'فات الإشعار':de!=null?`ينتهي ${rel(de)}`:'')}),'لا عقود تقترب من الانتهاء أو موعد الإشعار.','contract','#30d158')),
-      null);
+      seg,...body);
   }
   refresh();return{key:'home',el,refresh};
 }
