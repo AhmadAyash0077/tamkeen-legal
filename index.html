@@ -1484,7 +1484,43 @@ async function undoMigration(out){const s=await db.doc('meta/migration-v'+SCHEMA
 const SENSITIVE_RE=/(_id$|^id$|mobile|phone|جوال|هوية|iban|email|national_address)/i;
 function maskVal(v){const s=String(v??'');if(s.length<=4)return'••••';return'••••'+s.slice(-2)}
 function srcIsTraining(s){return/تدريب/.test(s?.stype||'')}
-function advisorPanel(mod,r){
+/* المستشار القانوني في نسخة الرابط: قوالب جاهزة + فتح الطلب في Claude على اشتراكك */
+const ADV_TYPES={
+  'مذكرة رد':'اكتب مذكرة رد قانونية رسمية باسم الشركة المدعى عليها/المدعية على دعوى الخصم، تتضمن: الديباجة (المحكمة والدائرة ورقم القضية والأطراف)، ملخص الوقائع، الدفوع الشكلية، الدفوع الموضوعية مع الاستناد إلى الأنظمة السعودية ذات الصلة بذكر رقم المادة واسم النظام فقط إن كنت متأكدًا منها، ثم الطلبات الختامية.',
+  'لائحة اعتراضية (استئناف)':'اكتب لائحة اعتراضية على الحكم الابتدائي في هذه القضية: بيانات الحكم المعترض عليه، أوجه الاعتراض مرتبة، الأسانيد النظامية، والطلبات.',
+  'طلب تأجيل جلسة':'اكتب طلب تأجيل جلسة موجهًا للدائرة، مختصرًا ومهذبًا، مع سبب التأجيل ومدة مقترحة.',
+  'تحليل مخاطر القضية':'حلّل موقف الشركة في القضية: نقاط القوة والضعف، المستندات الناقصة، المخاطر المالية والنظامية، والخيارات المتاحة (الصلح، الاستمرار، الاستئناف) مع ترجيح مسبب.',
+  'رد على مخالفة':'اكتب اعتراضًا رسميًا على المخالفة موجهًا للجهة المصدرة، يتضمن الوقائع وأسباب الاعتراض والطلبات.',
+  'خطاب رسمي':'اكتب خطابًا رسميًا باسم إدارة الشؤون القانونية في الموضوع المذكور.',
+  'سؤال حر':''};
+const ADV_RULES='\n\nقواعد: اعتمد فقط على البيانات المرفقة. لا تختلق أرقام مواد أو أحكامًا أو سوابق؛ إن لم تكن متأكدًا من مادة فاكتب [يُتحقق من المادة]. اترك ما لا تعرفه بين أقواس مربعة ليكمله المختص. الصياغة بالعربية الفصحى القانونية. هذه مسودة لمراجعة مختص.';
+function advRecordText(mod,r,mask){const L=[];const M=MODS[mod];
+  for(const f of M.fields){let v=r[f.k];if(v==null||v==='')continue;if(f.t==='date'){if(!dateG(v))continue;v=fmtDate(v)}else if(f.t==='ref'){v=cellVal(mod,f,r)}else if(f.t==='money'){v=money(v,r.currency)}
+    if(mask&&SENSITIVE_RE.test(f.k))v=maskVal(v);L.push(`${f.l}: ${v}`)}
+  L.push('الحالة: '+(r.status||'—'));
+  if(mod==='cases'){const hs=recs('hearings').filter(x=>x.caseId===r.id).sort((a,b)=>(dateG(a.date)||'').localeCompare(dateG(b.date)||''));for(const x of hs)L.push(`جلسة ${fmtDate(x.date,false)} ${x.time||''} — ${x.status}${x.result?' — النتيجة: '+x.result:''}`);for(const d of r.deadlines||[])L.push(`موعد ${d.kind}: ${fmtDate(d.date)} (المصدر: ${d.source||'—'})`);const lw=caseLawyer(r);if(lw)L.push('المحامي: '+lw.name)}
+  const docs=recs('docs').filter(d=>(d.links||[]).includes(mod+':'+r.id));if(docs.length)L.push('المستندات المرفقة في النظام: '+docs.map(d=>d.name).join('، '));
+  return L.join('\n')}
+function localAdvisorPanel(mod,r){
+  const type=h('select',{id:'advType','aria-label':'نوع الطلب'},Object.keys(ADV_TYPES).map(k=>h('option',{value:k},k)));type.value=mod==='violations'?'رد على مخالفة':mod==='cases'?'مذكرة رد':'سؤال حر';
+  const q=h('textarea',{id:'advQ',dir:'auto',placeholder:'تفاصيل إضافية: مثلًا ما الذي يدعيه الخصم، أو الصق نص صحيفة الدعوى أو مذكرة الخصم هنا',style:'min-height:80px'});
+  const mask=h('input',{type:'checkbox',checked:true});const prev=h('textarea',{id:'advPrev',dir:'auto',style:'min-height:180px'});const out=h('div');
+  const build=()=>{prev.value=`${ADV_TYPES[type.value]||'أجب عن السؤال التالي'} \n\nنوع السجل: ${MODS[mod].one}\n${advRecordText(mod,r,mask.checked)}${q.value.trim()?'\n\nتفاصيل من المستخدم:\n'+q.value.trim():''}${ADV_RULES}`};
+  type.onchange=build;q.oninput=debounce(build,250);mask.onchange=build;build();
+  async function copy(){try{await navigator.clipboard.writeText(prev.value);return true}catch(e){prev.select();try{return document.execCommand('copy')}catch(_){return false}}}
+  async function openClaude(){const t=prev.value;const ok=await copy();const url=t.length<=6000?'https://claude.ai/new?q='+encodeURIComponent(t):'https://claude.ai/new';window.open(url,'_blank','noopener');audit('فتح طلب في Claude',mod,r.id,type.value);
+    out.replaceChildren(h('div',{class:'banner info'},t.length<=6000?'فُتحت محادثة جديدة في Claude والطلب مكتوب فيها؛ اضغط إرسال.':'الطلب طويل؛ نُسخ إلى الحافظة. في المحادثة الجديدة الصق (Ctrl+V) ثم أرسل.',ok?'':' (تعذر النسخ التلقائي — انسخ النص يدويًا)'))}
+  const saveBox=h('textarea',{id:'advRes',dir:'auto',placeholder:'بعد ما يكتب Claude المذكرة، الصقها هنا واحفظها مسودة على هذا السجل',style:'min-height:90px'});
+  async function saveDraft(){if(!saveBox.value.trim())return toast('الصق النص أولًا');const id=uid();const w=await writeDoc('consults',id,{title:`${type.value}: ${titleOf(mod,r)}`,status:'مسودة',date:{orig:'g',g:todayISO(),h:g2h(todayISO()),verified:true},question:q.value.trim()||type.value,opinion:saveBox.value,refs:'صيغت بمساعدة Claude؛ تحقق من كل مادة ومرجع',links:[mod+':'+r.id],source:'المستشار الذكي (مسودة)'},null,{create:true});if(w.ok){audit('حفظ مسودة من Claude','consults',id,'');toast('حُفظت المسودة في الاستشارات ومربوطة بهذا السجل');saveBox.value=''}}
+  return h('div',{class:'panel'},h('div',{class:'panel-head'},ph('المستشار القانوني الذكي','sparkles','#c084fc'),h('span',{class:'pill ok'},'عبر اشتراكك في Claude')),
+    h('div',{class:'small muted'},'يجهّز طلبًا كاملًا ببيانات هذا السجل وجلساته ومواعيده، ويفتحه في Claude على حسابك بدون أي تكلفة إضافية. لا يُرسل شيء إلا بعد ضغطك «إرسال» في Claude.'),
+    h('div',{class:'form'},h('div',{class:'f'},h('label',{for:'advType'},'المطلوب'),type),h('div',{class:'f wide'},h('label',{for:'advQ'},'تفاصيل'),q)),
+    h('label',{class:'check small'},mask,h('span',null,'إخفاء أرقام الهوية والجوال قبل الإرسال')),
+    h('details',null,h('summary',null,'معاينة الطلب وتعديله'),prev),
+    h('div',{class:'row'},h('button',{class:'btn primary sm',onclick:openClaude},ibtn('sparkles','اكتبها في Claude')),h('button',{class:'btn sm',onclick:async()=>{toast(await copy()?'نُسخ الطلب':'تعذر النسخ')}},'نسخ الطلب')),out,
+    h('details',null,h('summary',null,'حفظ رد Claude في البرنامج'),saveBox,h('button',{class:'btn sm',onclick:saveDraft},'حفظ كمسودة استشارة')))}
+
+function advisorPanel(mod,r){if(window.__LOCAL&&!window.__LOCAL.aiConfigured())return localAdvisorPanel(mod,r);
   const out=h('div',{class:'ai-out'});const prev=h('div');let ctl=null;
   const q=h('textarea',{id:'aiQ',dir:'auto',placeholder:'سؤال محدد (اختياري): مثال — ما المخاطر في شرط الإنهاء؟',style:'min-height:60px'});
   const btn=h('button',{class:'btn primary sm',onclick:prepare},ibtn('eye','معاينة ما سيُرسل'));const stop=h('button',{class:'btn sm',hidden:true,onclick:()=>ctl?.abort()},'إيقاف');
