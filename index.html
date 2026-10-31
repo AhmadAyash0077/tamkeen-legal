@@ -2122,7 +2122,7 @@ const INTEG={
     caps:['مزامنة القضايا والجلسات وطلبات التنفيذ والوكالات عند توفر الخدمة','تمييز البيانات المستوردة رسميًا عن اليدوية','عدم إرسال أي إجراء ذي أثر قانوني دون اعتماد صريح','الاستيراد اليدوي وفتح المنصة عند غياب الخدمة']}};
 function viewPrefs(){
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'});
-  function refresh(){if(el.contains(document.activeElement)&&document.activeElement.matches('input,textarea,select'))return;
+  function refresh(){if(el.contains(document.activeElement)&&document.activeElement.matches('input,textarea,select'))return;if(el.querySelector('.confirm'))return;
     const s=S.settings||{};const adm=canAdmin();
     const offs=h('input',{id:'offs',class:'num',value:alertOffsets().join('، '),readonly:!adm,'aria-label':'دقائق التنبيه'});
     const aiChk=h('input',{type:'checkbox',id:'aiEn',checked:aiEnabled(),disabled:!adm});const aiAck=h('input',{type:'checkbox',id:'aiAck',disabled:!adm});
