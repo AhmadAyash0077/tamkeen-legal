@@ -2721,12 +2721,24 @@ ${top.length?`<section class="blk"><h2>أعلى ${top.length} طلبات من ح
   const w=window.open('','_blank');if(!w){toast('اسمح بالنوافذ المنبثقة لهذا الموقع لفتح التقرير');return}
   w.document.open();w.document.write(html);w.document.close();audit('تقرير طلبات التنفيذ','executions','',`${rows.length} طلب`)}
 
+function sortListRows(rows,mod,order,now=Date.now()){
+  const main=MODS[mod].main;
+  if(order==='nearest'){
+    const values=new Map(rows.map(r=>{const hearing=mod==='cases'?caseHearing(r)?.r:r;const ts=hearing?.status==='مجدولة'?hearingTs(hearing):null;return[r,Number.isFinite(ts)?ts:null]}));
+    rows.sort((a,b)=>{const x=values.get(a),y=values.get(b);const gx=x==null?2:x>=now?0:1,gy=y==null?2:y>=now?0:1;return gx-gy||(gx===0?x-y:gx===1?y-x:0)});
+  }else if(order==='main'||order==='main_desc'){
+    rows.sort((a,b)=>{const x=dateG(a[main]),y=dateG(b[main]);if(!x||!y)return x?-1:y?1:0;const d=x.localeCompare(y);return (order==='main_desc'?-1:1)*(d||(mod==='hearings'?String(a.time||'99:99').localeCompare(String(b.time||'99:99')):0))});
+  }else rows.sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+  return rows;
+}
+
 function viewList(mod,mk){
   const M=MODS[mod];
   if(!canSee(mod))return{key:mod,el:h('div',{class:'panel'},ph('وصول مقيد','shield','#bf5af2'),h('p',null,'هذا القسم متاح لمحرري التطبيق ومالكه فقط، ويُطبق المنع من قاعدة البيانات نفسها.'))};
   const q=h('input',{type:'search',placeholder:'بحث في '+M.t,'aria-label':'بحث',value:mk?'':LS.get('q_'+mod,'')});
   const st=h('select',{'aria-label':'الحالة'},h('option',{value:''},'كل الحالات'),h('option',{value:'_open'},'المفتوحة فقط'),M.st.map(s=>h('option',{value:s},s)));st.value=mk?'':LS.get('st_'+mod,'_open');
-  const sort=h('select',{'aria-label':'الترتيب'},h('option',{value:'upd'},'الأحدث تعديلًا'),M.main?h('option',{value:'main'},'حسب '+(M.fields.find(f=>f.k===M.main)?.l||'التاريخ')):null);
+  const dateLabel=M.fields.find(f=>f.k===M.main)?.l||'التاريخ';
+  const sort=h('select',{'aria-label':'الترتيب'},h('option',{value:'upd'},'الأحدث تعديلًا'),['cases','hearings'].includes(mod)?h('option',{value:'nearest'},'أقرب جلسة قادمة أولًا'):null,M.main?h('option',{value:'main'},dateLabel+' — الأقدم أولًا'):null,M.main?h('option',{value:'main_desc'},dateLabel+' — الأحدث أولًا'):null);
   const FALL={branch:['كل الفروع','بدون فرع'],applicant:['كل طالبي التنفيذ','بدون طالب'],rep:['كل المناديب','بدون مندوب'],decision:['كل القرارات','بدون قرار'],_year:['كل السنوات','بدون تاريخ']};
   const FK=M.filters||[];const fval=(r,k)=>k==='_year'?(dateG(r[M.main])||'').slice(0,4):String(r[k]??'').trim();
   const fsel=FK.map(k=>{const lab=k==='_year'?'السنة':(M.fields.find(f=>f.k===k)?.l||k);const sel=h('select',{'aria-label':lab,class:'fsel'});sel.dataset.k=k;sel.dataset.l=lab;sel._v=mk?'':LS.get('f_'+mod+'_'+k,'');sel.onchange=()=>{sel._v=sel.value;LS.set('f_'+mod+'_'+k,sel.value);refresh()};return sel});
@@ -2755,7 +2767,7 @@ function viewList(mod,mk){
     const MF=mk?METRICS[mk]:null;if(MF){st.disabled=true;mfBox.replaceChildren(h('div',{class:'banner info'},h('span',null,h('b',null,'مرشح: '+MF.l),' — '+MF.p+(hideSyn()?' · دون البيانات الاختبارية':'')),h('a',{class:'btn sm',href:'#'+mod},'إزالة المرشح')))}else{st.disabled=false;mfBox.replaceChildren()}
     let rows=(MF?mrecs(mk):recs(mod)).filter(r=>matches(r));
     lastRows=rows;if(M.sums){const S2=M.sums.map(([k,l])=>[l,rows.reduce((a,r)=>a+(Number(r[k])||0),0)]);sumBox.replaceChildren(h('div',{class:'fsum'},h('span',null,h('b',null,String(rows.length)),' طلب'),...S2.map(([l,v])=>h('span',null,l+': ',h('b',{class:'num'},nf.format(Math.round(v*100)/100))))))}
-    if(sort.value==='main')rows.sort((a,b)=>(dateG(a[M.main])||'9999').localeCompare(dateG(b[M.main])||'9999'));else rows.sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+    sortListRows(rows,mod,sort.value);
     if(extra){const T=bondTotals(statRecs('bonds'));
       extra.replaceChildren(h('div',{class:'stats'},Object.entries(T.conf).map(([k,v])=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'v num'},nf.format(v)),h('span',{class:'l'},'إجمالي مؤكد — '+k),h('span',{class:'p'},'مبالغ طابقها مستخدم مع الأصل')))),Object.entries(T.pend).map(([k,v])=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'v num muted'},nf.format(v)),h('span',{class:'l'},'مقروء آليًا بانتظار التأكيد — '+k),h('span',{class:'p'},'غير معتمد؛ خارج الإجمالي المؤكد')))),T.unread?h('div',{class:'stat alert'},h('span',{class:'txt'},h('span',{class:'v'},String(T.unread)),h('span',{class:'l'},'غير مقروء أو متعارض'),h('span',{class:'p'},'خارج كل الإجماليات'))):null,!Object.keys(T.conf).length&&!Object.keys(T.pend).length&&!T.unread?h('div',{class:'small muted'},'لا سندات قائمة ضمن العدّ.'):null))}
     {const ins=insights(mod);const was=insBox.querySelector('details')?.open;insBox.replaceChildren(ins?h('details',{class:'ins-wrap',open:was||null},h('summary',null,'نظرة سريعة على '+M.t),h('div',{style:'margin-top:10px'},ins)):'')}
