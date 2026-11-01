@@ -1375,7 +1375,7 @@ pages:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8
 list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
 pin:'<path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/>',
 };
-const META={home:['home','#5e5ce6'],requests:['inbox','#0a84ff'],consults:['message','#bf5af2'],cases:['gavel','#ff375f'],hearings:['calendar','#ff9f0a'],contracts:['contract','#30d158'],bonds:['banknote','#e6a800'],claims:['wallet','#ff9500'],violations:['alert','#ff453a'],poa:['stamp','#32ade6'],lawyers:['briefcase','#32ade6'],forms:['pages','#ff375f'],investigations:['shield','#bf5af2'],library:['book','#ff9500'],docs:['folder','#0a84ff'],reports:['chart','#af52de'],trash:['trash','#8e8e93'],prefs:['gear','#5e5ce6'],search:['search','#5e5ce6'],sources:['book','#ff9500'],articles:['book','#ff9500']};
+const META={home:['home','#5e5ce6'],requests:['inbox','#0a84ff'],consults:['message','#bf5af2'],cases:['gavel','#ff375f'],hearings:['calendar','#ff9f0a'],executions:['list','#ff6b35'],contracts:['contract','#30d158'],bonds:['banknote','#e6a800'],claims:['wallet','#ff9500'],violations:['alert','#ff453a'],poa:['stamp','#32ade6'],lawyers:['briefcase','#32ade6'],forms:['pages','#ff375f'],investigations:['shield','#bf5af2'],library:['book','#ff9500'],docs:['folder','#0a84ff'],reports:['chart','#af52de'],trash:['trash','#8e8e93'],prefs:['gear','#5e5ce6'],search:['search','#5e5ce6'],sources:['book','#ff9500'],articles:['book','#ff9500']};
 function icon(n){const sp=document.createElement('span');sp.className='ico';sp.setAttribute('aria-hidden','true');sp.innerHTML=`<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${IC[n]||IC.list}</svg>`;return sp}
 {const IOS={home:'#0a84ff',requests:'#5e5ce6',consults:'#bf5af2',cases:'#ff375f',hearings:'#ff9f0a',contracts:'#30d158',bonds:'#e6a800',violations:'#ff453a',poa:'#32ade6',lawyers:'#a2845e',investigations:'#8e8e93',library:'#ff9500',docs:'#0a84ff',reports:'#af52de',trash:'#8e8e93',prefs:'#8e8e93',search:'#0a84ff',sources:'#ff9500',articles:'#ff9500'};for(const[k,c]of Object.entries(IOS))if(META[k])META[k][1]=c}
 function chip(nameOrMod,size,color){const m=META[nameOrMod];const n=m?m[0]:nameOrMod;const c=color||(m?m[1]:'#5e5ce6');return h('span',{class:'chip'+(size?' '+size:''),style:`--c:${c}`},icon(n))}
@@ -1448,6 +1448,12 @@ const MODS={
     {k:'owner',l:'المسؤول',t:'text'},{k:'lawyerId',l:'المحامي (من سجل المحامين)',t:'ref',ref:'lawyers'},{k:'lawyer',l:'اسم المحامي نصًا (سجلات قديمة)',t:'text',hint:'اختر المحامي من الخانة السابقة؛ هذه الخانة للبيانات القديمة فقط'},
     {k:'judgmentNo',l:'رقم الحكم',t:'ltr'},{k:'judgmentDate',l:'تاريخ الحكم',t:'date'},{k:'judgment',l:'منطوق الحكم',t:'area',w:1,hint:'أرفق صك الحكم من قسم المرفقات بتصنيف «حكم»'},{k:'awarded',l:'المبلغ المحكوم به',t:'money'}],
     st:['قيد الإعداد','منظورة','محجوزة للحكم','صدر حكم','في الاستئناف','في التنفيذ','منتهية'],closed:['منتهية'],cols:['plaintiff','defendant','caseNo','hdate','subject']},
+  executions:{t:'طلبات التنفيذ',one:'طلب تنفيذ',grp:'التقاضي',main:'filed',fields:[
+    {k:'respondent',l:'المنفذ ضده',t:'text',req:1},{k:'applicant',l:'طالب التنفيذ',t:'text'},{k:'reqNo',l:'رقم الطلب التنفيذي',t:'ltr'},
+    {k:'claimAmount',l:'مبلغ المطالبة',t:'money'},{k:'paid',l:'المسدد',t:'money'},{k:'remaining',l:'المتبقي',t:'money'},{k:'currency',l:'العملة',t:'select',o:CUR},
+    {k:'filed',l:'تاريخ التقديم',t:'date'},{k:'startDate',l:'تاريخ بداية التعامل',t:'date'},{k:'payDate',l:'تاريخ السداد',t:'date'},
+    {k:'rep',l:'المندوب',t:'text'},{k:'branch',l:'الفرع',t:'text'},{k:'decision',l:'القرار الحالي',t:'text'},{k:'notes',l:'ملاحظات',t:'area',w:1}],
+    st:['قيد التنفيذ','تم الإمهال','منتهي','ملغى'],closed:['منتهي','ملغى'],cols:['respondent','reqNo','claimAmount','remaining','branch']},
   hearings:{t:'الجلسات',one:'جلسة',grp:'التقاضي',main:'date',fields:[
     {k:'caseId',l:'القضية',t:'ref',ref:'cases',req:1},{k:'date',l:'تاريخ الجلسة',t:'date',req:1},{k:'time',l:'الوقت (بتوقيت الرياض)',t:'time',req:1},
     {k:'place',l:'المكان أو القاعة',t:'text'},{k:'link',l:'رابط الجلسة المرئية',t:'ltr'},{k:'attendee',l:'الحاضر عن الشركة',t:'text'},
@@ -1514,6 +1520,7 @@ function partyOf(r,role){const l=String(r.parties||'').split('\n').find(x=>x.inc
 function titleOf(mod,r){if(!r)return'(غير متاح)';switch(mod){
   case'cases':{const pl=r.plaintiff||partyOf(r,'مدعٍ');return pl?`${pl}${r.subject?' — '+r.subject:''}`:`قضية ${r.caseNo||''}${r.subject?' — '+r.subject:''}`}
   case'hearings':{const c=rec('cases',r.caseId);return`جلسة ${fmtDate(r.date,false)}${c?' — '+(c.plaintiff||partyOf(c,'مدعٍ')||'قضية '+(c.caseNo||'')):''}`}
+  case'executions':return`${r.respondent||'طلب تنفيذ'}${r.reqNo?' — '+r.reqNo:''}`;
   case'bonds':return`${r.kind||'سند'} ${r.bondNo||'(بدون رقم)'}${r.debtor?' — '+r.debtor:''}`;
   case'violations':return`${r.authority||'مخالفة'} ${r.number||''}`;
   case'poa':return`${r.kind||''} ${r.number||''}${r.holder?' — '+r.holder:''}`;
