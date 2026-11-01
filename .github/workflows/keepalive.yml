@@ -1,0 +1,31 @@
+name: keepalive
+# يُبقي قاعدة البيانات نشطة حتى لا يوقفها Supabase بسبب عدم الاستخدام
+on:
+  schedule:
+    - cron: '23 */8 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping database
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o out.txt -w '%{http_code}' -X POST \
+              'https://qimtlfvgpvpualtqimam.supabase.co/rest/v1/rpc/keepalive' \
+              -H 'apikey: sb_publishable_exNMjk-PTDWceks2AlGhfg_gM0WrsED' \
+              -H 'Content-Type: application/json' -d '{}')
+            cat out.txt; echo " -> $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 30
+          done
+          exit 1
+      - name: Keep the schedule active (GitHub disables idle schedules after 60 days)
+        run: |
+          git init -q k && cd k
+          git config user.name "keepalive-bot"; git config user.email "keepalive@users.noreply.github.com"
+          date -u +%FT%TZ > last-ping.txt
+          git add last-ping.txt && git commit -qm "keepalive $(date -u +%F)"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:keepalive
