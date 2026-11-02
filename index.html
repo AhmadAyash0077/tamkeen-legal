@@ -56,7 +56,7 @@
 <script>/* مزامنة سحابية عبر Supabase: نفس البيانات على كل الأجهزة بعد تسجيل الدخول بالبريد */
 (function(){
   const SB_URL='https://qimtlfvgpvpualtqimam.supabase.co',SB_KEY='sb_publishable_exNMjk-PTDWceks2AlGhfg_gM0WrsED';
-  if(!window.supabase||!window.supabase.createClient){console.warn('supabase-js not loaded; local mode');return}
+  if(!window.supabase||!window.supabase.createClient){window.claude.use=async()=>{throw new Error('تعذر تحميل خدمة تسجيل الدخول. تحقق من الإنترنت وأعد تحميل الصفحة؛ لم يتم فتح مساحة محلية بديلة.')};return}
   const localUse=window.claude.use;const localApi=window.__LOCAL;
   const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'implicit'}});
   const LSK='tl_mode';const getMode=()=>{try{return localStorage.getItem(LSK)}catch(e){return null}};const setMode=m=>{try{localStorage.setItem(LSK,m)}catch(e){}};
@@ -97,15 +97,33 @@
   async function cloudFetch(u,...r){const s=typeof u==='string'?u:(u&&u.url)||'';const m=/\/_blob\/([0-9a-f]+)/.exec(s);if(m&&uid){const b=await fetchBlob(m[1]);return b?new Response(b,{status:200}):new Response('',{status:404})}return _fetch(u,...r)}
   const b64=async b=>{const a=new Uint8Array(await b.arrayBuffer());let s='';for(let i=0;i<a.length;i+=32768)s+=String.fromCharCode.apply(null,a.subarray(i,i+32768));return btoa(s)};
   /* شاشة الدخول */
-  function loginScreen(){return new Promise(resolve=>{const wrap=document.createElement('div');wrap.className='login-wrap';
-    wrap.innerHTML=`<div class="login-card"><img class="login-logo" alt="تمكين" src="${(typeof LOGO!=='undefined'?LOGO:'')}"><h1>المساعد القانوني</h1><p class="login-sub">سجّل دخولك ببريدك لتظهر بياناتك نفسها على الكمبيوتر والجوال.</p>
-      <label for="lgEmail">البريد الإلكتروني</label><input id="lgEmail" type="email" dir="ltr" autocomplete="email" placeholder="name@example.com"><button id="lgSend" class="btn primary">أرسل رابط الدخول</button>
-      <div id="lgMsg" class="login-msg" role="status"></div><button id="lgLocal" class="btn ghost sm">متابعة بدون مزامنة (هذا الجهاز فقط)</button></div>`;
-    document.body.append(wrap);const em=wrap.querySelector('#lgEmail'),msg=wrap.querySelector('#lgMsg');try{em.value=localStorage.getItem('tl_last_email')||''}catch(e){}
-    wrap.querySelector('#lgSend').onclick=async()=>{const v=em.value.trim();if(!/^\S+@\S+\.\S+$/.test(v)){msg.textContent='اكتب بريدًا صحيحًا';return}try{localStorage.setItem('tl_last_email',v)}catch(e){}msg.textContent='جارٍ الإرسال…';
-      const{error}=await sb.auth.signInWithOtp({email:v,options:{emailRedirectTo:location.origin+location.pathname}});msg.textContent=error?('تعذر الإرسال: '+(error.message||'')):'أرسلنا رابط الدخول إلى بريدك. افتح الرابط من هذا الجهاز وستدخل مباشرة. (تحقق من مجلد الرسائل غير المرغوبة)'};
-    wrap.querySelector('#lgLocal').onclick=()=>{setMode('local');wrap.remove();resolve('local')};
-    sb.auth.onAuthStateChange((ev,s)=>{if(s&&document.body.contains(wrap)){wrap.remove();resolve('cloud')}})})}
+function loginVerificationInput(value,email,authOrigin){
+  const input=String(value||'').trim().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  if(/^\d{6,8}$/.test(input))return{email,token:input,type:'email'};
+  let u;try{u=new URL(input)}catch{throw new Error('الصق رابط الدخول الأصلي من البريد، أو رمز التحقق إن كان موجودًا في الرسالة.')}
+  if(u.origin!==authOrigin||u.pathname!=='/auth/v1/verify'||u.username||u.password||u.hash||!['magiclink','email'].includes(u.searchParams.get('type')))throw new Error('هذا ليس رابط دخول صالحًا لهذا البرنامج. انسخ الرابط الأصلي من أحدث رسالة.');
+  const token=u.searchParams.get('token')||u.searchParams.get('token_hash');
+  if(!token||!/^[a-zA-Z0-9_-]{20,256}$/.test(token))throw new Error('رابط الدخول غير مكتمل.');
+  return{token_hash:token,type:'email'};
+}
+  function loginScreen(){return new Promise(resolve=>{
+    const wrap=document.createElement('div');wrap.className='login-wrap';
+    wrap.innerHTML=`<form class="login-card"><img class="login-logo" alt="تمكين" src="${typeof LOGO!=='undefined'?LOGO:''}"><h1>الدخول إلى بيانات الشركة</h1><p class="login-sub">تحقق من بريدك وأكمل الدخول هنا في نفس المتصفح.</p><label for="lgEmail">البريد الإلكتروني</label><input id="lgEmail" type="email" dir="ltr" autocomplete="email" required placeholder="name@example.com"><button type="button" id="lgSend" class="btn primary">أرسل رسالة الدخول</button><label for="lgProof">رابط الدخول أو رمز البريد</label><input id="lgProof" type="password" dir="ltr" autocomplete="off" spellcheck="false" placeholder="الصق رابط الرسالة هنا دون فتحه"><p class="login-sub" style="font-size:.85rem">من أحدث رسالة بريد: انسخ عنوان رابط الدخول والصقه هنا. إذا احتوت الرسالة على رمز رقمي يمكنك إدخاله بدل الرابط.</p><button type="submit" id="lgVerify" class="btn primary">تحقق وادخل</button><div id="lgMsg" class="login-msg" role="status" aria-live="polite"></div><details><summary>مساحة محلية منفصلة</summary><p class="login-sub">لا تعرض بيانات الشركة السحابية ولا تعني تسجيل الدخول.</p><button type="button" id="lgLocal" class="btn ghost sm">فتح المساحة المحلية</button></details></form>`;
+    document.body.append(wrap);const em=wrap.querySelector('#lgEmail'),proof=wrap.querySelector('#lgProof'),msg=wrap.querySelector('#lgMsg'),send=wrap.querySelector('#lgSend'),verify=wrap.querySelector('#lgVerify');
+    let busy=false,nextSend=0,sub=null,finished=false,timer=null;
+    try{em.value=localStorage.getItem('tl_last_email')||''}catch{}
+    const finish=mode=>{if(finished)return;finished=true;proof.value='';clearTimeout(timer);sub?.unsubscribe();wrap.remove();resolve(mode)};
+    const validEmail=()=>{if(!em.checkValidity()){em.reportValidity();return null}return em.value.trim().toLowerCase()};
+    send.onclick=async()=>{const email=validEmail();if(!email||busy)return;if(Date.now()<nextSend){msg.textContent='انتظر قليلًا قبل طلب رسالة أخرى.';return}busy=true;send.disabled=true;msg.textContent='جارٍ طلب رسالة الدخول…';
+      try{const{error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false,emailRedirectTo:'https://ahmadayash0077.github.io/tamkeen-legal/'}});if(error)throw error;try{localStorage.setItem('tl_last_email',email)}catch{}nextSend=Date.now()+60000;msg.textContent='إذا كان البريد مسجّلًا ستصلك رسالة. انسخ رابطها إلى الخانة أعلاه دون فتحه في متصفح آخر.';timer=setTimeout(()=>{send.disabled=false},60000)}catch{msg.textContent='تعذر إرسال الرسالة. تحقق من الاتصال والبريد أو انتظر قبل المحاولة مجددًا.';send.disabled=false}finally{busy=false}
+    };
+    wrap.querySelector('form').onsubmit=async ev=>{ev.preventDefault();const email=validEmail();if(!email||busy)return;let payload;try{payload=loginVerificationInput(proof.value,email,new URL(SB_URL).origin)}catch(e){msg.textContent=e.message;return}busy=true;verify.disabled=true;em.disabled=true;send.disabled=true;msg.textContent='جارٍ التحقق…';
+      try{const{data,error}=await sb.auth.verifyOtp(payload);proof.value='';if(error||!data?.session)throw new Error('verification');finish('cloud')}catch{msg.textContent='لم ينجح التحقق. قد يكون الرابط استُخدم أو انتهت صلاحيته؛ اطلب رسالة جديدة وانسخ رابطها هنا قبل فتحه.'}finally{busy=false;verify.disabled=false;em.disabled=false;send.disabled=Date.now()<nextSend}
+    };
+    wrap.querySelector('#lgLocal').onclick=()=>{if(busy)return;setMode('local');finish('local')};
+    sub=sb.auth.onAuthStateChange((_ev,s)=>{if(s)setTimeout(()=>finish('cloud'),0)}).data.subscription;
+  })}
+
   function devName(){const u=navigator.userAgent;const os=/iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows':/Mac OS/.test(u)?'Mac':/Linux/.test(u)?'Linux':'جهاز';const br=/Edg\//.test(u)?'Edge':/CriOS|Chrome\//.test(u)?'Chrome':/FxiOS|Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'متصفح';return os+' · '+br}
   let ready=null;
   function start(){if(ready)return ready;ready=(async()=>{
@@ -1592,7 +1610,17 @@ function audit(action,mod,id,label){
 async function softDelete(mod,id){const r=rec(mod,id);if(r?.legalHold){toast('السجل تحت حجز قانوني ولا يمكن حذفه');return}const res=await writeDoc(mod,id,{deleted:true,deletedAt:new Date().toISOString(),deletedBy:S.me.id},r?.rev,{force:true});if(res.ok){audit('نقل إلى المحذوفات',mod,id,titleOf(mod,r));toast('نُقل إلى المحذوفات ويمكن استعادته');location.hash=mod}}
 
 /* ============ الهيكل والقائمة ============ */
-function applyTheme(){const t=LS.get('theme','dark');if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t||'dark'}
+const MONTHLY_THEMES=[
+ ['يناير','شتاء أزرق','#27618b','#93c5ed'],['فبراير','ورد هادئ','#944267','#e9a5c5'],['مارس','ربيع أخضر','#33714b','#a3d7b0'],['أبريل','فيروزي','#237476','#8ed6d2'],
+ ['مايو','بنفسج','#73539d','#c5adeb'],['يونيو','رمال','#88622b','#dfbd85'],['يوليو','بحر','#286a98','#8ec8ed'],['أغسطس','نخيل','#407243','#b4d49c'],
+ ['سبتمبر','أخضر وطني','#236747','#84cba5'],['أكتوبر','خريف نحاسي','#975c38','#e6b18a'],['نوفمبر','ذهبي تمكين','#85672f','#d8ba7e'],['ديسمبر','ليل نيلي','#4e5997','#afb9ee']
+];
+function monthlyThemeIndex(setting,date=new Date()){if(setting==='brand')return 10;const n=Number(setting);if(setting!=='auto'&&Number.isInteger(n)&&n>=0&&n<12)return n;return Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Riyadh',month:'numeric'}).format(date))-1}
+function applyTheme(){const t=LS.get('theme','dark');if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t||'dark';const dark=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);const mode=LS.get('monthlyTheme','auto'),i=monthlyThemeIndex(mode),theme=MONTHLY_THEMES[i],color=theme[dark?3:2],root=document.documentElement;root.dataset.monthly=String(i);for(const[k,v]of Object.entries({'--accent':color,'--accent-2':color,'--brass':color,'--hero-kick':color,'--p1':color,'--accent-soft':color+'18','--glow':color+'20','--rail-active':color+'16','--monthly-solid':theme[2],'--monthly-bright':theme[3]}))root.style.setProperty(k,v);root.style.setProperty('--accent-ink',dark?'#121820':'#ffffff')}
+function monthlyThemePanel(){const selected=LS.get('monthlyTheme','auto'),sel=h('select',{'aria-label':'الثيم الشهري'},h('option',{value:'auto'},'تلقائي حسب الشهر — توقيت الرياض'),h('option',{value:'brand'},'هوية تمكين الثابتة'),MONTHLY_THEMES.map((x,i)=>h('option',{value:String(i)},x[0]+' — '+x[1])));sel.value=selected;const current=h('div',{class:'small muted'});const update=()=>{const i=monthlyThemeIndex(sel.value);current.textContent='الثيم الحالي: '+MONTHLY_THEMES[i][0]+' — '+MONTHLY_THEMES[i][1]};update();sel.onchange=()=>{LS.set('monthlyTheme',sel.value);applyTheme();update()};return h('div',{class:'panel'},ph('ثيمات الأشهر','palette','#b08a3e'),h('p',{class:'small'},'12 ثيمًا شهريًا. يمكنك تثبيت أي ثيم مع استخدام الوضع الفاتح أو الداكن.'),sel,current,h('div',{style:'display:grid;grid-template-columns:repeat(6,1fr);gap:8px'},MONTHLY_THEMES.map((x,i)=>h('button',{class:'btn sm',style:'border-top:4px solid '+x[2],onclick:()=>{sel.value=String(i);sel.onchange()},title:x[1]},x[0]))))}
+setInterval(()=>{if(LS.get('monthlyTheme','auto')==='auto')applyTheme()},60000);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyTheme());
+
 function renderShell(){
   $('#topLogo').src=LOGO;$('#menuBtn').append(icon('menu'));$('#themeBtn').append(icon('moon'));$('.search').prepend(icon('search'));
   $('#themeBtn').onclick=()=>{const cur=document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');const n=cur==='dark'?'light':'dark';LS.set('theme',n);applyTheme()};
@@ -2701,7 +2729,8 @@ footer{margin-top:22px;padding-top:10px;border-top:1px solid var(--line);display
 @page{size:A4;margin:12mm}
 @media print{body{background:#fff}.bar-top{display:none}.page{margin:0;padding:0;box-shadow:none;width:auto}}
 @media (max-width:700px){.page{padding:16px}.kpis{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}table{font-size:11px}.det{display:block;overflow-x:auto}}
-</style></head><body>
+</style><style id="monthly-theme-styles">:root[data-monthly] .btn.primary{background:var(--monthly-solid)!important;color:#fff!important}:root[data-monthly] .exec-hero{border-top:2px solid var(--accent)}:root[data-monthly] .nav a[aria-current="page"]{background:var(--rail-active)!important;box-shadow:inset -3px 0 var(--accent)}:root[data-monthly] .exec-tab[aria-selected="true"]{border-color:var(--accent)}.login-card{max-height:95vh;overflow-y:auto}.login-card details{font-size:.85rem}.login-card summary{cursor:pointer}.login-card input:focus{outline:2px solid var(--accent)}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}</style>
+</head><body>
 <div class="bar-top"><button class="p" onclick="print()">طباعة / حفظ PDF</button><button onclick="close()">إغلاق</button></div>
 <div class="page">
 <header><div class="ttl"><h1>تقرير طلبات التنفيذ</h1><div class="sub">إدارة الشؤون القانونية — شركة تمكين الدولية</div></div><img src="${LOGO}" alt="تمكين"></header>
@@ -3359,6 +3388,7 @@ function viewPrefs(){
           h('label',{class:'check'},aiAck,h('span',null,'اطلعتُ على سياسة البيانات وأنا مخوّل بتفعيل الخدمة')),h('label',{class:'check'},aiChk,h('span',null,'تفعيل المستشار الذكي وOCR لجميع المستخدمين')),
           adm?h('button',{class:'btn sm primary',onclick:async()=>{if(aiChk.checked&&!aiAck.checked&&!aiEnabled())return toast('أكّد الاطلاع على سياسة البيانات أولًا');const r=await writeDoc('meta','settings',{...s,ai:{enabled:aiChk.checked,by:S.me.id,at:new Date().toISOString()}},s.rev,{force:true});if(r.ok)audit(aiChk.checked?'تفعيل المستشار الذكي':'تعطيل المستشار الذكي','meta','settings','')}},'حفظ'):null,
           s.ai?.at?h('div',{class:'small muted'},`آخر تغيير: ${fmtTs(s.ai.at)}`):null)),
+      monthlyThemePanel(),
       bondRulePanel(),
       integrationsPanel(),
       permissionsPanel(),
