@@ -1478,14 +1478,15 @@ const MODS={
     {k:'debtor',l:'المدين',t:'text'},{k:'creditor',l:'الدائن',t:'text'},{k:'currency',l:'العملة',t:'select',o:CUR},
     {k:'issueDate',l:'تاريخ السند',t:'date',hint:'منه يُحسب «ينتهي السند» وفق القاعدة الداخلية في الإعدادات'},{k:'dueType',l:'نوع الاستحقاق',t:'select',o:['تاريخ محدد','لدى الاطلاع','غير مذكور في السند']},{k:'dueDate',l:'تاريخ الاستحقاق',t:'date',hint:'يُترك فارغًا إذا كان السند «لدى الاطلاع»'},{k:'source_doc',l:'مصدر المستند',t:'text',hint:'مثال: أصل السند في الخزنة، نسخة نافذ، ملف العميل'},{k:'notes',l:'ملاحظات',t:'area',w:1}],
     st:['قائم','محال للتنفيذ','ملغى'],closed:['ملغى'],cols:['bondNo','debtor','amount','dueDate']},
-  violations:{t:'المخالفات',one:'مخالفة',grp:'الامتثال',main:'deadline',fields:[
+  violations:{t:'المخالفات',one:'مخالفة',grp:'الامتثال',main:'date',fields:[
+    {k:'city',l:'المدينة',t:'text'},{k:'recordKind',l:'نوع السجل',t:'select',o:['مخالفة','إنذار','تفاصيل إضافية']},
     {k:'authority',l:'الجهة',t:'text',req:1},{k:'number',l:'رقم المخالفة',t:'ltr'},{k:'branch',l:'الفرع أو الموقع',t:'text'},{k:'reason',l:'سبب المخالفة',t:'text',w:1},{k:'amount',l:'القيمة',t:'money'},{k:'currency',l:'العملة',t:'select',o:CUR},
     {k:'date',l:'تاريخ المخالفة',t:'date'},{k:'owner',l:'المسؤول',t:'text'},
     {k:'objDeadline',l:'آخر موعد للاعتراض',t:'date'},{k:'objSource',l:'مصدر موعد الاعتراض',t:'text',hint:'العبارة أو المادة التي حددته في الإشعار'},
     {k:'payDeadline',l:'آخر موعد للسداد',t:'date'},{k:'paySource',l:'مصدر موعد السداد',t:'text'},
     {k:'deadline',l:'مهلة غير مصنفة (سجلات قديمة)',t:'date',hint:'انقلها إلى خانة الاعتراض أو السداد بعد التحقق من نوعها من الإشعار'},{k:'deadlineSource',l:'مصدر المهلة غير المصنفة',t:'text'},
     {k:'description',l:'الوصف',t:'area',w:1},{k:'objection',l:'أسباب الاعتراض',t:'area',w:1},{k:'objRef',l:'رقم أو إثبات تقديم الاعتراض',t:'ltr'},{k:'objDate',l:'تاريخ تقديم الاعتراض',t:'date'},{k:'decision',l:'القرار النهائي',t:'area',w:1}],
-    st:['مستلمة','قيد الاعتراض','مسددة','ملغاة','نهائية'],closed:['مسددة','ملغاة','نهائية'],cols:['authority','number','amount','vnext']},
+    st:['مستلمة','قيد الاعتراض','مسددة','ملغاة','نهائية'],closed:['مسددة','ملغاة','نهائية'],filters:['authority','city','_year'],cols:['authority','number','city','date','amount','reason','vnext']},
   consults:{t:'الاستشارات',one:'استشارة',grp:'الامتثال',main:'date',fields:[
     {k:'title',l:'الموضوع',t:'text',req:1,w:1},{k:'requester',l:'الجهة الطالبة',t:'text'},{k:'date',l:'التاريخ',t:'date'},
     {k:'question',l:'السؤال أو الوقائع',t:'area',w:1},{k:'opinion',l:'الرأي القانوني',t:'area',w:1},{k:'refs',l:'المراجع',t:'area',w:1},{k:'author',l:'المعد',t:'text'}],
@@ -1560,6 +1561,8 @@ const scheduleRender=debounce(()=>{renderNav();if(S.view?.refresh)S.view.refresh
 /* ============ الحفظ والتدقيق والتعارض ============ */
 function setSave(s,msg){const p=$('#savePill');p.dataset.s=s;p.textContent=msg||{idle:'جاهز',saving:'جارٍ الحفظ…',saved:'تم الحفظ '+new Date().toLocaleTimeString('ar-SA-u-nu-latn',{hour:'2-digit',minute:'2-digit'}),error:'تعذّر الحفظ',conflict:'تعارض تعديلات',ro:'قراءة فقط'}[s]}
 function errMsg(e){const c=e?.code;return{invalid_argument:'لا تملك صلاحية الكتابة هنا أو أن البيانات غير صالحة',quota_exceeded:'امتلأت سعة قاعدة البيانات',resource_exhausted:'طلبات كثيرة؛ انتظر قليلًا ثم أعد المحاولة',unavailable:'الخدمة غير متاحة مؤقتًا',revoked:'سُحبت صلاحية الوصول',busy:'سجل قيد الحفظ من جلسة أخرى؛ أعد المحاولة بعد ثوانٍ'}[c]||(e?.message||'خطأ غير معروف')}
+function storageSafeText(value){return Array.from(String(value)).map(c=>c==='\u0000'?'':c.length===1&&c.charCodeAt(0)>=0xd800&&c.charCodeAt(0)<=0xdfff?'\ufffd':c).join('')}
+function storageSafeRecord(value){return JSON.parse(JSON.stringify(value,(_k,v)=>typeof v==='string'?storageSafeText(v):v))}
 async function writeDoc(col,id,patch,baseRev,{create=false,force=false}={}){
   if(S.readOnly){setSave('ro');toast('صلاحيتك قراءة فقط');return{error:true}}
   setSave('saving');
@@ -1573,7 +1576,7 @@ async function writeDoc(col,id,patch,baseRev,{create=false,force=false}={}){
     const t=new Date().toISOString();
     const next={...(curData||{}),...patch,rev:(curData?.rev||0)+1,updatedAt:t,updatedBy:S.me.id||null};
     if(!curData||!curData.createdAt){next.createdAt=t;next.createdBy=S.me.id||null}
-    await ref.set(next);
+    await ref.set(storageSafeRecord(next));
     setSave('saved');
     return{ok:true,rev:next.rev,data:next};
   }catch(e){
@@ -2299,13 +2302,14 @@ function violDeadlines(r){const o=[];const sub=!!(r.objRef||dateG(r.objDate));
   if(dateG(r.payDeadline))o.push({k:'سداد',g:dateG(r.payDeadline),src:r.paySource||'',done:r.status==='مسددة'});
   if(dateG(r.deadline))o.push({k:'غير مصنفة',g:dateG(r.deadline),src:r.deadlineSource||'',done:false,legacy:true});
   return o}
-function violNext(r){if(!isOpen('violations',r))return null;return violDeadlines(r).filter(d=>!d.done).sort((a,b)=>a.g.localeCompare(b.g))[0]||null}
+function violNext(r){if(violationGroup(r)==='v_review'||!isOpen('violations',r))return null;return violDeadlines(r).filter(d=>!d.done).sort((a,b)=>a.g.localeCompare(b.g))[0]||null}
 function poaValidity(r){if(r.status==='ملغاة')return{l:'ملغاة',c:''};const g=dateG(r.expiry);if(!g)return{l:'بلا تاريخ انتهاء مسجل',c:'warn',none:true};const d=daysUntil(g);
   if(d<0)return{l:'منتهية الصلاحية منذ '+spanAr(-d),c:'bad',expired:true};if(d===0)return{l:'تنتهي اليوم',c:'warn',soon:true};if(d<=60)return{l:'سارية — تنتهي بعد '+spanAr(d),c:'warn',soon:true};return{l:'سارية زمنيًا حتى '+fmtG(g),c:'ok'}}
 function caseDl(r){return(r.deadlines||[]).filter(d=>!d.done&&dateG(d.date))}
 
 const ctOpen=r=>!MODS.contracts.closed.includes(r.status);
 const METRICS={
+  ...Object.fromEntries([['v_unpaid','غير المسدد'],['v_paid','المسدد'],['v_warning','الإنذارات'],['v_cancelled','الملغى'],['v_review','تحتاج مطابقة'],['v_all','الكل']].map(([k,l])=>[k,{mod:'violations',l,p:k==='v_review'?'تفاصيل ورقة Sheet1 مستقلة لحين مطابقة أرقامها؛ لا تدخل ضمن إجمالي المطالبات':'الفئة المختارة دون جمع مبالغ الفئات الأخرى',f:r=>k==='v_all'||violationGroup(r)===k}])),
   case_open:{mod:'cases',l:'قضايا غير منتهية',p:'كل قضية لم تسجل حالتها منتهية',f:r=>isOpen('cases',r)},
   h_all:{mod:'hearings',l:'كل الجلسات',p:'كل الحالات والمواعيد',f:r=>true},
   req_open:{mod:'requests',l:'طلبات مفتوحة',p:'كل الطلبات غير المغلقة وغير المرفوضة وغير الملغاة',f:r=>isOpen('requests',r)},
@@ -2326,7 +2330,7 @@ const METRICS={
   ct_appr:{mod:'contracts',l:'عقود بانتظار الاعتماد أو التوقيع',p:'في مرحلة «اعتماد» أو «توقيع»',f:r=>r.status==='اعتماد'||r.status==='توقيع'},
   b_pending:{mod:'bonds',l:'سندات مبالغها غير مؤكدة',p:'مقروءة آليًا بانتظار التأكيد، أو غير مقروءة، أو متعارضة (عدا الملغاة)',f:r=>r.status!=='ملغى'&&r.readStatus!=='مؤكد'},
   b_follow:{mod:'bonds',l:'سندات تقترب من نهاية مدة المتابعة',p:'خلال 6 أشهر وفق القاعدة الداخلية المحددة في الإعدادات',f:r=>{const x=daysUntil(bondExpiry(r));return r.status!=='ملغى'&&x!=null&&x>=0&&x<=180}},
-  v_due:{mod:'violations',l:'مخالفات مهلتها خلال 7 أيام أو فائتة',p:'أقرب مهلة اعتراض أو سداد لم تُستوفَ',f:r=>{const n=violNext(r);return!!n&&daysUntil(n.g)<=7}},
+  v_due:{mod:'violations',l:'مخالفات مهلتها خلال 7 أيام أو فائتة',p:'أقرب مهلة اعتراض أو سداد لم تُستوفَ',f:r=>{if(violationGroup(r)==='v_review')return false;const n=violNext(r);return!!n&&daysUntil(n.g)<=7}},
   poa_exp:{mod:'poa',l:'وكالات وتراخيص منتهية الصلاحية',p:'حالتها المسجلة «سارية» لكن تاريخ انتهائها مضى',f:r=>r.status==='سارية'&&!!poaValidity(r).expired},
   poa_soon:{mod:'poa',l:'وكالات وتراخيص تنتهي خلال 60 يومًا',p:'سارية وتاريخ انتهائها خلال 60 يومًا',f:r=>r.status==='سارية'&&!!poaValidity(r).soon},
   case_dl:{mod:'cases',l:'مواعيد نظامية فائتة أو خلال 7 أيام',p:'مواعيد اعتراض أو استئناف أو تنفيذ مسجلة ولم تُنجز',f:r=>caseDl(r).some(d=>daysUntil(dateG(d.date))<=7)},
@@ -2636,7 +2640,7 @@ function dateField(f,val,onCh,ro){
   paint();
   return h('div',{class:'f'+(f.w?' wide':'')},h('label',{for:id},f.l,f.req?h('span',{class:'req'},' *'):null),h('div',{class:'dual'},cal,box),other,ver);
 }
-function cellVal(mod,f,r){const v=mod==='cases'&&(f.k==='plaintiff'||f.k==='defendant')&&!r[f.k]?partyOf(r,f.k==='plaintiff'?'مدعٍ':'مدعى عليه'):r[f.k];if(f.t==='date')return fmtDate(v,false);if(f.t==='money')return money(v,r.currency)||'—';if(f.t==='ref'){const x=rec(f.ref,v);return x?titleOf(f.ref,x):'—'}return v==null||v===''?'—':String(v)}
+function cellVal(mod,f,r){if(mod==='violations'&&['authority','city','recordKind'].includes(f.k))return violationValue(r,f.k)||'—';const v=mod==='cases'&&(f.k==='plaintiff'||f.k==='defendant')&&!r[f.k]?partyOf(r,f.k==='plaintiff'?'مدعٍ':'مدعى عليه'):r[f.k];if(f.t==='date')return fmtDate(v,false);if(f.t==='money')return money(v,r.currency)||'—';if(f.t==='ref'){const x=rec(f.ref,v);return x?titleOf(f.ref,x):'—'}return v==null||v===''?'—':String(v)}
 
 /* ============ قائمة السجلات ============ */
 /* تقرير طلبات التنفيذ الاحترافي: يفتح صفحة جاهزة للطباعة أو الحفظ PDF بحسب الفلاتر الحالية */
@@ -2721,6 +2725,18 @@ ${top.length?`<section class="blk"><h2>أعلى ${top.length} طلبات من ح
   const w=window.open('','_blank');if(!w){toast('اسمح بالنوافذ المنبثقة لهذا الموقع لفتح التقرير');return}
   w.document.open();w.document.write(html);w.document.close();audit('تقرير طلبات التنفيذ','executions','',`${rows.length} طلب`)}
 
+const VIOLATION_GROUPS=[['v_unpaid','غير المسدد'],['v_paid','المسدد'],['v_warning','الإنذارات'],['v_cancelled','الملغى'],['v_review','تحتاج مطابقة'],['v_all','الكل']];
+function violationGroup(r){if(r.sourceSheet==='Sheet1'||r.recordKind==='تفاصيل إضافية')return'v_review';if(r.recordKind==='إنذار'||r.sourceSheet==='الانذارات')return'v_warning';if(r.status==='ملغاة')return'v_cancelled';if(r.status==='مسددة')return'v_paid';return'v_unpaid'}
+function violationValue(r,k){if(k==='recordKind')return VIOLATION_GROUPS.find(([key])=>key===violationGroup(r))?.[1]||'';if(k==='city')return r.city||(/^المدينة: (.*)$/m.exec(r.description||'')?.[1]||'').trim();if(k==='authority'){if(r.authority==='غير مذكورة في المصدر')return r.sourceSheet==='الانذارات'?'الموارد البشرية':'';return r.authority||''}return r[k]}
+function violationSummary(rows){return VIOLATION_GROUPS.filter(([k])=>k!=='v_all').map(([key,label])=>{const a=rows.filter(r=>violationGroup(r)===key);return{key,label,count:a.length,amount:a.reduce((n,r)=>n+(Number(r.amount)||0),0)}})}
+function violationSummaryNode(rows){return h('div',{class:'stats'},violationSummary(rows).filter(g=>g.count).map(g=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'l'},g.label+' — '+g.count+' سجل'),h('span',{class:'v num'},nf.format(g.amount)),h('span',{class:'p'},g.key==='v_review'?'خارج إجمالي المطالبات حتى المطابقة':g.key==='v_warning'?'قيمة إنذارات — منفصلة عن المخالفات':g.key==='v_cancelled'?'مبالغ ملغاة — ليست مستحقة':'ريال سعودي')))))}
+function violationsReport(rows,desc){
+  const report=window.open('','_blank');if(!report){toast('اسمح بفتح التقرير في نافذة جديدة');return}
+  const groups=violationSummary(rows).filter(g=>g.count);const e=v=>esc(String(v??''));
+  const sections=groups.map(g=>`<section><h2>${e(g.label)} — ${g.count} سجل — ${nf.format(g.amount)} ر.س</h2><table><thead><tr><th>رقم المخالفة / الإنذار</th><th>الجهة</th><th>المدينة / الموقع</th><th>التاريخ</th><th>المبلغ</th><th>السبب</th><th>الحالة</th><th>رقم الاعتراض</th></tr></thead><tbody>${rows.filter(r=>violationGroup(r)===g.key).map(r=>`<tr><td>${e(r.number)}</td><td>${e(violationValue(r,'authority')||'—')}</td><td>${e(violationValue(r,'city')||r.branch||'—')}</td><td>${e(fmtG(dateG(r.date)))}</td><td>${nf.format(Number(r.amount)||0)}</td><td>${e(r.reason||'—')}</td><td>${e(r.status)}</td><td>${e(r.objRef||'—')}</td></tr>`).join('')}</tbody></table></section>`).join('');
+  report.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>تقرير المخالفات والإنذارات — تمكين</title><style>body{font:14px Tahoma,Arial;line-height:1.8;margin:32px;color:#172638}h1,h2{color:#163d50}header{border-bottom:3px solid #b59b65}table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:8px;border:1px solid #ddd;text-align:right;vertical-align:top}th{background:#edf1f4}section{margin-top:28px}tr{break-inside:avoid}button{padding:10px 24px;cursor:pointer}.scope{background:#f5f6f8;padding:12px}@media print{button{display:none}body{margin:0}@page{size:A4 landscape;margin:12mm}thead{display:table-header-group}}</style><button onclick="print()">طباعة / حفظ PDF</button><header><h1>تقرير المخالفات والإنذارات</h1><p>إدارة الشؤون القانونية — تمكين الدولية</p></header><p>تاريخ التقرير: ${e(fmtG(todayISO()))}</p><p class="scope">النطاق: ${e(desc.join(' · ')||'كل الفئات')} — ${rows.length} سجل</p><p>المسدّد والملغى والإنذارات والتفاصيل التي تحتاج مطابقة معروضة كلٌّ على حدة، ولا تُضاف إلى إجمالي غير المسدد.</p>${sections||'<p>لا سجلات مطابقة للفلاتر.</p>'}</html>`);report.document.close();
+}
+
 function sortListRows(rows,mod,order,now=Date.now()){
   const main=MODS[mod].main;
   if(order==='nearest'){
@@ -2733,6 +2749,7 @@ function sortListRows(rows,mod,order,now=Date.now()){
 }
 
 function viewList(mod,mk){
+  if(mod==='violations'&&!mk)mk='v_unpaid';
   const M=MODS[mod];
   if(!canSee(mod))return{key:mod,el:h('div',{class:'panel'},ph('وصول مقيد','shield','#bf5af2'),h('p',null,'هذا القسم متاح لمحرري التطبيق ومالكه فقط، ويُطبق المنع من قاعدة البيانات نفسها.'))};
   const q=h('input',{type:'search',placeholder:'بحث في '+M.t,'aria-label':'بحث',value:mk?'':LS.get('q_'+mod,'')});
@@ -2740,21 +2757,25 @@ function viewList(mod,mk){
   const dateLabel=M.fields.find(f=>f.k===M.main)?.l||'التاريخ';
   const sort=h('select',{'aria-label':'الترتيب'},h('option',{value:'upd'},'الأحدث تعديلًا'),['cases','hearings'].includes(mod)?h('option',{value:'nearest'},'أقرب جلسة قادمة أولًا'):null,M.main?h('option',{value:'main'},dateLabel+' — الأقدم أولًا'):null,M.main?h('option',{value:'main_desc'},dateLabel+' — الأحدث أولًا'):null);
   const FALL={branch:['كل الفروع','بدون فرع'],applicant:['كل طالبي التنفيذ','بدون طالب'],rep:['كل المناديب','بدون مندوب'],decision:['كل القرارات','بدون قرار'],_year:['كل السنوات','بدون تاريخ']};
-  const FK=M.filters||[];const fval=(r,k)=>k==='_year'?(dateG(r[M.main])||'').slice(0,4):String(r[k]??'').trim();
+  const FK=M.filters||[];const fval=(r,k)=>k==='_year'?(dateG(r[M.main])||'').slice(0,4):String((mod==='violations'?violationValue(r,k):r[k])??'').trim();
   const fsel=FK.map(k=>{const lab=k==='_year'?'السنة':(M.fields.find(f=>f.k===k)?.l||k);const sel=h('select',{'aria-label':lab,class:'fsel'});sel.dataset.k=k;sel.dataset.l=lab;sel._v=mk?'':LS.get('f_'+mod+'_'+k,'');sel.onchange=()=>{sel._v=sel.value;LS.set('f_'+mod+'_'+k,sel.value);refresh()};return sel});
   const fillF=()=>{for(const sel of fsel){const k=sel.dataset.k;const m={};const all=(mk?mrecs(mk):recs(mod)).filter(r=>matches(r,sel));for(const r of all){const v=fval(r,k);m[v]=(m[v]||0)+1}if(sel._v){const key=sel._v==='_none'?'':sel._v;if(!(key in m))m[key]=0}const keys=Object.keys(m).sort((a,b)=>k==='_year'?b.localeCompare(a):(m[b]-m[a])||a.localeCompare(b,'ar'));sel.replaceChildren(h('option',{value:''},(FALL[k]||['كل '+sel.dataset.l])[0]),...keys.map(v=>h('option',{value:v||'_none'},(v||(FALL[k]||[0,'بدون '+sel.dataset.l])[1])+' ('+m[v]+')')));sel.value=sel._v;if(sel.value!==sel._v)sel.value=''}};
-  const clrF=h('button',{class:'btn sm ghost',onclick:()=>{mk=null;st.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod);refresh()}},'مسح الفلاتر');
+  const clrF=h('button',{class:'btn sm ghost',onclick:()=>{mk=mod==='violations'?'v_all':null;st.value='';from.value='';to.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod+(mk?'~'+mk:''));refresh()}},'مسح الفلاتر');
+  const from=h('input',{type:'date','aria-label':'من تاريخ المخالفة'}),to=h('input',{type:'date','aria-label':'إلى تاريخ المخالفة'});from.onchange=()=>refresh();to.onchange=()=>refresh();
   const sumBox=h('div');let lastRows=[];
-  const descF=()=>{const d=[];if(st.value==='_open')d.push('المفتوحة فقط');else if(st.value)d.push('الحالة: '+st.value);for(const x of fsel)if(x._v)d.push(x.dataset.l+': '+(x._v==='_none'?'غير محدد':x._v));if(q.value.trim())d.push('بحث: '+q.value.trim());return d};
+  const descF=()=>{const d=[];if(mk&&METRICS[mk])d.push(METRICS[mk].l);if(from.value)d.push('من تاريخ: '+from.value);if(to.value)d.push('إلى تاريخ: '+to.value);if(st.value==='_open')d.push('المفتوحة فقط');else if(st.value)d.push('الحالة: '+st.value);for(const x of fsel)if(x._v)d.push(x.dataset.l+': '+(x._v==='_none'?'غير محدد':x._v));if(q.value.trim())d.push('بحث: '+q.value.trim());return d};
   const wrap=h('div');
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},
-    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='executions'?h('button',{class:'btn',onclick:()=>execReport(lastRows,descF())},ibtn('chart','تقرير')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
+    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='executions'||mod==='violations'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
     mod==='hearings'?h('div',{class:'small muted'},'الأوقات بتوقيت الرياض. للتنبيه على جوالك استخدم «تصدير إلى التقويم».'):null,
     extra,insBox,mfBox,
+    mod==='violations'?h('div',{class:'tabs',role:'tablist'},VIOLATION_GROUPS.map(([k,l])=>h('a',{class:'tab',role:'tab','aria-selected':String(mk===k),href:mlink(k)},l,h('span',{class:'count'},String(mcount(k)))))):null,
+    mod==='violations'?h('div',{class:'toolbar'},h('label',null,'من تاريخ المخالفة ',from),h('label',null,'إلى تاريخ المخالفة ',to)):null,
     mod==='hearings'?h('div',{class:'tabs',role:'tablist'},[['h_up','القادمة'],['h_result','تحتاج نتيجة'],['h_past','الماضية'],['h_all','الكل']].map(([k,l])=>h('a',{class:'tab',role:'tab','aria-selected':String(mk===k),href:k?mlink(k):'#hearings'},l,k?h('span',{class:'count'},String(mcount(k))):null))):null,
     h('div',{class:'toolbar'},q,st,sort,clrF),FK.length?h('div',{class:'toolbar filters'},...fsel):null,sumBox,wrap);
   function matches(r,except=null){
+    if(mod==='violations'&&(from.value||to.value)){const d=dateG(r.date);if(!d||(from.value&&d<from.value)||(to.value&&d>to.value))return false}
     if(!mk&&st.value==='_open'&&M.closed.includes(r.status))return false;
     if(!mk&&st.value&&st.value!=='_open'&&r.status!==st.value)return false;
     for(const x of fsel){if(x===except||!x._v)continue;const v=fval(r,x.dataset.k);if(x._v==='_none'?v!=='':v!==x._v)return false}
@@ -2766,11 +2787,11 @@ function viewList(mod,mk){
     if(FK.length)fillF();const act=fsel.filter(x=>x._v);
     const MF=mk?METRICS[mk]:null;if(MF){st.disabled=true;mfBox.replaceChildren(h('div',{class:'banner info'},h('span',null,h('b',null,'مرشح: '+MF.l),' — '+MF.p+(hideSyn()?' · دون البيانات الاختبارية':'')),h('a',{class:'btn sm',href:'#'+mod},'إزالة المرشح')))}else{st.disabled=false;mfBox.replaceChildren()}
     let rows=(MF?mrecs(mk):recs(mod)).filter(r=>matches(r));
-    lastRows=rows;if(M.sums){const S2=M.sums.map(([k,l])=>[l,rows.reduce((a,r)=>a+(Number(r[k])||0),0)]);sumBox.replaceChildren(h('div',{class:'fsum'},h('span',null,h('b',null,String(rows.length)),' طلب'),...S2.map(([l,v])=>h('span',null,l+': ',h('b',{class:'num'},nf.format(Math.round(v*100)/100))))))}
+    lastRows=rows;if(mod==='violations')sumBox.replaceChildren(violationSummaryNode(rows));if(M.sums){const S2=M.sums.map(([k,l])=>[l,rows.reduce((a,r)=>a+(Number(r[k])||0),0)]);sumBox.replaceChildren(h('div',{class:'fsum'},h('span',null,h('b',null,String(rows.length)),' طلب'),...S2.map(([l,v])=>h('span',null,l+': ',h('b',{class:'num'},nf.format(Math.round(v*100)/100))))))}
     sortListRows(rows,mod,sort.value);
     if(extra){const T=bondTotals(statRecs('bonds'));
       extra.replaceChildren(h('div',{class:'stats'},Object.entries(T.conf).map(([k,v])=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'v num'},nf.format(v)),h('span',{class:'l'},'إجمالي مؤكد — '+k),h('span',{class:'p'},'مبالغ طابقها مستخدم مع الأصل')))),Object.entries(T.pend).map(([k,v])=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'v num muted'},nf.format(v)),h('span',{class:'l'},'مقروء آليًا بانتظار التأكيد — '+k),h('span',{class:'p'},'غير معتمد؛ خارج الإجمالي المؤكد')))),T.unread?h('div',{class:'stat alert'},h('span',{class:'txt'},h('span',{class:'v'},String(T.unread)),h('span',{class:'l'},'غير مقروء أو متعارض'),h('span',{class:'p'},'خارج كل الإجماليات'))):null,!Object.keys(T.conf).length&&!Object.keys(T.pend).length&&!T.unread?h('div',{class:'small muted'},'لا سندات قائمة ضمن العدّ.'):null))}
-    {const ins=insights(mod);const was=insBox.querySelector('details')?.open;insBox.replaceChildren(ins?h('details',{class:'ins-wrap',open:was||null},h('summary',null,'نظرة سريعة على '+M.t),h('div',{style:'margin-top:10px'},ins)):'')}
+    {const ins=mod==='violations'?null:insights(mod);const was=insBox.querySelector('details')?.open;insBox.replaceChildren(ins?h('details',{class:'ins-wrap',open:was||null},h('summary',null,'نظرة سريعة على '+M.t),h('div',{style:'margin-top:10px'},ins)):'')}
     if(!S.loaded[mod]){wrap.replaceChildren(h('div',{class:'empty'},'جارٍ التحميل…'));return}
     if(!rows.length){wrap.replaceChildren(h('div',{class:'panel'},h('div',{class:'empty'},MF?'لا سجلات تطابق هذا المرشح.':recs(mod).length?'لا نتائج مطابقة للبحث أو الفلتر.':`لا توجد ${M.t} بعد. أضف أول ${M.one} من الزر أعلاه.`)));return}
     const cols=M.cols.map(k=>k==='hattendee'?{k,l:'من سيحضر الجلسة',t:'hattendee'}:k==='hdate'?{k,l:'موعد الجلسة',t:'hdate'}:k==='vnext'?{k,l:'أقرب مهلة',t:'vnext'}:k==='validity'?{k,l:'الصلاحية الزمنية',t:'validity'}:k==='dueDate'&&mod==='bonds'?{k,l:'الاستحقاق',t:'bdue'}:k==='amount'&&mod==='bonds'?{k:'amount',l:'القيمة',t:'bondamt'}:k==='stage'?{k:'stage',l:'المرحلة',t:'stage'}:k==='bond'?{k:'bond',l:'السند',t:'cbond'}:M.fields.find(f=>f.k===k));
@@ -2854,7 +2875,7 @@ function viewDetail(mod,id){
     if(S.dirty&&!force){if((r.rev||0)!==lastRev&&r.updatedBy!==S.me.id)showConflict(r);return}
     if(!force&&base&&r.rev===lastRev&&el.contains(document.activeElement)&&document.activeElement.matches('input,textarea,select'))return;
     if(!force&&base&&r.rev===lastRev&&el.querySelector('.confirm,.ai-out:not(:empty)'))return;
-    base=r;lastRev=r.rev||0;draft=JSON.parse(JSON.stringify(r));
+    base=r;lastRev=r.rev||0;draft=JSON.parse(JSON.stringify(r));if(mod==='violations'){draft.authority=violationValue(r,'authority');draft.city=violationValue(r,'city');if(violationGroup(r)==='v_review')draft.recordKind='تفاصيل إضافية'}
     const ro=S.readOnly||!!r.deleted;
     const statusSel=h('select',{'aria-label':'الحالة',disabled:ro||mod==='requests',title:mod==='requests'?'تتغير حالة الطلب من «مسار الطلب» فقط':null},M.st.map(s=>h('option',{value:s},s)),r.status&&!M.st.includes(r.status)?h('option',{value:r.status},r.status+' (قديمة)'):null);statusSel.value=r.status||M.st[0];
     if(mod==='investigations'&&S.auditedInv!==id){S.auditedInv=id;audit('اطلاع على تحقيق','investigations',id,titleOf(mod,r))}
@@ -3005,11 +3026,11 @@ async function uploadFiles(files,links,report,category=''){
       if(ext==='docx'||ext==='xlsx'){up=await assets.upload(new Blob([b64(buf)],{type:'text/plain'}),{type:'text/plain'});encoded='b64'}
       else up=await assets.upload(new Blob([buf],{type:OK_EXT[ext]}),{type:OK_EXT[ext]});
       const ex=await extractText(ext,buf);
-      let text=ex.text||'';let truncated=false;if(text.length>180000){text=text.slice(0,180000);truncated=true}
+      let text=storageSafeText(ex.text||'');let truncated=false;if(text.length>180000){text=text.slice(0,180000);truncated=true}
       const id=uid();const prevV=recs('docs').filter(x=>x.name===file.name&&(!links.length||links.some(l=>(x.links||[]).includes(l)))).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))[0];
       const res=await writeDoc('docs',id,{versionOf:prevV?(prevV.versionOf||prevV.id):null,versionNo:prevV?(prevV.versionNo||1)+1:1,name:file.name,ext,mime:OK_EXT[ext],size:file.size,assetId:up.id,encoded,hash,text,textMethod:ex.method,truncated,pages:ex.pages||null,ocrStatus:ex.needsOcr?'يحتاج OCR':'لا يحتاج',category,links,reviewed:!!category,path:file.webkitRelativePath||''},null,{create:true});
       if(res.ok){audit('رفع مستند','docs',id,file.name);report(h('span',null,`تم رفع «${file.name}» `,h('a',{href:'#docs-'+id},'فتح'),ex.needsOcr?' — يحتاج قراءة OCR':''),'ok')}
-      else report(`«${file.name}»: رُفع الملف لكن تعذر حفظ بياناته.`,'bad');
+      else report(`«${file.name}»: رُفع الملف لكن تعذر حفظ بياناته: ${res.e?.message||errMsg(res.e)}. أعد المحاولة.`,'bad');
     }catch(e){report(`«${file.name}»: تعذر الرفع (${e.code||e.message}).`,'bad')}
   }
 }
@@ -3210,10 +3231,12 @@ function viewReports(){
   const mods=Object.keys(MODS).filter(canSee);
   const type=h('select',{'aria-label':'نوع التقرير'},h('optgroup',{label:'تقارير مجمعة'},h('option',{value:'_deadlines'},'المواعيد والمهل'),h('option',{value:'_risk'},'المخاطر'),h('option',{value:'_people'},'أداء المسؤولين'),h('option',{value:'_perf'},'أداء القسم')),h('optgroup',{label:'تقارير الأقسام'},mods.map(m=>h('option',{value:m},'تقرير '+MODS[m].t))));
   const st=h('select',{'aria-label':'الحالة'});const from=h('input',{type:'date',class:'num','aria-label':'من'}),to=h('input',{type:'date',class:'num','aria-label':'إلى'});const q=h('input',{type:'search',placeholder:'تصفية نصية','aria-label':'تصفية'});
+  const vGroup=h('select',{'aria-label':'فئة المخالفات'},VIOLATION_GROUPS.map(([k,l])=>h('option',{value:k},l)));vGroup.value='v_unpaid';
+  const vAuth=h('select',{'aria-label':'جهة المخالفة'}),vCity=h('select',{'aria-label':'مدينة المخالفة'});
   const prev=h('div');const synBox=h('div');
   // كل خلية: {v: القيمة الخام (رقم/تاريخ ISO/نص), t:'n'|'d'|'s', s: النص المعروض}
   const N=(v,s)=>v==null||Number.isNaN(v)?{v:null,t:'s',s:s||'—'}:{v,t:'n',s:s||nf.format(v)};const D=g=>g?{v:g,t:'d',s:fmtG(g)}:{v:null,t:'s',s:'—'};const T=s=>({v:s??'',t:'s',s:s==null||s===''?'—':String(s)});
-  function fillSt(){st.replaceChildren(h('option',{value:''},'كل الحالات'),...(MODS[type.value]?.st||[]).map(s=>h('option',{value:s},s)));st.disabled=!MODS[type.value]}
+  function fillSt(){st.replaceChildren(h('option',{value:''},'كل الحالات'),...(MODS[type.value]?.st||[]).map(s=>h('option',{value:s},s)));st.disabled=!MODS[type.value];for(const x of[vGroup,vAuth,vCity])x.hidden=type.value!=='violations';for(const [sel,key,label]of[[vAuth,'authority','كل الجهات'],[vCity,'city','كل المدن']])sel.replaceChildren(h('option',{value:''},label),...[...new Set(statRecs('violations').map(r=>violationValue(r,key)).filter(Boolean))].sort().map(v=>h('option',{value:v},v)))}
   function inRange(g){return(!from.value||(g&&g>=from.value))&&(!to.value||(g&&g<=to.value))}
   function build(){
     const m=type.value;const filters=[];if(from.value)filters.push('من: '+fmtG(from.value));if(to.value)filters.push('إلى: '+fmtG(to.value));if(q.value.trim())filters.push('نص: '+q.value.trim());filters.push(hideSyn()?'البيانات الاختبارية مستبعدة':'تشمل البيانات الاختبارية');
@@ -3228,6 +3251,13 @@ function viewReports(){
     const M=MODS[m];if(st.value)filters.unshift('الحالة: '+st.value);
     let rs=statRecs(m).filter(r=>(!st.value||r.status===st.value)&&tm(r));
     if(M.main&&(from.value||to.value))rs=rs.filter(r=>inRange(dateG(r[M.main])));
+    if(m==='violations'){
+      rs=rs.filter(r=>(vGroup.value==='v_all'||violationGroup(r)===vGroup.value)&&(!vAuth.value||violationValue(r,'authority')===vAuth.value)&&(!vCity.value||violationValue(r,'city')===vCity.value));
+      filters.unshift('الفئة: '+(VIOLATION_GROUPS.find(([k])=>k===vGroup.value)?.[1]||'الكل'));if(vAuth.value)filters.push('الجهة: '+vAuth.value);if(vCity.value)filters.push('المدينة: '+vCity.value);
+      rs.sort((a,b)=>VIOLATION_GROUPS.findIndex(([k])=>k===violationGroup(a))-VIOLATION_GROUPS.findIndex(([k])=>k===violationGroup(b)));
+      const summary=violationSummary(rs).filter(g=>g.count).map(g=>g.label+': '+g.count+' سجل، '+nf.format(g.amount)+' ر.س').join(' · ');
+      return{title:'تقرير المخالفات والإنذارات',head:['الفئة','رقم المخالفة / الإنذار','الجهة','المدينة','تاريخ المخالفة','المبلغ','السبب','الحالة','رقم الاعتراض'],rows:rs.map(r=>[T(violationValue(r,'recordKind')),T(r.number),T(violationValue(r,'authority')),T(violationValue(r,'city')),D(dateG(r.date)),N(Number(r.amount)||0),T(r.reason),T(r.status),T(r.objRef)]),filters,note:summary+' — الإنذارات والملغى وتفاصيل المراجعة منفصلة عن إجمالي غير المسدد.'};
+    }
     const fs=M.fields.filter(f=>f.t!=='area'||['claims','parties','obligations'].includes(f.k)).slice(0,9);
     const cell=(f,r)=>f.t==='date'?D(dateG(r[f.k])):(f.t==='money'||f.t==='int')?N(r[f.k]==null?null:Number(r[f.k])):T(cellVal(m,f,r));
     const extraH=m==='bonds'?['المبلغ','العملة','حالة القراءة','الاستحقاق','ينتهي السند (قاعدة داخلية)']:m==='contracts'?['اكتمال ملف العميل','آخر موعد لإشعار عدم التجديد']:m==='poa'?['الصلاحية الزمنية']:m==='violations'?['أقرب مهلة']:m==='requests'?['موعد الإنجاز','متأخر','مدة المعالجة (يوم)']:[];
@@ -3252,8 +3282,8 @@ function viewReports(){
       const canvas=await window.html2canvas(sheet,{scale:2,backgroundColor:'#ffffff'});sheet.remove();const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'p',unit:'pt',format:'a4'});const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();const ratio=pw/canvas.width;const pageH=Math.floor(ph/ratio);let y=0,first=true;
       while(y<canvas.height){const c=document.createElement('canvas');c.width=canvas.width;c.height=Math.min(pageH,canvas.height-y);c.getContext('2d').drawImage(canvas,0,y,c.width,c.height,0,0,c.width,c.height);if(!first)pdf.addPage();pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw,c.height*ratio);first=false;y+=pageH}
       await saveFile(`${R.title}-${todayISO()}.pdf`,pdf.output('blob'));audit('تصدير PDF','reports','',R.title)}catch(e){toast('تعذر التصدير: '+(e.message||e.code))}}
-  type.onchange=()=>{fillSt();preview()};[st,from,to].forEach(x=>x.onchange=preview);q.oninput=debounce(preview,200);fillSt();
-  const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},pageHead('التقارير','يشمل كل تقرير ما تملك صلاحية الاطلاع عليه فقط، ويُظهر تاريخه ومرشحاته، ولا يجمع العملات المختلفة.',h('button',{class:'btn primary',onclick:toXlsx},ibtn('download','Excel')),h('button',{class:'btn',onclick:toPrint},ibtn('pages','طباعة / PDF نصي')),h('button',{class:'btn ghost',onclick:toPdf},ibtn('download','PDF صور'))),synBox,h('div',{class:'toolbar'},type,st,h('span',{class:'small muted'},'من'),from,h('span',{class:'small muted'},'إلى'),to,q),
+  type.onchange=()=>{fillSt();preview()};[st,from,to,vGroup,vAuth,vCity].forEach(x=>x.onchange=preview);q.oninput=debounce(preview,200);fillSt();
+  const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},pageHead('التقارير','يشمل كل تقرير ما تملك صلاحية الاطلاع عليه فقط، ويُظهر تاريخه ومرشحاته، ولا يجمع العملات المختلفة.',h('button',{class:'btn primary',onclick:toXlsx},ibtn('download','Excel')),h('button',{class:'btn',onclick:toPrint},ibtn('pages','طباعة / PDF نصي')),h('button',{class:'btn ghost',onclick:toPdf},ibtn('download','PDF صور'))),synBox,h('div',{class:'toolbar'},type,vGroup,vAuth,vCity,st,h('span',{class:'small muted'},'من'),from,h('span',{class:'small muted'},'إلى'),to,q),
     h('div',{class:'small muted'},'«طباعة / PDF نصي» يفتح نافذة الطباعة في المتصفح؛ اختر «حفظ كـ PDF» لتحصل على ملف عربي قابل للبحث والنسخ بخطوط مضمنة. إن منع العارض الطباعة استخدم «PDF صور» (غير قابل للبحث). Excel من اليمين لليسار بأرقام وتواريخ حقيقية قابلة للفرز.'),prev);
   preview();return{key:'reports',el,refresh:preview};
 }
