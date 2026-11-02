@@ -1486,7 +1486,7 @@ const MODS={
     {k:'payDeadline',l:'آخر موعد للسداد',t:'date'},{k:'paySource',l:'مصدر موعد السداد',t:'text'},
     {k:'deadline',l:'مهلة غير مصنفة (سجلات قديمة)',t:'date',hint:'انقلها إلى خانة الاعتراض أو السداد بعد التحقق من نوعها من الإشعار'},{k:'deadlineSource',l:'مصدر المهلة غير المصنفة',t:'text'},
     {k:'description',l:'الوصف',t:'area',w:1},{k:'objection',l:'أسباب الاعتراض',t:'area',w:1},{k:'objRef',l:'رقم أو إثبات تقديم الاعتراض',t:'ltr'},{k:'objDate',l:'تاريخ تقديم الاعتراض',t:'date'},{k:'decision',l:'القرار النهائي',t:'area',w:1}],
-    st:['مستلمة','قيد الاعتراض','مسددة','ملغاة','نهائية'],closed:['مسددة','ملغاة','نهائية'],filters:['authority','city','_year'],cols:['authority','number','city','date','amount','reason','vnext']},
+    st:['غير مسدد','قيد الاعتراض','مسددة','ملغاة','نهائية'],closed:['مسددة','ملغاة','نهائية'],filters:['authority','city','_year'],cols:['authority','number','city','date','amount','reason','vnext']},
   consults:{t:'الاستشارات',one:'استشارة',grp:'الامتثال',main:'date',fields:[
     {k:'title',l:'الموضوع',t:'text',req:1,w:1},{k:'requester',l:'الجهة الطالبة',t:'text'},{k:'date',l:'التاريخ',t:'date'},
     {k:'question',l:'السؤال أو الوقائع',t:'area',w:1},{k:'opinion',l:'الرأي القانوني',t:'area',w:1},{k:'refs',l:'المراجع',t:'area',w:1},{k:'author',l:'المعد',t:'text'}],
@@ -1548,7 +1548,7 @@ async function boot(){
   else S.canWrite=true;
   renderWho();
   for(const c of COLS){S.data[c]=new Map();
-    db.collection(COLL_PATH(c)).onSnapshot(snap=>{const m=new Map();for(const d of snap.docs)m.set(d.id,{id:d.id,...d.data()});S.data[c]=m;S.loaded[c]=true;scheduleRender()},e=>{S.loaded[c]=true;console.warn(c,e.code);scheduleRender()})}
+    db.collection(COLL_PATH(c)).onSnapshot(snap=>{const m=new Map();for(const d of snap.docs){const row={id:d.id,...d.data()};if(c==='violations'&&row.status==='مستلمة')row.status='غير مسدد';m.set(d.id,row);}S.data[c]=m;S.loaded[c]=true;scheduleRender()},e=>{S.loaded[c]=true;console.warn(c,e.code);scheduleRender()})}
   db.doc('meta/settings').onSnapshot(s=>{S.settings=s.exists?s.data():{};scheduleRender()},()=>{});
   db.doc('meta/integrations').onSnapshot(s=>{S.integ=s.exists?s.data():{};scheduleRender()},()=>{});
   window.addEventListener('hashchange',route);
@@ -2762,7 +2762,7 @@ function viewList(mod,mk){
   const fillF=()=>{for(const sel of fsel){const k=sel.dataset.k;const m={};const all=(mk?mrecs(mk):recs(mod)).filter(r=>matches(r,sel));for(const r of all){const v=fval(r,k);m[v]=(m[v]||0)+1}if(sel._v){const key=sel._v==='_none'?'':sel._v;if(!(key in m))m[key]=0}const keys=Object.keys(m).sort((a,b)=>k==='_year'?b.localeCompare(a):(m[b]-m[a])||a.localeCompare(b,'ar'));sel.replaceChildren(h('option',{value:''},(FALL[k]||['كل '+sel.dataset.l])[0]),...keys.map(v=>h('option',{value:v||'_none'},(v||(FALL[k]||[0,'بدون '+sel.dataset.l])[1])+' ('+m[v]+')')));sel.value=sel._v;if(sel.value!==sel._v)sel.value=''}};
   const clrF=h('button',{class:'btn sm ghost',onclick:()=>{mk=mod==='violations'?'v_all':null;st.value='';from.value='';to.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod+(mk?'~'+mk:''));refresh()}},'مسح الفلاتر');
   const from=h('input',{type:'date','aria-label':'من تاريخ المخالفة'}),to=h('input',{type:'date','aria-label':'إلى تاريخ المخالفة'});from.onchange=()=>refresh();to.onchange=()=>refresh();
-  const sumBox=h('div');let lastRows=[];
+  const vTabs=h('div',{class:'tabs',role:'tablist'});const sumBox=h('div');let lastRows=[];
   const descF=()=>{const d=[];if(mk&&METRICS[mk])d.push(METRICS[mk].l);if(from.value)d.push('من تاريخ: '+from.value);if(to.value)d.push('إلى تاريخ: '+to.value);if(st.value==='_open')d.push('المفتوحة فقط');else if(st.value)d.push('الحالة: '+st.value);for(const x of fsel)if(x._v)d.push(x.dataset.l+': '+(x._v==='_none'?'غير محدد':x._v));if(q.value.trim())d.push('بحث: '+q.value.trim());return d};
   const wrap=h('div');
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
@@ -2770,14 +2770,14 @@ function viewList(mod,mk){
     pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='executions'||mod==='violations'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
     mod==='hearings'?h('div',{class:'small muted'},'الأوقات بتوقيت الرياض. للتنبيه على جوالك استخدم «تصدير إلى التقويم».'):null,
     extra,insBox,mfBox,
-    mod==='violations'?h('div',{class:'tabs',role:'tablist'},VIOLATION_GROUPS.map(([k,l])=>h('a',{class:'tab',role:'tab','aria-selected':String(mk===k),href:mlink(k)},l,h('span',{class:'count'},String(mcount(k)))))):null,
+    mod==='violations'?vTabs:null,
     mod==='violations'?h('div',{class:'toolbar'},h('label',null,'من تاريخ المخالفة ',from),h('label',null,'إلى تاريخ المخالفة ',to)):null,
     mod==='hearings'?h('div',{class:'tabs',role:'tablist'},[['h_up','القادمة'],['h_result','تحتاج نتيجة'],['h_past','الماضية'],['h_all','الكل']].map(([k,l])=>h('a',{class:'tab',role:'tab','aria-selected':String(mk===k),href:k?mlink(k):'#hearings'},l,k?h('span',{class:'count'},String(mcount(k))):null))):null,
     h('div',{class:'toolbar'},q,st,sort,clrF),FK.length?h('div',{class:'toolbar filters'},...fsel):null,sumBox,wrap);
   function matches(r,except=null){
     if(mod==='violations'&&(from.value||to.value)){const d=dateG(r.date);if(!d||(from.value&&d<from.value)||(to.value&&d>to.value))return false}
-    if(!mk&&st.value==='_open'&&M.closed.includes(r.status))return false;
-    if(!mk&&st.value&&st.value!=='_open'&&r.status!==st.value)return false;
+    if((!mk||mod==='violations')&&st.value==='_open'&&M.closed.includes(r.status))return false;
+    if((!mk||mod==='violations')&&st.value&&st.value!=='_open'&&r.status!==st.value)return false;
     for(const x of fsel){if(x===except||!x._v)continue;const v=fval(r,x.dataset.k);if(x._v==='_none'?v!=='':v!==x._v)return false}
     return matchesRecordSearch(mod,r,q.value);
   }
@@ -2785,9 +2785,9 @@ function viewList(mod,mk){
     LS.set('q_'+mod,q.value);LS.set('st_'+mod,st.value);
     const term=normDigits(q.value.trim().toLowerCase());
     if(FK.length)fillF();const act=fsel.filter(x=>x._v);
-    const MF=mk?METRICS[mk]:null;if(MF){st.disabled=true;mfBox.replaceChildren(h('div',{class:'banner info'},h('span',null,h('b',null,'مرشح: '+MF.l),' — '+MF.p+(hideSyn()?' · دون البيانات الاختبارية':'')),h('a',{class:'btn sm',href:'#'+mod},'إزالة المرشح')))}else{st.disabled=false;mfBox.replaceChildren()}
+    const MF=mk?METRICS[mk]:null;if(MF){st.disabled=mod!=='violations';mfBox.replaceChildren(h('div',{class:'banner info'},h('span',null,h('b',null,'مرشح: '+MF.l),' — '+MF.p+(hideSyn()?' · دون البيانات الاختبارية':'')),h('a',{class:'btn sm',href:'#'+mod},'إزالة المرشح')))}else{st.disabled=false;mfBox.replaceChildren()}
     let rows=(MF?mrecs(mk):recs(mod)).filter(r=>matches(r));
-    lastRows=rows;if(mod==='violations')sumBox.replaceChildren(violationSummaryNode(rows));if(M.sums){const S2=M.sums.map(([k,l])=>[l,rows.reduce((a,r)=>a+(Number(r[k])||0),0)]);sumBox.replaceChildren(h('div',{class:'fsum'},h('span',null,h('b',null,String(rows.length)),' طلب'),...S2.map(([l,v])=>h('span',null,l+': ',h('b',{class:'num'},nf.format(Math.round(v*100)/100))))))}
+    lastRows=rows;if(mod==='violations'){sumBox.replaceChildren(violationSummaryNode(rows));vTabs.replaceChildren(...VIOLATION_GROUPS.map(([k,l])=>h('a',{class:'tab',role:'tab','aria-selected':String(mk===k),href:mlink(k)},l,h('span',{class:'count'},String(mcount(k))))));}if(M.sums){const S2=M.sums.map(([k,l])=>[l,rows.reduce((a,r)=>a+(Number(r[k])||0),0)]);sumBox.replaceChildren(h('div',{class:'fsum'},h('span',null,h('b',null,String(rows.length)),' طلب'),...S2.map(([l,v])=>h('span',null,l+': ',h('b',{class:'num'},nf.format(Math.round(v*100)/100))))))}
     sortListRows(rows,mod,sort.value);
     if(extra){const T=bondTotals(statRecs('bonds'));
       extra.replaceChildren(h('div',{class:'stats'},Object.entries(T.conf).map(([k,v])=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'v num'},nf.format(v)),h('span',{class:'l'},'إجمالي مؤكد — '+k),h('span',{class:'p'},'مبالغ طابقها مستخدم مع الأصل')))),Object.entries(T.pend).map(([k,v])=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'v num muted'},nf.format(v)),h('span',{class:'l'},'مقروء آليًا بانتظار التأكيد — '+k),h('span',{class:'p'},'غير معتمد؛ خارج الإجمالي المؤكد')))),T.unread?h('div',{class:'stat alert'},h('span',{class:'txt'},h('span',{class:'v'},String(T.unread)),h('span',{class:'l'},'غير مقروء أو متعارض'),h('span',{class:'p'},'خارج كل الإجماليات'))):null,!Object.keys(T.conf).length&&!Object.keys(T.pend).length&&!T.unread?h('div',{class:'small muted'},'لا سندات قائمة ضمن العدّ.'):null))}
