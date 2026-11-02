@@ -67,7 +67,9 @@
   const cs=p=>{const n=p.split('/').length+1;const docs=[...mem.keys()].filter(k=>k.startsWith(p+'/')&&k.split('/').length===n).map(ds);return{docs,size:docs.length,empty:!docs.length,docChanges:()=>[],metadata:{}}};
   let pend=null;function notify(paths){pend=pend||new Set();for(const p of paths)pend.add(p);setTimeout(()=>{const ch=pend;pend=null;if(!ch)return;for(const l of L){if(l.k==='d'?ch.has(l.p):[...ch].some(x=>x.startsWith(l.p+'/')&&x.split('/').length===l.p.split('/').length+1))l.k==='d'?l.fn(ds(l.p)):l.fn(cs(l.p))}},0)}
   function setStatus(t,cls){window.__SYNC={t,cls};const el=document.getElementById('syncPill');if(el){el.textContent=t;el.dataset.s=cls||''}}
-  async function loadAll(){let from=0;const size=1000;for(;;){const{data,error}=await sb.from('records').select('path,data').range(from,from+size-1);if(error)throw error;for(const r of data)mem.set(r.path,r.data);if(data.length<size)break;from+=size}}
+  async function loadAll(){const before=new Map(mem),fresh=new Map();let from=0;const size=1000;for(;;){const{data,error}=await sb.from('records').select('path,data').eq('owner',WS).order('path').range(from,from+size-1);if(error)throw error;for(const r of data)fresh.set(r.path,r.data);if(data.length<size)break;from+=size}
+    const changed=[];for(const p of new Set([...before.keys(),...fresh.keys()])){if(mem.get(p)!==before.get(p))continue;const next=fresh.get(p);if(JSON.stringify(before.get(p))===JSON.stringify(next))continue;if(fresh.has(p))mem.set(p,next);else mem.delete(p);changed.push(p)}if(changed.length)notify(changed);
+  }
   function idbAll(store){return new Promise(res=>{const r=indexedDB.open('tamkeen-legal-local',1);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('docs'))d.createObjectStore('docs');if(!d.objectStoreNames.contains('blobs'))d.createObjectStore('blobs')};r.onerror=()=>res(new Map());r.onsuccess=()=>{const db=r.result;const out=new Map();try{const c=db.transaction(store).objectStore(store).openCursor();c.onsuccess=()=>{const cur=c.result;if(cur){out.set(cur.key,cur.value);cur.continue()}else res(out)};c.onerror=()=>res(out)}catch(e){res(out)}}})}
   async function migrateLocal(){if([...mem.keys()].some(k=>!/^(meta|audit)\//.test(k)))return 0;const docs=await idbAll('docs');if(!docs.size)return 0;setStatus('جارٍ رفع بيانات هذا الجهاز…','busy');
     const rows=[...docs].map(([path,data])=>({owner:WS,path,data}));for(let i=0;i<rows.length;i+=200){const{error}=await sb.from('records').upsert(rows.slice(i,i+200),{onConflict:'owner,path'});if(error)throw error}
@@ -75,7 +77,21 @@
     for(const r of rows)mem.set(r.path,r.data);return rows.length}
   async function backfillBlobs(){try{if(localStorage.getItem('tl_blobs_ws'))return}catch(e){}const bl=await idbAll('blobs');for(const[id,b]of bl){await sb.storage.from('files').upload('ws/'+id,b,{upsert:false,contentType:b.type||'application/octet-stream'}).catch(()=>{})}try{localStorage.setItem('tl_blobs_ws','1')}catch(e){}}
   function blocked(){return new Promise(()=>{const w=document.createElement('div');w.className='login-wrap';w.innerHTML=`<div class="login-card"><h1>الحساب غير مضاف</h1><p class="login-sub">البريد <b dir="ltr">${email}</b> ليس من مستخدمي البرنامج. اطلب من مسؤول البرنامج إضافة بريدك من الإعدادات ← «المستخدمون»، ثم حدّث الصفحة.</p><button class="btn primary" id="lgRe">تحديث</button><button class="btn ghost sm" id="lgOut">الدخول ببريد آخر</button></div>`;document.body.append(w);w.querySelector('#lgRe').onclick=()=>location.reload();w.querySelector('#lgOut').onclick=async()=>{await sb.auth.signOut();setMode('');location.reload()}})}
-  function subscribe(){sb.channel('records-ws').on('postgres_changes',{event:'*',schema:'public',table:'records',filter:'owner=eq.'+WS},pl=>{const n=pl.new,o=pl.old;if(pl.eventType==='DELETE'){if(o&&o.path){mem.delete(o.path);notify([o.path])}}else if(n&&n.path){mem.set(n.path,n.data);notify([n.path])}}).subscribe(st=>{if(st==='SUBSCRIBED')setStatus('متزامن','ok');else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT')setStatus('المزامنة الفورية متوقفة — حدّث الصفحة','warn')})}
+  let refreshRunning=false;
+  async function refreshCloud(){
+    if(!uid||refreshRunning||document.hidden)return;
+    refreshRunning=true;
+    try{await loadAll();setStatus('محدّث '+new Date().toLocaleTimeString('ar-SA-u-nu-latn',{hour:'2-digit',minute:'2-digit'}),'ok')}
+    catch{setStatus('تعذر التحديث — ستتم إعادة المحاولة تلقائيًا','warn')}
+    finally{refreshRunning=false}
+  }
+  function startAutoRefresh(){
+    setInterval(refreshCloud,60000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshCloud()});
+    window.addEventListener('online',refreshCloud);
+  }
+
+  function subscribe(){sb.channel('records-ws').on('postgres_changes',{event:'*',schema:'public',table:'records',filter:'owner=eq.'+WS},pl=>{const n=pl.new,o=pl.old;if(pl.eventType==='DELETE'){if(o&&o.path){mem.delete(o.path);notify([o.path])}}else if(n&&n.path){mem.set(n.path,n.data);notify([n.path])}}).subscribe(st=>{if(st==='SUBSCRIBED'){setStatus('مزامنة مباشرة','ok');refreshCloud()}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT')setStatus('تحديث دوري كل دقيقة','warn')})}
   const dr=p=>({id:p.split('/').pop(),path:p,
     get:async()=>{try{const{data,error}=await sb.from('records').select('data').eq('path',p).maybeSingle();if(error)throw error;if(data)mem.set(p,data.data);else mem.delete(p)}catch(e){}return ds(p)},
     set:async d=>{const v=clone(d);const{error}=await sb.from('records').upsert({owner:WS,path:p,data:v,updated_at:new Date().toISOString()},{onConflict:'owner,path'});if(error)throw err('unavailable',error.message);mem.set(p,v);notify([p])},
@@ -132,7 +148,7 @@ function loginVerificationInput(value,email,authOrigin){
     uid=s.user.id;email=s.user.email||'';setMode('cloud');setStatus('جارٍ التحميل…','busy');
     {const{data,error}=await sb.rpc('my_role');role=error?null:data}sb.rpc('log_access',{dev:devName(),ev:role?'فتح البرنامج':'محاولة دخول ببريد غير مضاف'}).then(()=>{},()=>{});if(!role)await blocked();
     await loadAll();const moved=role==='owner'?await migrateLocal().catch(e=>{console.warn(e);return 0}):0;if(role==='owner')backfillBlobs();if(moved)setStatus(`رُفعت ${moved} سجلًا من هذا الجهاز`,'ok');
-    window.fetch=cloudFetch;subscribe();return'cloud'})();return ready}
+    window.fetch=cloudFetch;subscribe();startAutoRefresh();return'cloud'})();return ready}
   window.__CLOUD={role:()=>role,accessLog:async(n)=>{const{data,error}=await sb.rpc('access_log_list',{lim:n||100});if(error)throw error;return data},
   members:async()=>{const{data,error}=await sb.from('members').select('email,role,name').order('added_at');if(error)throw error;return data},
   addMember:async(e,r,n)=>{const{error}=await sb.from('members').upsert({email:e.trim().toLowerCase(),role:r,name:n||null});if(error)throw error},
@@ -1343,6 +1359,7 @@ td .num,td.num{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 @media(prefers-reduced-motion:reduce){.pulse-stat,.pulse-module{transition:none!important}.pulse-stat:hover,.pulse-module:hover{transform:none!important}}
 
 </style>
+<style>.program-share{width:min(540px,92vw);max-height:90vh;overflow:auto;padding:26px;border-radius:20px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;box-shadow:0 20px 80px #0005}.program-share::backdrop{background:#0009}.program-share p{line-height:1.8}.program-share input{padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}#shareProgramBtn{white-space:nowrap}#syncPill[data-s="warn"]{color:var(--warn)}@media(max-width:700px){#syncPill{display:none}.topbar{flex-wrap:wrap}}</style>
 <div class="app" id="app" dir="rtl">
   <aside class="rail" id="rail" aria-label="القائمة"></aside>
   <div class="main">
@@ -1350,6 +1367,8 @@ td .num,td.num{font-variant-numeric:tabular-nums;letter-spacing:.02em}
       <button class="btn ghost menu-btn" id="menuBtn" aria-label="إظهار القائمة أو إخفاؤها" title="إظهار القائمة أو إخفاؤها"></button>
       <button class="btn ghost back-btn" id="backBtn" aria-label="رجوع" hidden>→ رجوع</button>
       <div class="search"><input id="gsearch" type="search" placeholder="بحث شامل: رقم قضية، سند، طرف، مادة…" autocomplete="off" aria-label="بحث شامل"></div>
+      <button id="shareProgramBtn" class="btn sm" hidden type="button" title="مشاركة رابط البرنامج">مشاركة البرنامج ↗</button>
+      <span class="save-pill" id="syncPill" hidden role="status" aria-live="polite">جارٍ الاتصال…</span>
       <span class="save-pill" id="savePill" data-s="idle" role="status" aria-live="polite">جاهز</span>
       <button class="btn ghost sm" id="themeBtn" aria-label="تبديل الوضع"></button>
       <div class="who" id="who"></div>
@@ -1580,6 +1599,7 @@ async function boot(){
   if(user){const me=await user.me();S.me={id:me.id,name:me.name,avatar:me.avatarUrl,canEdit:me.canEdit,isOwner:me.isOwner};const cw=await user.can('data.write');S.canWrite=cw!==false;S.readOnly=cw===false;if(S.readOnly)setSave('ro')}
   else S.canWrite=true;
   renderWho();
+  const shareButton=document.getElementById('shareProgramBtn');shareButton.hidden=!window.__CLOUD?.active();shareButton.onclick=showProgramShare;const syncBadge=document.getElementById('syncPill');syncBadge.hidden=!window.__CLOUD?.active();if(window.__SYNC){syncBadge.textContent=window.__SYNC.t;syncBadge.dataset.s=window.__SYNC.cls||''}
   for(const c of COLS){S.data[c]=new Map();
     db.collection(COLL_PATH(c)).onSnapshot(snap=>{const m=new Map();for(const d of snap.docs){const row={id:d.id,...d.data()};if(c==='violations'&&row.status==='مستلمة')row.status='غير مسدد';m.set(d.id,row);}S.data[c]=m;S.loaded[c]=true;scheduleRender()},e=>{S.loaded[c]=true;console.warn(c,e.code);scheduleRender()})}
   db.doc('meta/settings').onSnapshot(s=>{S.settings=s.exists?s.data():{};scheduleRender()},()=>{});
@@ -1588,6 +1608,17 @@ async function boot(){
   route();
   setInterval(()=>{checkAlerts();if(S.view?.key==='home')scheduleRender()},60000);
 }
+function showProgramShare(){
+  const url='https://ahmadayash0077.github.io/tamkeen-legal/#home';
+  const field=h('input',{value:url,readOnly:true,dir:'ltr','aria-label':'رابط البرنامج',style:'width:100%;margin:14px 0'});
+  const message=h('p',{role:'status',class:'small muted'});
+  const dlg=h('dialog',{class:'program-share',dir:'rtl','aria-labelledby':'shareTitle'},h('h2',{id:'shareTitle'},'مشاركة البرنامج'),h('p',null,'رابط ثابت يفتح النسخة المنشورة وبياناتها الحالية بعد تسجيل الدخول. يُستخدم نفس الرابط بعد كل تحديث.'),field,h('p',{class:'small muted'},'المستلم يحتاج حسابًا مضافًا للبرنامج، وتظهر له البيانات حسب صلاحياته. الرابط لا يمنح صلاحية جديدة ولا يحتوي رمز دخول.'),h('p',{class:'small muted'},'تصل تغييرات البيانات تلقائيًا أثناء فتح البرنامج، مع إعادة التحقق كل دقيقة عند ظهور الصفحة.'),message);
+  const copy=async()=>{try{await navigator.clipboard.writeText(url);message.textContent='تم نسخ رابط البرنامج.'}catch{field.focus();field.select();message.textContent='تعذر النسخ التلقائي؛ انسخ الرابط المحدد.'}};
+  const close=()=>dlg.close();
+  dlg.append(h('div',{class:'row'},h('button',{class:'btn primary',onclick:copy},'نسخ الرابط'),navigator.share?h('button',{class:'btn',onclick:async()=>{try{await navigator.share({title:'المساعد القانوني — تمكين الدولية',url})}catch(e){if(e.name!=='AbortError')message.textContent='تعذرت المشاركة؛ استخدم نسخ الرابط.'}}},'مشاركة…'):null,h('button',{class:'btn ghost',onclick:close},'إغلاق')));
+  dlg.addEventListener('close',()=>dlg.remove(),{once:true});document.body.append(dlg);dlg.showModal();
+}
+
 function showFatal(msg){$('#view').replaceChildren(h('div',{class:'panel'},ph('تعذر التشغيل','alert','#ff453a'),h('p',null,msg)))}
 const scheduleRender=debounce(()=>{renderNav();if(S.view?.refresh)S.view.refresh();checkAlerts();if(!S.migDone&&!loadingAll())runMigrations()},80);
 
