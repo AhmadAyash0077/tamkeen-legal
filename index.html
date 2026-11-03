@@ -2443,7 +2443,7 @@ async function openContractView(r){
   const closeBtn=h('button',{class:'btn sm primary',onclick:close},'إغلاق');
   const fname=`عقد - ${(r.trade_name||'بدون اسم').replace(/[\\/:*?"<>|]/g,' ')}.docx`;
   ov.append(h('div',{class:'doc-ov-bar'},h('b',null,titleOf('contracts',r)),h('div',{class:'row'},
-    h('button',{class:'btn sm',onclick:async()=>{try{await uxContractPdf(r);audit('تحميل ملف العقد PDF','contracts',r.id,r.trade_name||'')}catch(e){toast('تعذر إنشاء الملف: '+(e.message||e.code))}}},ibtn('pdf','تحميل PDF')),
+    h('button',{class:'btn sm',onclick:async()=>{try{await saveFile(fname,await buildTafweed(r));audit('تحميل ملف العقد','contracts',r.id,r.trade_name||'')}catch(e){toast('تعذر إنشاء الملف: '+(e.message||e.code))}}},ibtn('download','تحميل Word')),
     closeBtn)),body);
   body.append(host);document.body.append(ov);document.addEventListener('keydown',esc);window.addEventListener('resize',fit);window.addEventListener('hashchange',close);fit();closeBtn.focus();
   audit('فتح العقد للعرض','contracts',r.id,r.trade_name||'');
@@ -2832,8 +2832,8 @@ function formDocPanel(r,live){const cur=()=>(live&&live())||rec('contracts',r.id
     h('dl',{class:'kv'},preview.map(([k,x])=>[h('dt',null,k),h('dd',null,x||'—')])),
     c.miss.length?h('div',{class:'banner warn'},'خانات فارغة ستبقى فارغة في الملف: '+c.miss.join('، ')):null,
     c.warn.map(x=>h('div',{class:'banner bad'},x)),
-    h('div',{class:'row'},h('button',{class:'btn primary',onclick:()=>openContractView(cur())},ibtn('eye','فتح العقد')),h('button',{class:'btn',onclick:async()=>{try{await uxContractPdf(cur());audit('تحميل ملف العقد PDF','contracts',r.id,v.trade_name)}catch(e){toast('تعذر إنشاء الملف: '+(e.message||e.code))}}},ibtn('pdf','تحميل PDF')),
-      !S.readOnly&&assets?h('button',{class:'btn',onclick:async()=>{try{const b=await uxContractPdfBlob(cur());const f=new File([b],fname.replace(/\.docx$/,'.pdf'),{type:'application/pdf'});await uploadFiles([f],['contracts:'+r.id],(m,cls)=>out.replaceChildren(h('div',{class:'banner '+(cls||'info')},m)),'ملف العقد')}catch(e){toast('تعذر الحفظ: '+(e.message||e.code))}}},ibtn('upload','حفظ نسخة في المستندات')):null),
+    h('div',{class:'row'},h('button',{class:'btn primary',onclick:()=>openContractView(cur())},ibtn('eye','فتح العقد')),h('button',{class:'btn',onclick:async()=>{try{const b=await buildTafweed(cur());await saveFile(fname,b);audit('تحميل ملف العقد','contracts',r.id,v.trade_name)}catch(e){toast('تعذر إنشاء الملف: '+(e.message||e.code))}}},ibtn('download','تحميل Word')),
+      !S.readOnly&&assets?h('button',{class:'btn',onclick:async()=>{try{const b=await buildTafweed(cur());const f=new File([b],fname);await uploadFiles([f],['contracts:'+r.id],(m,cls)=>out.replaceChildren(h('div',{class:'banner '+(cls||'info')},m)),'ملف العقد')}catch(e){toast('تعذر الحفظ: '+(e.message||e.code))}}},ibtn('upload','حفظ نسخة في المستندات')):null),
     out,
     h('div',{class:'small muted'},'يتعبأ ملف «فتح حساب توريد بضاعة آجل — تفويض تمثيل المنشأة» ببيانات هذا العقد، بنفس شعار الشركة وتنسيقها. التاريخ يُكتب ثابتًا، وخانات تصديق الغرفة التجارية تبقى فارغة للتوقيع والختم.'))}
 function noData(){return!loadingAll()&&COLS.every(c=>recs(c).length===0)}
