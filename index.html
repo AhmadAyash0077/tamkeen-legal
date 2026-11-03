@@ -1965,7 +1965,7 @@ const MODS={
     {k:'side',l:'صفة الشركة',t:'select',o:['مدعية','مدعى عليها','متدخلة','أخرى']},{k:'filed',l:'تاريخ القيد',t:'date'},
     {k:'owner',l:'المسؤول',t:'text'},{k:'lawyerId',l:'المحامي (من سجل المحامين)',t:'ref',ref:'lawyers'},{k:'lawyer',l:'اسم المحامي نصًا (سجلات قديمة)',t:'text',hint:'اختر المحامي من الخانة السابقة؛ هذه الخانة للبيانات القديمة فقط'},
     {k:'judgmentNo',l:'رقم الحكم',t:'ltr'},{k:'judgmentDate',l:'تاريخ الحكم',t:'date'},{k:'judgment',l:'منطوق الحكم',t:'area',w:1,hint:'أرفق صك الحكم من قسم المرفقات بتصنيف «حكم»'},{k:'awarded',l:'المبلغ المحكوم به',t:'money'}],
-    st:['قيد الإعداد','منظورة','محجوزة للحكم','صدر حكم','في الاستئناف','في التنفيذ','منتهية'],closed:['منتهية'],cols:['plaintiff','defendant','caseNo','hdate','hattendee','subject']},
+    st:['قيد الإعداد','قيد النظر','محجوزة للحكم','صدر حكم','في الاستئناف','في التنفيذ','منتهية'],closed:['منتهية'],cols:['plaintiff','defendant','caseNo','hdate','hattendee','subject']},
   executions:{t:'طلبات التنفيذ',one:'طلب تنفيذ',grp:'التقاضي',main:'filed',fields:[
     {k:'respondent',l:'المنفذ ضده',t:'text',req:1},{k:'applicant',l:'طالب التنفيذ',t:'text'},{k:'reqNo',l:'رقم الطلب التنفيذي',t:'ltr'},
     {k:'claimAmount',l:'مبلغ المطالبة',t:'money'},{k:'paid',l:'المسدد',t:'money'},{k:'remaining',l:'المتبقي',t:'money'},{k:'currency',l:'العملة',t:'select',o:CUR},
@@ -2066,7 +2066,7 @@ async function boot(){
   renderWho();
   const shareButton=document.getElementById('shareProgramBtn');shareButton.hidden=!window.__CLOUD?.active();shareButton.onclick=showProgramShare;const syncBadge=document.getElementById('syncPill');syncBadge.hidden=!window.__CLOUD?.active();if(window.__SYNC){syncBadge.textContent=window.__SYNC.t;syncBadge.dataset.s=window.__SYNC.cls||''}
   for(const c of COLS){S.data[c]=new Map();
-    db.collection(COLL_PATH(c)).onSnapshot(snap=>{const m=new Map();for(const d of snap.docs){const row={id:d.id,...d.data()};if(c==='violations'&&row.status==='مستلمة')row.status='غير مسدد';m.set(d.id,row);}S.data[c]=m;S.loaded[c]=true;scheduleRender()},e=>{S.loaded[c]=true;console.warn(c,e.code);scheduleRender()})}
+    db.collection(COLL_PATH(c)).onSnapshot(snap=>{const m=new Map();for(const d of snap.docs){const row={id:d.id,...d.data()};if(c==='violations'&&row.status==='مستلمة')row.status='غير مسدد';if(c==='cases'&&row.status==='منظورة')row.status='قيد النظر';m.set(d.id,row);}S.data[c]=m;S.loaded[c]=true;scheduleRender()},e=>{S.loaded[c]=true;console.warn(c,e.code);scheduleRender()})}
   db.doc('meta/settings').onSnapshot(s=>{S.settings=s.exists?s.data():{};scheduleRender()},()=>{});
   db.doc('meta/integrations').onSnapshot(s=>{S.integ=s.exists?s.data():{};scheduleRender()},()=>{});
   window.addEventListener('hashchange',route);
@@ -3376,7 +3376,7 @@ function viewList(mod,mk){
   const q=h('input',{type:'search',placeholder:'بحث في '+M.t,'aria-label':'بحث',value:mk?'':LS.get('q_'+mod,'')});
   const st=h('select',{'aria-label':'الحالة'},h('option',{value:''},'كل الحالات'),h('option',{value:'_open'},'المفتوحة فقط'),M.st.map(s=>h('option',{value:s},s)));st.value=mk?'':LS.get('st_'+mod,'_open');
   const dateLabel=M.fields.find(f=>f.k===M.main)?.l||'التاريخ';
-  const sort=h('select',{'aria-label':'الترتيب'},h('option',{value:'upd'},'الأحدث تعديلًا'),['cases','hearings'].includes(mod)?h('option',{value:'nearest'},'أقرب جلسة قادمة أولًا'):null,M.main?h('option',{value:'main'},dateLabel+' — الأقدم أولًا'):null,M.main?h('option',{value:'main_desc'},dateLabel+' — الأحدث أولًا'):null);
+  const sort=h('select',{'aria-label':'الترتيب'},h('option',{value:'upd'},'الأحدث تعديلًا'),['cases','hearings'].includes(mod)?h('option',{value:'nearest'},'أقرب جلسة قادمة أولًا'):null,M.main?h('option',{value:'main'},dateLabel+' — الأقدم أولًا'):null,M.main?h('option',{value:'main_desc'},dateLabel+' — الأحدث أولًا'):null);{const def=['cases','hearings'].includes(mod)?'nearest':M.main?'main_desc':'upd';const sv=LS.get('sort2_'+mod,def);sort.value=[...sort.options].some(o=>o.value===sv)?sv:def}
   const FALL={branch:['كل الفروع','بدون فرع'],applicant:['كل طالبي التنفيذ','بدون طالب'],rep:['كل المناديب','بدون مندوب'],decision:['كل القرارات','بدون قرار'],_year:['كل السنوات','بدون تاريخ']};
   const FK=M.filters||[];const fval=(r,k)=>k==='_year'?(dateG(r[M.main])||'').slice(0,4):String((mod==='violations'?violationValue(r,k):r[k])??'').trim();
   const fsel=FK.map(k=>{const lab=k==='_year'?'السنة':(M.fields.find(f=>f.k===k)?.l||k);const sel=h('select',{'aria-label':lab,class:'fsel'});sel.dataset.k=k;sel.dataset.l=lab;sel._v=mk?'':LS.get('f_'+mod+'_'+k,'');sel.onchange=()=>{sel._v=sel.value;LS.set('f_'+mod+'_'+k,sel.value);refresh()};return sel});
@@ -3421,7 +3421,7 @@ function viewList(mod,mk){
         cols.map(c=>c.t==='hattendee'?h('td',null,(x=>x?(String(x.r.attendee||'').trim()||'لم يُحدد'):'—')(caseHearing(r))):c.t==='stage'?h('td',null,(([l,k])=>h('span',{class:'pill '+k},l))(stageLabel(r))):c.t==='cbond'?h('td',{class:'money'},(b=>b?h('span',null,b.amount==null?'غير مقروء':h('span',{class:'num'},nf.format(b.amount)),' ',(x=>x?h('small',{class:'muted'},'· ينتهي '+fmtG(x)):null)(bondExpiry(b))):h('span',{class:'muted'},'—'))(contractBonds(r)[0])):c.t==='bondamt'?h('td',{class:'money'},bondAmountNode(r)):c.t==='hdate'?h('td',null,(x=>x?h('span',{class:'pill '+(x.past?'warn':hearingTs(x.r)-Date.now()<7*864e5?'brass':'info')},`${fmtG(dateG(x.r.date))} · ${x.r.time||''}${x.past?' (فات)':''}`):h('span',{class:'muted'},'—'))(caseHearing(r))):c.t==='vnext'?h('td',null,(n=>n?h('span',{class:'pill '+(daysUntil(n.g)<0?'bad':daysUntil(n.g)<=7?'warn':'info')},`${n.k}: ${fmtG(n.g)}`):'—')(violNext(r))):c.t==='validity'?h('td',null,(v=>h('span',{class:'pill '+v.c},v.l))(poaValidity(r))):c.t==='bdue'?h('td',null,bondDue(r).t):h('td',{class:c.t==='money'?'money num':(c.t==='ltr'?'ltr':null)},cellVal(mod,c,r))),
         h('td',null,h('span',{class:'pill '+stClass(mod,r.status)},r.status||'—'),mod==='requests'&&reqLate(r)?h('span',{class:'pill bad',style:'margin-inline-start:4px'},'متأخر'):null,mod==='contracts'?h('span',{class:'pill '+(contractStage(r).complete?'ok':'warn'),style:'margin-inline-start:4px'},contractStage(r).complete?'الملف مكتمل':'الملف ناقص'):null,isSyn(r)?h('span',{class:'pill',style:'margin-inline-start:4px'},'اختباري'):null)))))),h('div',{class:'small muted'},`${rows.length} سجل`))
   }
-  q.oninput=debounce(refresh,150);st.onchange=refresh;sort.onchange=refresh;
+  q.oninput=debounce(refresh,150);st.onchange=refresh;sort.onchange=()=>{LS.set('sort2_'+mod,sort.value);refresh()};
   refresh();return{key:mod,el,refresh};
 }
 function bondAmountNode(b){if(b.amount==null||b.readStatus==='غير مقروء — يحتاج مراجعة')return h('span',{class:'pill warn'},'غير مقروء — يحتاج مراجعة');if(b.readStatus==='تعارض — يحتاج مراجعة')return h('span',null,h('span',{class:'num'},money(b.amount,b.currency)),' ',h('span',{class:'pill bad'},'تعارض'));return h('span',{class:'num'},money(b.amount,b.currency))}
@@ -4022,7 +4022,7 @@ function syntheticPanel(){const out=h('div');return h('div',{class:'panel'},ph('
   h('div',{class:'row'},h('button',{class:'btn',onclick:async()=>{out.textContent='جارٍ الإضافة…';await seedSynthetic();out.textContent='أُضيفت البيانات الاصطناعية.'}},'إضافة بيانات اختبار'),h('button',{class:'btn danger',onclick:async()=>{out.textContent='جارٍ الحذف…';let n=0;for(const c of COLS)for(const r of recs(c,true).filter(r=>r.synthetic)){if(c==='contracts'){const vs=await db.doc('contracts/'+r.id).collection('versions').get();for(const v of vs.docs)await db.doc('contracts/'+r.id).collection('versions').doc(v.id).delete()}await db.collection(c).doc(r.id).delete();n++}audit('حذف البيانات الاصطناعية','meta','',String(n));out.textContent=`حُذف ${n} سجل اصطناعي.`}},'حذف كل البيانات الاصطناعية')),out)}
 async function seedSynthetic(){const T='[اختباري] ';const d=n=>{const g=addDays(todayISO(),n);return{orig:'g',g,h:g2h(g),verified:true}};const base={synthetic:true,source:'بيانات اصطناعية'};
   const W=(c,id,b)=>writeDoc(c,id,{...base,...b},null,{create:true});
-  await W('cases','syn-case1',{caseNo:'SYN-0001',court:'المحكمة التجارية (اختبار)',circuit:'الدائرة 1',subject:T+'مطالبة بقيمة أجهزة مسلّمة',parties:'شركة مثال (اختبار) — مدعى عليها\nتمكين — مدعية',claimAmount:125000,currency:'ريال سعودي',side:'مدعية',status:'منظورة',filed:d(-40),owner:'مستخدم اختبار',deadlines:[{kind:'استئناف',date:d(25),source:'نص افتراضي للاختبار',reviewed:false}],links:['bonds:syn-b1']});
+  await W('cases','syn-case1',{caseNo:'SYN-0001',court:'المحكمة التجارية (اختبار)',circuit:'الدائرة 1',subject:T+'مطالبة بقيمة أجهزة مسلّمة',parties:'شركة مثال (اختبار) — مدعى عليها\nتمكين — مدعية',claimAmount:125000,currency:'ريال سعودي',side:'مدعية',status:'قيد النظر',filed:d(-40),owner:'مستخدم اختبار',deadlines:[{kind:'استئناف',date:d(25),source:'نص افتراضي للاختبار',reviewed:false}],links:['bonds:syn-b1']});
   await W('hearings','syn-h1',{caseId:'syn-case1',date:d(2),time:'10:30',place:'قاعة اختبار',status:'مجدولة',nextTasks:T+'تجهيز مذكرة',tasksDue:d(1)});
   await W('contracts','syn-ct1',{title:T+'عقد تركيب وصيانة',counterparty:'مقاول اختبار',value:300000,currency:'ريال سعودي',start:d(-300),end:d(40),noticeDays:30,status:'ساري',owner:'مستخدم اختبار'});
   await db.doc('contracts/syn-ct1').collection('versions').doc('v0001').set({n:1,label:'المسودة الأولى',text:'يلتزم الطرف الثاني بتركيب الأجهزة خلال ثلاثين يومًا من تاريخ الطلب. ويحق للطرف الأول إنهاء العقد بإشعار مدته ستون يومًا.',at:new Date().toISOString(),by:S.me.id});
@@ -4167,7 +4167,7 @@ function uxAlerts(){const A=[],t=todayISO(),now=Date.now();
   const R=[];const rec2=(kind,icn,title,why,mod,rows,color)=>{if(rows.length)R.push({id:'rec:'+kind,sev:'rec',kind,icon:icn,title,sub:why,mod,rows,color})};
   const oc=statRecs('cases').filter(r=>isOpen('cases',r));
   rec2('nolawyer','briefcase','إسناد محامٍ للقضايا غير المسندة','قضايا مفتوحة بلا محامٍ مسجل في سجل المحامين','cases',oc.filter(c=>!caseLawyer(c)&&!String(c.lawyer||'').trim()));
-  rec2('nohearing','calendar','تحديد الجلسة القادمة أو تحديث الحالة','قضايا منظورة ليس لها جلسة قادمة مسجلة','cases',oc.filter(c=>['منظورة','في الاستئناف'].includes(c.status)&&!(caseHearing(c)&&!caseHearing(c).past)));
+  rec2('nohearing','calendar','تحديد الجلسة القادمة أو تحديث الحالة','قضايا منظورة ليس لها جلسة قادمة مسجلة','cases',oc.filter(c=>['قيد النظر','في الاستئناف'].includes(c.status)&&!(caseHearing(c)&&!caseHearing(c).past)));
   rec2('noattendee','user','تحديد من سيحضر الجلسات القادمة','جلسات مجدولة لم يُحدد فيها اسم الحاضر','hearings',mrecs('h_up').filter(r=>!String(r.attendee||'').trim()));
   const ex=statRecs('executions').filter(r=>isOpen('executions',r));
   rec2('stale','coins','مراجعة موقف التحصيل في الطلبات الراكدة','طلبات تنفيذ مفتوحة منذ أكثر من 180 يومًا دون أي سداد مسجل','executions',ex.filter(r=>!(Number(r.paid)>0)&&Number(r.remaining)>0&&daysUntil(dateG(r.filed))<-180));
@@ -4388,7 +4388,8 @@ uxApplyScreens();
 {const _canSee=canSee;canSee=function(m){if(MODS[m]&&uxHidden(m))return false;return _canSee(m)}}
 {const _rn=renderNav;renderNav=function(){uxBuildNav();_rn()}}
 async function uxSaveScreens(next){const cur=await db.doc('meta/screens').get();const base=cur.exists?cur.data():{};const r=await writeDoc('meta','screens',{mods:next.mods||{},custom:next.custom||{},order:next.order||[]},base.rev,{force:true});if(r.ok){UXS.cfg=r.data;LS.set('uxScreens',{mods:r.data.mods,custom:r.data.custom,order:r.data.order});uxApplyScreens();renderNav();audit('تعديل إعدادات الشاشات','meta','screens','');toast('حُفظت إعدادات الشاشات لجميع المستخدمين')}return r}
-function uxAfterBoot(){if(!db)return;for(const k of COLS)UXS.subscribed.add(k);uxMO.observe($('#view'),{childList:true,subtree:true});
+async function uxMigrateCaseStatus(){try{if(LS.get('mig_qn',false)||!canAdmin()||S.readOnly)return;for(let i=0;i<60&&loadingAll();i++)await new Promise(r=>setTimeout(r,1000));const snap=await db.collection('cases').get();const ids=snap.docs.filter(d=>(d.data()||{}).status==='منظورة').map(d=>d.id);for(const id of ids)await writeDoc('cases',id,{status:'قيد النظر'},null,{force:true});if(ids.length)audit('تحويل حالة «منظورة» إلى «قيد النظر»','cases','',ids.length+' قضية');LS.set('mig_qn',true)}catch(e){console.warn(e)}}
+function uxAfterBoot(){if(!db)return;setTimeout(uxMigrateCaseStatus,4000);for(const k of COLS)UXS.subscribed.add(k);uxMO.observe($('#view'),{childList:true,subtree:true});
   db.doc('meta/screens').onSnapshot(s=>{const d=s.exists?s.data():{};UXS.cfg=d;LS.set('uxScreens',{mods:d.mods||{},custom:d.custom||{},order:d.order||[]});uxApplyScreens();scheduleRender()},()=>{});
   setInterval(uxReqBadge,120000);setTimeout(uxReqBadge,3000)}
 /* شكل العرض في القوائم */
@@ -4473,6 +4474,7 @@ function uxImportView(){const el=h('div',{class:'ux-page ux-import'});const v={k
       if(!sheets.length){work.replaceChildren(h('div',{class:'ux-empty big'},icon('info'),'الملف لا يحتوي على صفوف بيانات.'));return}paint()}catch(e){work.replaceChildren(h('div',{class:'banner bad'},'تعذرت قراءة الملف: '+(e.message||e)))}}
   function analyze(s){const M=MODS[s.mod];if(!M)return null;const fs=uxImportFields(s.mod);const keys=UX_KEYS[s.mod]||[fs[0].k];const existing=new Map();for(const r of recs(s.mod,true)){const kk=keys.map(k=>uxNorm(typeof r[k]==='object'?dateG(r[k]):r[k])).join('|');if(kk.replace(/\|/g,''))existing.set(kk,r)}
     const seen=new Set();const out=[];s.data.forEach((row,i)=>{const warns=[];const rec2={};s.map.forEach((fk,ci)=>{if(!fk)return;const f=fs.find(x=>x.k===fk);const val=uxConvert(f,row[ci],w=>warns.push(w));if(val!==undefined)rec2[fk]=val});
+      if(s.mod==='cases'&&rec2.status==='منظورة')rec2.status='قيد النظر';
       if(rec2.status&&!M.st.includes(rec2.status))warns.push(`الحالة «${rec2.status}» غير معروفة — ستُحفظ كما هي`);
       const miss=fs.filter(f=>f.req&&(rec2[f.k]==null||rec2[f.k]==='')).map(f=>f.l);
       const kk=keys.map(k=>uxNorm(typeof rec2[k]==='object'?dateG(rec2[k]):rec2[k])).join('|');const dupOf=kk.replace(/\|/g,'')?existing.get(kk):null;const dupIn=kk.replace(/\|/g,'')&&seen.has(kk);if(kk.replace(/\|/g,''))seen.add(kk);
