@@ -4104,7 +4104,7 @@ function uxCount(key,to,fmt=uxN){const el=h('span',{class:'ux-num','data-k':key}
 function uxMainDate(mod,r){const k=MODS[mod]?.main;return k?dateG(r[k]):null}
 function uxAmount(mod,r){if(mod==='executions')return Number(r.remaining)||0;if(['cases','violations'].includes(mod))return Number(r[mod==='cases'?'claimAmount':'amount'])||0;if(mod==='contracts')return Number(r.value)||0;if(mod==='bonds')return Number(r.amount)||0;return null}
 function uxSub(mod,r){const p=[];const d=uxMainDate(mod,r);
-  if(mod==='hearings'){const c=rec('cases',r.caseId);if(c)p.push(titleOf('cases',c));p.push([fmtDate(r.date,false),r.time].filter(Boolean).join(' · '))}
+  if(mod==='hearings'){const c=rec('cases',r.caseId);p.push(c?titleOf('cases',c):'غير مرتبطة بقضية');p.push([fmtDate(r.date,false),r.time].filter(Boolean).join(' · '))}
   else if(d)p.push(fmtG(d));
   const a=uxAmount(mod,r);if(a)p.push(uxN(a)+' ر.س');
   if(mod==='executions'&&r.branch)p.push(r.branch);if(mod==='violations'&&r.authority)p.push(r.authority);if(mod==='cases'&&r.court)p.push(r.court);if(mod==='poa')p.push(poaValidity(r).l);
@@ -4156,7 +4156,7 @@ function uxAlerts(){const A=[],t=todayISO(),now=Date.now();
   for(const r of statRecs('contracts').filter(ctOpen)){if(mrecs('ct_missed').includes(r))continue;const nd=noticeDeadline(r),dn=daysUntil(nd),de=daysUntil(dateG(r.end));if(dn!=null&&dn>=0&&dn<=30)add('alert','ct_notice','contracts',r,'موعد إشعار عدم التجديد بعد '+(dn?spanAr(dn):'اليوم'),titleOf('contracts',r),nd);else if(de!=null&&de>=0&&de<=30)add('alert','ct_end','contracts',r,'العقد ينتهي بعد '+(de?spanAr(de):'اليوم'),titleOf('contracts',r),dateG(r.end));else if(de!=null&&de<0&&!['منتهٍ','مؤرشف'].includes(r.status))add('warn','ct_ended','contracts',r,'تاريخ انتهاء العقد مضى وحالته «'+r.status+'»',titleOf('contracts',r),dateG(r.end))}
   for(const r of mrecs('poa_exp'))add('warn','poa_exp','poa',r,'وكالة أو ترخيص منتهي والحالة «سارية»',titleOf('poa',r),dateG(r.expiry));
   for(const r of mrecs('poa_soon'))add('alert','poa_soon','poa',r,poaValidity(r).l,titleOf('poa',r),dateG(r.expiry));
-  for(const r of mrecs('h_result'))add('warn','h_result','hearings',r,'جلسة انعقدت ولم تُسجل نتيجتها',uxSub('hearings',r),dateG(r.date));
+  for(const r of mrecs('h_result')){const ts=hearingTs(r);const c=rec('cases',r.caseId);if(!(c&&c.status==='منتهية'))add('warn','h_result','hearings',r,'جلسة مضى موعدها ولم تُسجل نتيجتها',uxSub('hearings',r),dateG(r.date))}
   for(const r of statRecs('hearings'))for(const tk of hearingTasks(r))if(!tk.done&&tk.due&&tk.due<t)add('warn','h_task','hearings',r,'مهمة جلسة متأخرة: '+String(tk.text||'').slice(0,50),uxSub('hearings',r),tk.due);
   for(const r of mrecs('h_up')){const ts=hearingTs(r);if(ts-now<=7*864e5)add('alert','h_soon','hearings',r,ts-now<864e5?'جلسة خلال 24 ساعة':'جلسة خلال 7 أيام',uxSub('hearings',r),dateG(r.date))}
   for(const r of statRecs('bonds')){if(r.status!=='قائم')continue;const b=bondDue(r);if(b.k!=='date')continue;const d=daysUntil(b.g);if(d<0)add('warn','b_due','bonds',r,'سند تجاوز تاريخ استحقاقه ولا يزال «قائم»',titleOf('bonds',r),b.g);else if(d<=30)add('alert','b_due','bonds',r,'سند يستحق خلال '+(d?spanAr(d):'اليوم'),titleOf('bonds',r),b.g)}
@@ -4168,6 +4168,7 @@ function uxAlerts(){const A=[],t=todayISO(),now=Date.now();
   const oc=statRecs('cases').filter(r=>isOpen('cases',r));
   rec2('nolawyer','briefcase','إسناد محامٍ للقضايا غير المسندة','قضايا مفتوحة بلا محامٍ مسجل في سجل المحامين','cases',oc.filter(c=>!caseLawyer(c)&&!String(c.lawyer||'').trim()));
   rec2('nohearing','calendar','تحديد الجلسة القادمة أو تحديث الحالة','قضايا منظورة ليس لها جلسة قادمة مسجلة','cases',oc.filter(c=>['قيد النظر','في الاستئناف'].includes(c.status)&&!(caseHearing(c)&&!caseHearing(c).past)));
+  rec2('nocase','link','ربط الجلسات بقضاياها','جلسات مسجلة بدون قضية مرتبطة أو قضيتها محذوفة','hearings',statRecs('hearings').filter(h2=>{const c=rec('cases',h2.caseId);return!c||c.deleted}));
   rec2('noattendee','user','تحديد من سيحضر الجلسات القادمة','جلسات مجدولة لم يُحدد فيها اسم الحاضر','hearings',mrecs('h_up').filter(r=>!String(r.attendee||'').trim()));
   const ex=statRecs('executions').filter(r=>isOpen('executions',r));
   rec2('stale','coins','مراجعة موقف التحصيل في الطلبات الراكدة','طلبات تنفيذ مفتوحة منذ أكثر من 180 يومًا دون أي سداد مسجل','executions',ex.filter(r=>!(Number(r.paid)>0)&&Number(r.remaining)>0&&daysUntil(dateG(r.filed))<-180));
@@ -4181,12 +4182,12 @@ function uxAlerts(){const A=[],t=todayISO(),now=Date.now();
   return{list:A.filter(a=>canSee(a.mod)),recs:R.filter(g=>canSee(g.mod))}}
 function uxAlertCounts(){const{list,recs}=uxAlerts();const live=list.filter(a=>!UX.dismissed.has(a.id));return{warn:live.filter(a=>a.sev==='warn').length,alert:live.filter(a=>a.sev==='alert').length,rec:recs.filter(r=>!UX.dismissed.has(r.id)).length}}
 function uxDismiss(id,on){on?UX.dismissed.add(id):UX.dismissed.delete(id);LS.set('uxDismissed',[...UX.dismissed]);if(S.view?.refresh)S.view.refresh();uxBadge()}
-function uxDaysPill(d){if(d==null)return null;const t=d<0?'متأخر '+spanAr(-d):d===0?'اليوم':'بعد '+spanAr(d);return h('span',{class:'ux-days '+(d<0?'bad':d<=3?'warn':'info')},icon(d<0?'hourglass':'clock'),t)}
+function uxDaysPill(d,passed){if(d==null)return null;const t=d<0?'متأخر '+spanAr(-d):d===0?(passed?'اليوم — مضى الموعد':'اليوم'):'بعد '+spanAr(d);return h('span',{class:'ux-days '+(d<0?'bad':d<=3?'warn':'info')},icon(d<0?'hourglass':'clock'),t)}
 function uxAlertRow(a,i){const dis=UX.dismissed.has(a.id);const color=META[a.mod]?.[1];
   return h('article',{class:'ux-al '+a.sev+(dis?' dis':''),style:'--i:'+Math.min(i,16)+';--mc:'+color},
     h('span',{class:'ux-al-ic'},icon(a.sev==='warn'?'siren':'bell')),
     h('button',{type:'button',class:'ux-al-main',onclick:()=>uxDrawer({title:a.title,record:{mod:a.mod,r:a.r}})},h('span',{class:'ux-al-tag'},chip(a.mod,'sm'),MODS[a.mod]?.t),h('b',null,a.title),h('small',null,a.sub)),
-    h('div',{class:'ux-al-side'},uxDaysPill(a.days),h('button',{type:'button',class:'ux-icon-btn',title:dis?'إرجاع التنبيه':'تم الاطلاع — إخفاء',onclick:()=>uxDismiss(a.id,!dis),'aria-label':dis?'إرجاع التنبيه':'تم الاطلاع'},icon(dis?'refresh':'check'))))}
+    h('div',{class:'ux-al-side'},uxDaysPill(a.days,a.kind==='h_result'),h('button',{type:'button',class:'ux-icon-btn',title:dis?'إرجاع التنبيه':'تم الاطلاع — إخفاء',onclick:()=>uxDismiss(a.id,!dis),'aria-label':dis?'إرجاع التنبيه':'تم الاطلاع'},icon(dis?'refresh':'check'))))}
 function uxRecCard(g,i){const dis=UX.dismissed.has(g.id);return h('article',{class:'ux-rec'+(dis?' dis':''),style:'--i:'+i+';--mc:'+(META[g.mod]?.[1]||'var(--accent)')},
   h('div',{class:'ux-rec-top'},h('span',{class:'ux-rec-ic'},icon(g.icon)),h('span',{class:'ux-rec-n'},uxN(g.rows.length)),h('button',{type:'button',class:'ux-icon-btn',title:dis?'إرجاع':'تم — إخفاء',onclick:()=>uxDismiss(g.id,!dis),'aria-label':dis?'إرجاع التوصية':'إخفاء التوصية'},icon(dis?'refresh':'check'))),
   h('h3',null,g.title),h('p',null,g.sub),
@@ -4320,6 +4321,7 @@ function viewHomeUX(mode){const el=h('div',{class:'ux-page ux-home'});const v={k
     uxTick()}
   refresh();return v}
 viewHome=viewHomeUX;
+{const _t=titleOf;const isT=s=>/تمكين/.test(String(s||''));const other=c=>{const pl=c.plaintiff||partyOf(c,'مدعٍ'),df=c.defendant||partyOf(c,'مدعى عليه');return isT(pl)&&df?df:pl||df||''};titleOf=function(mod,r){if(r&&mod==='cases'){const o=other(r);return o?`${o}${r.subject?' — '+r.subject:''}`:_t(mod,r)}if(r&&mod==='hearings'){const c=rec('cases',r.caseId);return`جلسة ${fmtDate(r.date,false)}${c?' — '+(other(c)||'قضية '+(c.caseNo||'')):' — غير مرتبطة بقضية'}`}return _t(mod,r)}}
 
 /* ---------- الساعة والعدّ التنازلي الحي ---------- */
 function uxTick(){const d=new Date();const tf=d.toLocaleTimeString('ar-SA-u-nu-latn',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Asia/Riyadh'});
