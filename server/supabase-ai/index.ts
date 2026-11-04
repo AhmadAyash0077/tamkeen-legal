@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   if (origin !== ALLOWED_ORIGIN) return json({ error: 'origin' }, 403);
   const auth = req.headers.get('authorization') || '';
   if (!auth.startsWith('Bearer ')) return json({ error: 'not_granted' }, 401);
-  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } });
+  const sb = createClient(Deno.env.get('SUPABASE_URL')!, req.headers.get('apikey') || Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '', { global: { headers: { Authorization: auth } } });
   const { data: role } = await sb.rpc('my_role');
   if (!role) return json({ error: 'not_granted' }, 401);
   const key = Deno.env.get('ANTHROPIC_API_KEY');
