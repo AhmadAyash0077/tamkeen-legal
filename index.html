@@ -33,11 +33,11 @@
   const _fetch=window.fetch.bind(window);
   window.fetch=async(u,...r)=>{const s=typeof u==='string'?u:(u&&u.url)||'';const m=/\/_blob\/([0-9a-f]+)/.exec(s);if(m){await ready;const b=blobs.get(m[1]);return b?new Response(b,{status:200}):new Response('',{status:404})}return _fetch(u,...r)};
   const b64=async b=>{const a=new Uint8Array(await b.arrayBuffer());let s='';for(let i=0;i<a.length;i+=32768)s+=String.fromCharCode.apply(null,a.subarray(i,i+32768));return btoa(s)};
-  const aiCfg=()=>{try{return{url:localStorage.getItem('tl_ai_url')||'',tok:localStorage.getItem('tl_ai_token')||''}}catch(e){return{url:'',tok:''}}};
+  const SBF='https://qimtlfvgpvpualtqimam.supabase.co/functions/v1/ai',SBK='sb_publishable_exNMjk-PTDWceks2AlGhfg_gM0WrsED';const sbTok=()=>{try{const k='sb-qimtlfvgpvpualtqimam-auth-token';const s=JSON.parse(localStorage.getItem(k)||sessionStorage.getItem(k)||'null');return s&&s.access_token||''}catch(e){return''}};const aiCfg=()=>{try{const url=localStorage.getItem('tl_ai_url')||'',tok=localStorage.getItem('tl_ai_token')||'';if(url&&tok)return{url,tok};if(localStorage.getItem('tl_ai_sb')==='1'){const t=sbTok();if(t)return{url:SBF,tok:t,sb:1}}return{url:'',tok:''}}catch(e){return{url:'',tok:''}}};window.__AIPING=async()=>{const t=sbTok();if(!t)return null;try{const r=await fetch(SBF,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+t,apikey:SBK},body:'{"ping":true}'});const ok=r.ok;try{localStorage.setItem('tl_ai_sb',ok?'1':'0')}catch(e){}try{if(ok&&!sampleFn)sampleFn=sample}catch(e){}return ok}catch(e){return null}};setTimeout(()=>window.__AIPING(),5000);
   const err=(code,msg)=>{const e=new Error(msg||code);e.code=code;return e};
   async function call(prompt,opts={}){const{url,tok}=aiCfg();if(!url||!tok)throw err('sampling_disabled');
     const images=[];for(const b of(opts.images||[]))images.push({type:(b.type&&b.type.startsWith('image/'))?b.type:'image/png',data:await b64(b)});
-    let r;try{r=await _fetch(url,{method:'POST',headers:{'content-type':'application/json','x-app-token':tok},body:JSON.stringify({prompt,images,tier:opts.modelTier==='complex'?'complex':'default'}),signal:opts.signal})}catch(e){if(e.name==='AbortError')throw err('cancelled');throw err('unavailable')}
+    let r;try{r=await _fetch(url,{method:'POST',headers:Object.assign({'content-type':'application/json'},aiCfg().sb?{authorization:'Bearer '+tok,apikey:SBK}:{'x-app-token':tok}),body:JSON.stringify({prompt,images,tier:opts.modelTier==='complex'?'complex':'default'}),signal:opts.signal})}catch(e){if(e.name==='AbortError')throw err('cancelled');throw err('unavailable')}
     const j=await r.json().catch(()=>({}));if(!r.ok)throw err({not_granted:'not_granted',rate_limited:'rate_limited',prompt_too_large:'prompt_too_large',origin:'not_granted'}[j.error]||'unavailable',j.detail||j.error);return{text:j.text||''}}
   const sample=call;
   sample.json=async(p,o)=>{const{text}=await call(p+'\n\nأعد JSON صالحًا فقط، دون أي نص قبله أو بعده ودون علامات ```.',o);const m=text.match(/\{[\s\S]*\}/);try{return JSON.parse(m?m[0]:text)}catch(e){throw err('invalid_json')}};
@@ -4748,7 +4748,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261104134618';
+const UX_BUILD='20261104144256';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
