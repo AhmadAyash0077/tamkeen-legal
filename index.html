@@ -2034,7 +2034,7 @@ const MODS={
     {k:'deadline',l:'مهلة غير مصنفة (سجلات قديمة)',t:'date',hint:'انقلها إلى خانة الاعتراض أو السداد بعد التحقق من نوعها من الإشعار'},{k:'deadlineSource',l:'مصدر المهلة غير المصنفة',t:'text'},
     {k:'description',l:'الوصف',t:'area',w:1},{k:'objection',l:'أسباب الاعتراض',t:'area',w:1},{k:'objRef',l:'رقم أو إثبات تقديم الاعتراض',t:'ltr'},{k:'objDate',l:'تاريخ تقديم الاعتراض',t:'date'},{k:'decision',l:'القرار النهائي',t:'area',w:1}],
     st:['غير مسدد','قيد الاعتراض','مسددة','ملغاة','نهائية'],closed:['مسددة','ملغاة','نهائية'],filters:['authority','city','_year'],cols:['authority','number','city','date','amount','reason','vnext']},
-  attest:{t:'تصديقات الغرفة',one:'تصديق',grp:'العقود والسندات',main:'submitted',fields:[{k:'docType',l:'نوع المستند',t:'select',o:['عقد توريد (جملة)','عقد تركيب','خطاب أو تفويض','شهادة','فاتورة','أخرى'],req:1},{k:'party',l:'المنشأة أو الطرف',t:'text',req:1},{k:'contractId',l:'العقد المرتبط',t:'ref',ref:'contracts',hint:'اختياري: اربط التصديق بعقد موجود في البرنامج'},{k:'requester',l:'الإدارة الطالبة',t:'text',list:['المبيعات','المشتريات','المالية','الموارد البشرية','الإدارة العليا','الشؤون القانونية']},{k:'chamber',l:'الغرفة التجارية',t:'text',list:['غرفة جدة','غرفة الرياض','غرفة الشرقية','غرفة مكة المكرمة','غرفة المدينة المنورة']},{k:'reqNo',l:'رقم الطلب في منصة الغرفة',t:'ltr'},{k:'submitted',l:'تاريخ التقديم',t:'date'},{k:'attested',l:'تاريخ التصديق',t:'date'},{k:'delivered',l:'تاريخ التسليم للجهة الطالبة',t:'date'},{k:'fees',l:'الرسوم',t:'money'},{k:'owner',l:'المسؤول',t:'text'},{k:'notes',l:'ملاحظات الغرفة أو ملاحظات أخرى',t:'area',w:1}],st:['جديد','مُقدَّم للغرفة','عليه ملاحظات','مُصدَّق','مُسلَّم','ملغى'],closed:['مُسلَّم','ملغى'],filters:['docType','requester','chamber','_year'],sums:[['fees','الرسوم']],cols:['party','docType','reqNo','submitted','attested','requester']},
+  attest:{t:'تصديقات الغرفة',one:'تصديق',grp:'العقود والسندات',main:'submitted',fields:[{k:'docType',l:'نوع المستند',t:'select',o:['خطاب','شهادة','تفويض','عقد','فاتورة','أخرى'],req:1},{k:'title',l:'المستند',t:'text',req:1,hint:'مثال: شهادة تعريف بالشركة، خطاب لجهة حكومية، تفويض مفوض'},{k:'requester',l:'الإدارة الطالبة',t:'text',list:['المبيعات','المشتريات','المالية','الموارد البشرية','الإدارة العليا','الشؤون القانونية']},{k:'chamber',l:'الغرفة التجارية',t:'text',list:['غرفة جدة','غرفة الرياض','غرفة الشرقية','غرفة مكة المكرمة','غرفة المدينة المنورة']},{k:'reqNo',l:'رقم الطلب في منصة الغرفة',t:'ltr'},{k:'submitted',l:'تاريخ التقديم',t:'date'},{k:'attested',l:'تاريخ التصديق',t:'date'},{k:'delivered',l:'تاريخ التسليم للجهة الطالبة',t:'date'},{k:'fees',l:'الرسوم',t:'money'},{k:'owner',l:'المسؤول',t:'text'},{k:'notes',l:'ملاحظات الغرفة أو ملاحظات أخرى',t:'area',w:1}],st:['جديد','مُقدَّم للغرفة','عليه ملاحظات','مُصدَّق','مُسلَّم','ملغى'],closed:['مُسلَّم','ملغى'],filters:['docType','requester','chamber','_year'],sums:[['fees','الرسوم']],cols:['title','docType','reqNo','submitted','attested','requester']},
   consults:{t:'الاستشارات',one:'استشارة',grp:'الامتثال',main:'date',fields:[
     {k:'title',l:'الموضوع',t:'text',req:1,w:1},{k:'requester',l:'الجهة الطالبة',t:'text'},{k:'date',l:'التاريخ',t:'date'},
     {k:'question',l:'السؤال أو الوقائع',t:'area',w:1},{k:'opinion',l:'الرأي القانوني',t:'area',w:1},{k:'refs',l:'المراجع',t:'area',w:1},{k:'author',l:'المعد',t:'text'}],
@@ -2075,7 +2075,7 @@ function titleOf(mod,r){if(!r)return'(غير متاح)';switch(mod){
   case'violations':return`${r.authority||'مخالفة'} ${r.number||''}`;
   case'poa':return`${r.kind||''} ${r.number||''}${r.holder?' — '+r.holder:''}`;
   case'lawyers':return r.name||'محامٍ';
-  case'attest':return`تصديق — ${r.party||r.docType||''}${r.reqNo?' — '+r.reqNo:''}`;
+  case'attest':return`${r.title||r.docType||'تصديق'}${r.reqNo?' — '+r.reqNo:''}`;
 
   case'docs':return r.name||'مستند';
   case'sources':return r.name||'مصدر';
@@ -2387,7 +2387,7 @@ function quickPanel(mod,r){const rows=[];const add=(k,v)=>rows.push(h('dt',null,
   add('عمر السجل',ageDays(r)!=null?`${ageDays(r)} يوم`:'—');add('المرفقات',String(docs));add('روابط',String((r.links||[]).length));
   return h('div',{class:'panel'},ph('ملخص سريع','info','#5e5ce6'),bar,h('dl',{class:'kv'},rows))}
 
-const CORE={attest:['docType','party','contractId','requester','reqNo','submitted','attested'],requests:['title','requester','dept','kind','priority','due','details'],cases:['plaintiff','defendant','caseNo','subject','lawyerId'],hearings:['caseId','date','time','attendee','place'],contracts:['title','counterparty','value','end'],bonds:['bondNo','kind','debtor','creditor','currency','issueDate','dueType','dueDate'],violations:['authority','number','reason','amount','objDeadline','objSource','payDeadline','paySource'],consults:['title','question'],investigations:['title','opened'],poa:['kind','number','holder','expiry','owner','renewal'],lawyers:['name','firm','phone']};
+const CORE={attest:['docType','title','requester','reqNo','submitted','attested'],requests:['title','requester','dept','kind','priority','due','details'],cases:['plaintiff','defendant','caseNo','subject','lawyerId'],hearings:['caseId','date','time','attendee','place'],contracts:['title','counterparty','value','end'],bonds:['bondNo','kind','debtor','creditor','currency','issueDate','dueType','dueDate'],violations:['authority','number','reason','amount','objDeadline','objSource','payDeadline','paySource'],consults:['title','question'],investigations:['title','opened'],poa:['kind','number','holder','expiry','owner','renewal'],lawyers:['name','firm','phone']};
 const DEFAULTS={currency:'ريال سعودي',priority:'عادية',kind:null};
 const filled=v=>v!=null&&v!==''&&!(typeof v==='object'&&!Array.isArray(v)&&!v.g&&!v.h);
 /** يعرض الحقول الأساسية فقط، والباقي في قسم قابل للفتح */
@@ -4748,7 +4748,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261104134359';
+const UX_BUILD='20261104134618';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
