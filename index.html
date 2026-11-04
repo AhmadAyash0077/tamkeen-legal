@@ -1923,7 +1923,7 @@ pages:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8
 list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
 pin:'<path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/>',
 };
-const META={assistants:['sparkles','#af52de'],home:['home','#5e5ce6'],requests:['inbox','#0a84ff'],consults:['message','#bf5af2'],cases:['gavel','#ff375f'],hearings:['calendar','#ff9f0a'],executions:['list','#ff6b35'],contracts:['contract','#30d158'],bonds:['banknote','#e6a800'],claims:['wallet','#ff9500'],violations:['alert','#ff453a'],poa:['stamp','#32ade6'],lawyers:['briefcase','#32ade6'],forms:['pages','#ff375f'],investigations:['shield','#bf5af2'],library:['book','#ff9500'],docs:['folder','#0a84ff'],reports:['chart','#af52de'],trash:['trash','#8e8e93'],prefs:['gear','#5e5ce6'],search:['search','#5e5ce6'],sources:['book','#ff9500'],articles:['book','#ff9500']};
+const META={attest:['stamp','#64d2ff'],assistants:['sparkles','#af52de'],home:['home','#5e5ce6'],requests:['inbox','#0a84ff'],consults:['message','#bf5af2'],cases:['gavel','#ff375f'],hearings:['calendar','#ff9f0a'],executions:['list','#ff6b35'],contracts:['contract','#30d158'],bonds:['banknote','#e6a800'],claims:['wallet','#ff9500'],violations:['alert','#ff453a'],poa:['stamp','#32ade6'],lawyers:['briefcase','#32ade6'],forms:['pages','#ff375f'],investigations:['shield','#bf5af2'],library:['book','#ff9500'],docs:['folder','#0a84ff'],reports:['chart','#af52de'],trash:['trash','#8e8e93'],prefs:['gear','#5e5ce6'],search:['search','#5e5ce6'],sources:['book','#ff9500'],articles:['book','#ff9500']};
 function icon(n){const sp=document.createElement('span');sp.className='ico';sp.setAttribute('aria-hidden','true');sp.innerHTML=`<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${IC[n]||IC.list}</svg>`;return sp}
 {const IOS={home:'#0a84ff',requests:'#5e5ce6',consults:'#bf5af2',cases:'#ff375f',hearings:'#ff9f0a',contracts:'#30d158',bonds:'#e6a800',violations:'#ff453a',poa:'#32ade6',lawyers:'#a2845e',investigations:'#8e8e93',library:'#ff9500',docs:'#0a84ff',reports:'#af52de',trash:'#8e8e93',prefs:'#8e8e93',search:'#0a84ff',sources:'#ff9500',articles:'#ff9500'};for(const[k,c]of Object.entries(IOS))if(META[k])META[k][1]=c}
 function chip(nameOrMod,size,color){const m=META[nameOrMod];const n=m?m[0]:nameOrMod;const c=color||(m?m[1]:'#5e5ce6');return h('span',{class:'chip'+(size?' '+size:''),style:`--c:${c}`},icon(n))}
@@ -2034,6 +2034,7 @@ const MODS={
     {k:'deadline',l:'مهلة غير مصنفة (سجلات قديمة)',t:'date',hint:'انقلها إلى خانة الاعتراض أو السداد بعد التحقق من نوعها من الإشعار'},{k:'deadlineSource',l:'مصدر المهلة غير المصنفة',t:'text'},
     {k:'description',l:'الوصف',t:'area',w:1},{k:'objection',l:'أسباب الاعتراض',t:'area',w:1},{k:'objRef',l:'رقم أو إثبات تقديم الاعتراض',t:'ltr'},{k:'objDate',l:'تاريخ تقديم الاعتراض',t:'date'},{k:'decision',l:'القرار النهائي',t:'area',w:1}],
     st:['غير مسدد','قيد الاعتراض','مسددة','ملغاة','نهائية'],closed:['مسددة','ملغاة','نهائية'],filters:['authority','city','_year'],cols:['authority','number','city','date','amount','reason','vnext']},
+  attest:{t:'تصديقات الغرفة',one:'تصديق',grp:'العقود والسندات',main:'submitted',fields:[{k:'docType',l:'نوع المستند',t:'select',o:['عقد توريد (جملة)','عقد تركيب','خطاب أو تفويض','شهادة','فاتورة','أخرى'],req:1},{k:'party',l:'المنشأة أو الطرف',t:'text',req:1},{k:'contractId',l:'العقد المرتبط',t:'ref',ref:'contracts',hint:'اختياري: اربط التصديق بعقد موجود في البرنامج'},{k:'requester',l:'الإدارة الطالبة',t:'text',list:['المبيعات','المشتريات','المالية','الموارد البشرية','الإدارة العليا','الشؤون القانونية']},{k:'chamber',l:'الغرفة التجارية',t:'text',list:['غرفة جدة','غرفة الرياض','غرفة الشرقية','غرفة مكة المكرمة','غرفة المدينة المنورة']},{k:'reqNo',l:'رقم الطلب في منصة الغرفة',t:'ltr'},{k:'submitted',l:'تاريخ التقديم',t:'date'},{k:'attested',l:'تاريخ التصديق',t:'date'},{k:'delivered',l:'تاريخ التسليم للجهة الطالبة',t:'date'},{k:'fees',l:'الرسوم',t:'money'},{k:'owner',l:'المسؤول',t:'text'},{k:'notes',l:'ملاحظات الغرفة أو ملاحظات أخرى',t:'area',w:1}],st:['جديد','مُقدَّم للغرفة','عليه ملاحظات','مُصدَّق','مُسلَّم','ملغى'],closed:['مُسلَّم','ملغى'],filters:['docType','requester','chamber','_year'],sums:[['fees','الرسوم']],cols:['party','docType','reqNo','submitted','attested','requester']},
   consults:{t:'الاستشارات',one:'استشارة',grp:'الامتثال',main:'date',fields:[
     {k:'title',l:'الموضوع',t:'text',req:1,w:1},{k:'requester',l:'الجهة الطالبة',t:'text'},{k:'date',l:'التاريخ',t:'date'},
     {k:'question',l:'السؤال أو الوقائع',t:'area',w:1},{k:'opinion',l:'الرأي القانوني',t:'area',w:1},{k:'refs',l:'المراجع',t:'area',w:1},{k:'author',l:'المعد',t:'text'}],
@@ -2056,7 +2057,7 @@ const NAV=[
   {grp:null,items:[['home','الرئيسية']]},
   {grp:'العمل اليومي',items:[['assistants','المساعدون الذكيون'],['requests'],['consults']]},
   {grp:'التقاضي',items:[['cases'],['hearings'],['executions']]},
-  {grp:'العقود والسندات',items:[['contracts'],['bonds']]},
+  {grp:'العقود والسندات',items:[['contracts'],['attest'],['bonds']]},
   {grp:'الامتثال',items:[['violations'],['poa'],['lawyers'],['investigations']]},
   {grp:'المعرفة',items:[['library','المكتبة القانونية'],['docs','المستندات']]},
   {grp:'الإدارة',items:[['reports','التقارير'],['trash','المحذوفات'],['prefs','الإعدادات']]},
@@ -2074,6 +2075,7 @@ function titleOf(mod,r){if(!r)return'(غير متاح)';switch(mod){
   case'violations':return`${r.authority||'مخالفة'} ${r.number||''}`;
   case'poa':return`${r.kind||''} ${r.number||''}${r.holder?' — '+r.holder:''}`;
   case'lawyers':return r.name||'محامٍ';
+  case'attest':return`تصديق — ${r.party||r.docType||''}${r.reqNo?' — '+r.reqNo:''}`;
 
   case'docs':return r.name||'مستند';
   case'sources':return r.name||'مصدر';
@@ -2385,7 +2387,7 @@ function quickPanel(mod,r){const rows=[];const add=(k,v)=>rows.push(h('dt',null,
   add('عمر السجل',ageDays(r)!=null?`${ageDays(r)} يوم`:'—');add('المرفقات',String(docs));add('روابط',String((r.links||[]).length));
   return h('div',{class:'panel'},ph('ملخص سريع','info','#5e5ce6'),bar,h('dl',{class:'kv'},rows))}
 
-const CORE={requests:['title','requester','dept','kind','priority','due','details'],cases:['plaintiff','defendant','caseNo','subject','lawyerId'],hearings:['caseId','date','time','attendee','place'],contracts:['title','counterparty','value','end'],bonds:['bondNo','kind','debtor','creditor','currency','issueDate','dueType','dueDate'],violations:['authority','number','reason','amount','objDeadline','objSource','payDeadline','paySource'],consults:['title','question'],investigations:['title','opened'],poa:['kind','number','holder','expiry','owner','renewal'],lawyers:['name','firm','phone']};
+const CORE={attest:['docType','party','contractId','requester','reqNo','submitted','attested'],requests:['title','requester','dept','kind','priority','due','details'],cases:['plaintiff','defendant','caseNo','subject','lawyerId'],hearings:['caseId','date','time','attendee','place'],contracts:['title','counterparty','value','end'],bonds:['bondNo','kind','debtor','creditor','currency','issueDate','dueType','dueDate'],violations:['authority','number','reason','amount','objDeadline','objSource','payDeadline','paySource'],consults:['title','question'],investigations:['title','opened'],poa:['kind','number','holder','expiry','owner','renewal'],lawyers:['name','firm','phone']};
 const DEFAULTS={currency:'ريال سعودي',priority:'عادية',kind:null};
 const filled=v=>v!=null&&v!==''&&!(typeof v==='object'&&!Array.isArray(v)&&!v.g&&!v.h);
 /** يعرض الحقول الأساسية فقط، والباقي في قسم قابل للفتح */
@@ -4177,6 +4179,7 @@ function uxOpenMod(mod,rows,title,extra={}){uxDrawer({title:title||MODS[mod].t,i
 function uxOpenMetric(k,extra={}){const M=METRICS[k];uxDrawer({title:M.l,sub:M.p,icon:META[M.mod]?.[0],color:META[M.mod]?.[1],items:uxItems(M.mod,mrecs(k)),link:mlink(k),...extra})}
 
 /* ---------- محرك التنبيهات والتحذيرات والتوصيات ---------- */
+const UX_ATT_DAYS=5;
 function uxAlerts(){const A=[],t=todayISO(),now=Date.now();
   const add=(sev,kind,mod,r,title,sub,due)=>A.push({id:kind+':'+mod+':'+r.id,sev,kind,mod,r,title,sub,due,days:due?daysUntil(due):null});
   for(const r of mrecs('req_late'))add('warn','req_late','requests',r,'طلب متأخر عن موعد الإنجاز',titleOf('requests',r),reqSlaDue(r));
@@ -4193,6 +4196,7 @@ function uxAlerts(){const A=[],t=todayISO(),now=Date.now();
   for(const r of mrecs('b_follow'))add('alert','b_follow','bonds',r,'سند يقترب من نهاية مدة المتابعة',titleOf('bonds',r),bondExpiry(r));
   for(const r of statRecs('requests').filter(r=>isOpen('requests',r)&&!reqLate(r))){const d=daysUntil(reqSlaDue(r));if(d!=null&&d<=2)add('alert','req_soon','requests',r,'طلب يستحق '+(d?'خلال '+spanAr(d):'اليوم'),titleOf('requests',r),reqSlaDue(r))}
   for(const r of mrecs('req_appr'))add('alert','req_appr','requests',r,'طلب بانتظار الاعتماد',titleOf('requests',r),null);
+  for(const r of statRecs('attest')){if(r.status==='عليه ملاحظات')add('warn','att_note','attest',r,'تصديق عليه ملاحظات من الغرفة',titleOf('attest',r),dateG(r.submitted));else if(r.status==='مُقدَّم للغرفة'){const d=daysUntil(dateG(r.submitted));if(d!=null&&d<=-UX_ATT_DAYS)add('alert','att_wait','attest',r,'تصديق مقدَّم منذ '+spanAr(-d)+' بدون تحديث',titleOf('attest',r),dateG(r.submitted))}else if(r.status==='مُصدَّق'){const d=daysUntil(dateG(r.attested));if(d!=null&&d<=-3)add('alert','att_deliver','attest',r,'تصديق جاهز ولم يُسلَّم للجهة الطالبة',titleOf('attest',r),dateG(r.attested))}}
   // التوصيات: مجموعات مبنية على بياناتك فقط
   const R=[];const rec2=(kind,icn,title,why,mod,rows,color)=>{if(rows.length)R.push({id:'rec:'+kind,sev:'rec',kind,icon:icn,title,sub:why,mod,rows,color})};
   const oc=statRecs('cases').filter(r=>isOpen('cases',r));
@@ -4278,7 +4282,7 @@ function uxKpi(o,i){return h('button',{type:'button',class:'ux-kpi'+(o.alert?' a
 function uxPanel(title,ic,color,body,extra,mod){if(mod&&!canSee(mod))return null;return h('section',{class:'ux-panel',style:'--pc:'+color},h('div',{class:'ux-panel-h'},h('h2',null,h('span',{class:'ux-ph-ic'},icon(ic)),title),extra||null),body)}
 function uxModCard(m,i){const all=statRecs(m),M=MODS[m],open=all.filter(r=>isOpen(m,r)),color=META[m][1];
   const by=M.st.map((s,j)=>({s,n:all.filter(r=>r.status===s).length})).filter(x=>x.n);const tot=all.length||1;
-  let key='';if(m==='executions')key='متبقٍ '+uxMoney(uxSum(open,'remaining'))+' ر.س';else if(m==='cases')key='مطالبات '+uxMoney(uxSum(open,'claimAmount'))+' ر.س';else if(m==='violations')key='غير مسدد '+uxMoney(uxSum(mrecs('v_unpaid'),'amount'))+' ر.س';else if(m==='bonds')key='قيمة '+uxMoney(uxSum(all.filter(r=>r.status!=='ملغى'),'amount'))+' ر.س';else if(m==='contracts')key=uxN(mcount('ct_attn'))+' تحتاج متابعة';else if(m==='hearings'){const n=mrecs('h_up').sort((a,b)=>hearingTs(a)-hearingTs(b))[0];key=n?'القادمة '+fmtDate(n.date,false):'لا جلسات قادمة'}else if(m==='poa')key=uxN(mcount('poa_soon'))+' تنتهي قريبًا';else if(m==='requests')key=uxN(mcount('req_late'))+' متأخرة';
+  let key='';if(m==='executions')key='متبقٍ '+uxMoney(uxSum(open,'remaining'))+' ر.س';else if(m==='cases')key='مطالبات '+uxMoney(uxSum(open,'claimAmount'))+' ر.س';else if(m==='violations')key='غير مسدد '+uxMoney(uxSum(mrecs('v_unpaid'),'amount'))+' ر.س';else if(m==='bonds')key='قيمة '+uxMoney(uxSum(all.filter(r=>r.status!=='ملغى'),'amount'))+' ر.س';else if(m==='contracts')key=uxN(mcount('ct_attn'))+' تحتاج متابعة';else if(m==='hearings'){const n=mrecs('h_up').sort((a,b)=>hearingTs(a)-hearingTs(b))[0];key=n?'القادمة '+fmtDate(n.date,false):'لا جلسات قادمة'}else if(m==='poa')key=uxN(mcount('poa_soon'))+' تنتهي قريبًا';else if(m==='attest')key=uxN(all.filter(r=>['مُقدَّم للغرفة','عليه ملاحظات'].includes(r.status)).length)+' لدى الغرفة';else if(m==='requests')key=uxN(mcount('req_late'))+' متأخرة';
   return h('button',{type:'button',class:'ux-mod',style:`--mc:${color};--i:${i}`,onclick:()=>uxDrawer({title:M.t,icon:META[m][0],color,stats:[['الإجمالي',uxN(all.length)],['مفتوح',uxN(open.length),color],['مغلق',uxN(all.length-open.length)]],items:uxItems(m,[...open,...all.filter(r=>!isOpen(m,r))]),link:'#'+m})},
     h('div',{class:'ux-mod-h'},chip(m),h('span',null,M.t),h('b',null,uxCount('mod_'+m,all.length))),
     h('div',{class:'ux-mod-open'},h('strong',null,uxN(open.length)),h('span',null,'مفتوح'),key?h('em',null,key):null),
@@ -4345,7 +4349,7 @@ function viewHomeUX(mode){const el=h('div',{class:'ux-page ux-home'});const v={k
         uxPanel('المخالفات غير المسددة حسب الجهة','alert',META.violations[1],vbars,h('a',{href:mlink('v_unpaid'),class:'ux-plink'},'السجل ←'),'violations'),
         uxPanel('مسار الطلبات القانونية','inbox',META.requests[1],funnel,h('a',{href:'#requests',class:'ux-plink'},'السجل ←'),'requests')),
       h('section',{class:'ux-mods-sec'},h('div',{class:'ux-sec-h'},h('h2',null,icon('grid'),'ملخص كل ملف'),h('span',{class:'small muted'},'اضغط أي ملف لعرض سجلاته وتفاصيله')),
-        h('div',{class:'ux-mods'},['cases','hearings','executions','contracts','bonds','violations','requests','consults','poa','lawyers','investigations'].filter(m=>canSee(m)).map(uxModCard))),
+        h('div',{class:'ux-mods'},['cases','hearings','executions','contracts','attest','bonds','violations','requests','consults','poa','lawyers','investigations'].filter(m=>MODS[m]&&canSee(m)).map(uxModCard))),
       h('details',{class:'ux-panel ux-sum'},h('summary',null,icon('scroll'),'الخلاصة التنفيذية المكتوبة'),h('p',null,execSummary())),
       h('footer',{class:'ux-foot'},h('span',{class:'ux-logo-mark',role:'img','aria-label':'تمكين'}),h('span',null,'إدارة الشؤون القانونية — شركة تمكين الدولية للأجهزة المنزلية'),h('span',{class:'muted'},'آخر تحديث ',h('span',{'data-ux-clock':'t'},'')),h('span',{class:'ux-credit'},'إعداد: ',h('b',{dir:'ltr'},'Ahmed Ayash'))));
     uxTick()}
@@ -4482,7 +4486,7 @@ function uxScreensView(){const el=h('div',{class:'ux-page ux-screens'});const v=
 
 /* ========== 2) استيراد Excel ========== */
 const uxNorm=s=>String(s??'').replace(/[ً-ْـ]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
-const UX_KEYS={cases:['caseNo'],executions:['reqNo'],violations:['number'],contracts:['trade_name','fileKind'],bonds:['bondNo'],poa:['number'],lawyers:['name'],requests:['title'],consults:['title'],investigations:['ref','title'],hearings:['caseId','date','time']};
+const UX_KEYS={attest:['reqNo'],cases:['caseNo'],executions:['reqNo'],violations:['number'],contracts:['trade_name','fileKind'],bonds:['bondNo'],poa:['number'],lawyers:['name'],requests:['title'],consults:['title'],investigations:['ref','title'],hearings:['caseId','date','time']};
 function uxImportFields(m){const M=MODS[m];const f=M.fields.map(x=>({...x}));f.push({k:'status',l:'الحالة',t:'select',o:M.st});if(m==='bonds'&&!f.some(x=>x.k==='amount'))f.push({k:'amount',l:'المبلغ',t:'money'});return f}
 function uxXDate(v){if(v==null||v==='')return null;if(v instanceof Date&&!isNaN(v))return`${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;if(typeof v==='number'&&v>20000&&v<80000){return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10)}
   let s=normDigits(String(v)).trim().replace(/[هـم]+$/,'').trim();let m=/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec(s);let y,mo,d;if(m){y=+m[1];mo=+m[2];d=+m[3]}else if((m=/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/.exec(s))){d=+m[1];mo=+m[2];y=+m[3]}else return undefined;
@@ -4744,7 +4748,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261104122744';
+const UX_BUILD='20261104134359';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
