@@ -4732,12 +4732,14 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261104105536';
+const UX_BUILD='20261104110010';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
   if(document.getElementById('uxUpd'))return;document.body.append(h('div',{id:'uxUpd',class:'ux-upd',role:'status'},icon('refresh'),h('span',null,'تحديث جديد للبرنامج جاهز'),h('button',{class:'btn sm primary',onclick:()=>{if(S.dirty&&!confirm('لديك تعديلات غير محفوظة. التحديث الآن؟'))return;location.reload()}},'تحديث الآن')))}catch(e){}}
 setInterval(uxCheckUpdate,90000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)uxCheckUpdate()});setTimeout(uxCheckUpdate,15000);
+/* إزالة لوحة «دورة حياة العقد» */
+stepper=function(){return null};
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
