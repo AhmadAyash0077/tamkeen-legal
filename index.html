@@ -4689,10 +4689,23 @@ function uxInstPanel(r,live){const cur=()=>(live&&live())||rec('contracts',r.id)
     h('div',{class:'small muted'},'يتعبأ ملف «عقد إتفاقية تركيبات تكييف» ببيانات الطرف الثاني والمنطقة ومدة العقد، بنفس تنسيق القالب المعتمد، وبقية البنود والأسعار كما هي في القالب.'))}
 {const _fdp=formDocPanel;formDocPanel=function(r,live){const c=(live&&live())||rec('contracts',r.id)||r;return uxCtKind(c)==='تركيب'?uxInstPanel(r,live):_fdp(r,live)}}
 {const _ocv=openContractView;openContractView=function(r){return uxCtKind(r)==='تركيب'?uxOpenInstView(r):_ocv(r)}}
-/* إظهار أقسام النموذج حسب نوع الملف */
+/* نموذج ملفات التركيب: فقط البيانات التي يحتاجها العقد */
+const UX_INST_FIELDS=['fileKind','ref_no','date','trade_name','cr_no','national_address','manager_mobile','manager_name','manager_nat','manager_id','inst_region','start','end'];
+const UX_INST_LABELS={trade_name:'الاسم التجاري للطرف الثاني',cr_no:'رقم السجل التجاري',national_address:'موقع الطرف الثاني (العنوان)',manager_mobile:'هاتف الطرف الثاني',manager_name:'اسم ممثل الطرف الثاني',manager_nat:'جنسية الممثل',manager_id:'السجل المدني / الهوية للممثل',inst_region:'منطقة التركيب',start:'تاريخ بداية العقد',end:'تاريخ نهاية العقد',ref_no:'رقم العقد',date:'تاريخ الاتفاق'};
+const UX_INST_SECNAMES={'بيانات العميل':'بيانات الطرف الثاني','الشخص المسؤول':'ممثل الطرف الثاني','بيانات التركيب':'منطقة التركيب ومدة العقد'};
 {const _sf=splitForm;splitForm=function(mod,data,onCh,ro,showFilled){const el=_sf(mod,data,onCh,ro,showFilled);if(mod!=='contracts')return el;const secs=[...new Set(MODS.contracts.fields.map(f=>f.sec))];[...el.children].forEach((c,i)=>{c.dataset.sec=secs[i]||''});
-  const apply=()=>{const inst=data.fileKind==='تركيب';for(const c of el.children){const sc=c.dataset.sec;if(c.dataset.disp==null)c.dataset.disp=c.style.display||'';const hide=inst?UX_INST_SECS.includes(sc):sc==='بيانات التركيب';c.style.display=hide?'none':c.dataset.disp}};apply();
-  setTimeout(()=>{const s=el.querySelector('#f_fileKind');if(s)s.addEventListener('change',()=>setTimeout(apply,0))});return el}}
+  const fld=k=>el.querySelector(`label[for="f_${k}"]`)?.closest('.f');const instSec=[...el.children].find(c=>c.dataset.sec==='بيانات التركيب');const instForm=instSec?.querySelector('.form');const UXMV=[];
+  const apply=()=>{const inst=data.fileKind==='تركيب';
+    for(const f of MODS.contracts.fields){const w=fld(f.k);if(!w)continue;if(w.dataset.disp==null)w.dataset.disp=w.style.display||'';w.style.display=inst&&!UX_INST_FIELDS.includes(f.k)?'none':w.dataset.disp;const lab=w.querySelector('label');if(lab){if(lab.dataset.orig==null)lab.dataset.orig=lab.firstChild?.textContent||'';if(lab.firstChild&&lab.firstChild.nodeType===3)lab.firstChild.textContent=inst&&UX_INST_LABELS[f.k]?UX_INST_LABELS[f.k]:lab.dataset.orig}}
+    {const secF=n=>[...el.children].find(c=>c.dataset.sec===n)?.querySelector('.form');const plan=[['manager_mobile',secF('بيانات العميل')],['manager_nat',secF('الشخص المسؤول')],['manager_id',secF('الشخص المسؤول')],['start',instForm],['end',instForm]];
+      if(inst){for(const[k,dest]of plan){const w=fld(k);if(!w||!dest||w.parentNode===dest)continue;UXMV.push({w,p:w.parentNode,n:w.nextSibling});dest.append(w)}}
+      else{while(UXMV.length){const m=UXMV.pop();if(m.n&&m.n.parentNode===m.p)m.p.insertBefore(m.w,m.n);else m.p.append(m.w)}}}
+    for(const c of el.children){const sc=c.dataset.sec;if(c.dataset.disp==null)c.dataset.disp=c.style.display||'';const hide=inst?(UX_INST_SECS.includes(sc)||sc==='تفاصيل العقد الإضافية'):sc==='بيانات التركيب';c.style.display=hide?'none':c.dataset.disp;
+      const hd=c.querySelector(':scope > .sec-row .sec-h, :scope .sec-row .sec-h');if(hd){if(hd.dataset.orig==null)hd.dataset.orig=hd.textContent;hd.textContent=inst&&UX_INST_SECNAMES[sc]?UX_INST_SECNAMES[sc]:hd.dataset.orig}
+      for(const cnt of c.querySelectorAll('.sec-row .row'))cnt.style.visibility=inst?'hidden':''}};
+  apply();setTimeout(()=>{const s=el.querySelector('#f_fileKind');if(s)s.addEventListener('change',()=>setTimeout(apply,0))});return el}}
+/* إخفاء لوحات سير عمل الجملة في ملفات التركيب */
+{const wrap=f=>function(r,...a){const c=rec('contracts',r?.id)||r;if(c&&uxCtKind(c)==='تركيب')return null;return f(r,...a)};contractDualState=wrap(contractDualState);bondStrip=wrap(bondStrip);importTop=wrap(importTop)}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
