@@ -4703,7 +4703,13 @@ const UX_INST_SECNAMES={'بيانات العميل':'بيانات الطرف ا�
     for(const c of el.children){const sc=c.dataset.sec;if(c.dataset.disp==null)c.dataset.disp=c.style.display||'';const hide=inst?(UX_INST_SECS.includes(sc)||sc==='تفاصيل العقد الإضافية'):sc==='بيانات التركيب';c.style.display=hide?'none':c.dataset.disp;
       const hd=c.querySelector(':scope > .sec-row .sec-h, :scope .sec-row .sec-h');if(hd){if(hd.dataset.orig==null)hd.dataset.orig=hd.textContent;hd.textContent=inst&&UX_INST_SECNAMES[sc]?UX_INST_SECNAMES[sc]:hd.dataset.orig}
       for(const cnt of c.querySelectorAll('.sec-row .row'))cnt.style.visibility=inst?'hidden':''}};
-  apply();setTimeout(()=>{const s=el.querySelector('#f_fileKind');if(s)s.addEventListener('change',()=>setTimeout(apply,0))});return el}}
+  /* مدة عقد التركيب: سنة تلقائيًا */
+  const auto={start:!dateG(data.start),end:!dateG(data.end),inst_final:!dateG(data.inst_final)};let setting=false;
+  const setDate=(k,iso)=>{const w=fld(k);if(!w||ro)return;const cal=w.querySelector('select');if(cal&&cal.value==='h'){cal.value='g';cal.dispatchEvent(new Event('change'))}const inp=w.querySelector('input[type=date]');if(!inp||inp.value===iso)return;setting=true;inp.value=iso;inp.dispatchEvent(new Event('input',{bubbles:true}));setting=false};
+  const plusYear=iso=>{const x=new Date(iso+'T00:00:00Z');x.setUTCFullYear(x.getUTCFullYear()+1);x.setUTCDate(x.getUTCDate()-1);return x.toISOString().slice(0,10)};
+  const autoDates=()=>{if(data.fileKind!=='تركيب'||ro)return;if(auto.start)setDate('start',dateG(data.date)||todayISO());const st=dateG(data.start)||dateG(data.date)||todayISO();const e=plusYear(st);if(auto.end)setDate('end',e);if(auto.inst_final)setDate('inst_final',dateG(data.end)||e)};
+  el.addEventListener('input',ev=>{if(setting)return;const id=ev.target.id||'';for(const k of['start','end','inst_final'])if(id==='f_'+k)auto[k]=!ev.target.value;if(['f_date','f_start','f_end'].includes(id))setTimeout(autoDates,0)});
+  apply();setTimeout(()=>{const s=el.querySelector('#f_fileKind');if(s)s.addEventListener('change',()=>setTimeout(()=>{apply();autoDates()},0));autoDates()});return el}}
 /* إخفاء لوحات سير عمل الجملة في ملفات التركيب */
 {const wrap=f=>function(r,...a){const c=rec('contracts',r?.id)||r;if(c&&uxCtKind(c)==='تركيب')return null;return f(r,...a)};contractDualState=wrap(contractDualState);bondStrip=wrap(bondStrip);importTop=wrap(importTop)}
 
