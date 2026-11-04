@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="data:,">
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="القانونية"><meta name="application-name" content="القانونية">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>/* تشغيل محلي: قاعدة بيانات وملفات في متصفح هذا الجهاز (IndexedDB) */
 (function(){
@@ -4733,7 +4733,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261104110755';
+const UX_BUILD='20261104114832';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
