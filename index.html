@@ -4900,7 +4900,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261105113022';
+const UX_BUILD='20261105140019';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5629,6 +5629,55 @@ function uxClean(f){if(!f)return f;const drop=[];
   return o}}
 /* أي معلومة مقروءة من صفحتين بقيمتين مختلفة: ما تنعبّى تلقائيًا، تختارها أنت */
 {const _cdd2=cdContractDiffs;cdContractDiffs=function(cd,d){const rows=_cdd2(cd,d);const CRIT=/^(cr_no|id_no|e[12]_id|e[12]_mobile|manager_mobile|bond_amount|bond_no|national_address|vat_no|cr_confirm|contract_date|ref_no)$/;return rows.filter(r=>{const it=cd[r.ck];if(r.ck==='ref_no')return false;return!(CRIT.test(r.ck)&&it&&it.alt&&it.alt.length&&r.kind==='empty')})}}
+
+/* ========== 17) تقارير تفاعلية: طي وفتح الأقسام، إظهار وإخفاء الأعمدة، ترتيب، بحث، فهرس ========== */
+function uxRepEnhance(w){try{const d=w.document;if(!d||d.getElementById('rpx'))return;const key='uxRep:'+(d.title||'').split('—')[0].trim();let saved={};try{saved=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){}
+  const save=()=>{try{localStorage.setItem(key,JSON.stringify(saved))}catch(e){}};
+  const st=d.createElement('style');st.id='rpx';st.textContent=`
+.rp-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;padding:8px 12px;background:#0b1f33;position:sticky;top:var(--rpTop,58px);z-index:4;border-top:1px solid #ffffff1a}
+.rp-bar button,.rp-bar input{font:inherit;font-size:12.5px;border:1px solid #ffffff33;background:#ffffff12;color:#fff;border-radius:8px;padding:6px 11px;cursor:pointer}
+.rp-bar button:hover{background:#ffffff26}.rp-bar input{min-width:200px;cursor:text}.rp-bar input::placeholder{color:#ffffffa0}
+.rp-chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;width:100%}.rp-chips button{font-size:11.5px;padding:3px 9px;border-radius:20px}.rp-chips button.off{opacity:.45;text-decoration:line-through}
+.rp-h{cursor:pointer;display:flex!important;align-items:center;gap:8px;user-select:none}.rp-h::before{content:'▾';display:inline-block;transition:transform .15s;color:#b08a3e;font-size:13px}
+.rp-off>.rp-h::before{transform:rotate(90deg)}.rp-off>.rp-body{display:none}.rp-off{opacity:.75}
+.rp-h .rp-cols{margin-inline-start:auto;font:inherit;font-size:11px;font-weight:500;border:1px solid #d5dbe2;background:#f5f6f8;color:#0f2a44;border-radius:6px;padding:2px 8px;cursor:pointer}
+.rp-pop{position:absolute;z-index:20;background:#fff;border:1px solid #d5dbe2;border-radius:10px;box-shadow:0 12px 30px -10px #0005;padding:8px 10px;font-size:12px;min-width:180px}
+.rp-pop label{display:flex;gap:6px;align-items:center;padding:3px 0;cursor:pointer}.rp-pop .rp-pa{display:flex;gap:6px;margin-top:6px}.rp-pop .rp-pa button{font:inherit;font-size:11px;border:1px solid #d5dbe2;background:#f5f6f8;border-radius:6px;padding:2px 8px;cursor:pointer}
+th.rp-s{cursor:pointer;white-space:nowrap}th.rp-s::after{content:' ⇅';opacity:.45;font-size:10px}th.rp-s[data-dir=asc]::after{content:' ▲';opacity:.9}th.rp-s[data-dir=desc]::after{content:' ▼';opacity:.9}
+.rp-hide{display:none!important}tbody tr.rp-nomatch{display:none}tbody tr:hover td{background:#fff8e8!important}
+thead th{position:sticky;top:0}
+@media print{.rp-bar,.rp-cols,.rp-pop{display:none!important}.rp-off{display:none!important}.rp-h::before{display:none}}`;d.head.appendChild(st);
+  const top=d.querySelector('.bar-top,.actions');if(top)d.documentElement.style.setProperty('--rpTop',top.offsetHeight+'px');
+  // الأقسام
+  const blocks=[];const mkHead=(el,title)=>{let h=[...el.children].find(c=>/^H[23]$/.test(c.tagName));if(!h){h=d.createElement('h2');h.textContent=title;el.prepend(h)}const body=d.createElement('div');body.className='rp-body';while(h.nextSibling)body.appendChild(h.nextSibling);el.appendChild(body);h.classList.add('rp-h');h.title='اضغط للطي أو الفتح — المطوي ما يطلع في الطباعة';return h};
+  const add=(el,title)=>{if(!el||el.dataset.rp)return;el.dataset.rp='1';const h=mkHead(el,title);const name=(h.firstChild&&h.firstChild.textContent||h.textContent).trim().slice(0,60);el.dataset.rpName=name;blocks.push(el);if(saved[name])el.classList.add('rp-off');h.addEventListener('click',e=>{if(e.target.closest('.rp-cols'))return;el.classList.toggle('rp-off');saved[name]=el.classList.contains('rp-off');save();chips()})};
+  const kp=d.querySelector('.kpis,.cards');if(kp){const wr=d.createElement('section');wr.className='blk';kp.before(wr);wr.appendChild(kp);add(wr,'المؤشرات الرئيسية')}
+  const sm=d.querySelector('.summary');if(sm)add(sm,'الخلاصة');
+  d.querySelectorAll('.charts').forEach(c=>{const wr=d.createElement('section');wr.className='blk';c.before(wr);wr.appendChild(c);add(wr,'الرسوم البيانية')});
+  d.querySelectorAll('section.blk,section.box,section.details').forEach(s=>add(s,'قسم'));
+  // الجداول: ترتيب وأعمدة
+  const numOf=s=>{const t=String(s).replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/[,%\s]/g,'');const m=t.match(/^-?\d+(\.\d+)?/);return m?parseFloat(m[0]):null};
+  d.querySelectorAll('table').forEach((tb,ti)=>{const ths=[...tb.querySelectorAll('thead th')];const body=tb.tBodies[0];if(!ths.length||!body)return;
+    ths.forEach((th,ci)=>{th.classList.add('rp-s');th.addEventListener('click',()=>{const dir=th.dataset.dir==='asc'?'desc':'asc';ths.forEach(x=>delete x.dataset.dir);th.dataset.dir=dir;const rows=[...body.rows].filter(r=>!r.classList.contains('more'));
+      rows.sort((a,b)=>{const x=(a.cells[ci]||{}).textContent||'',y=(b.cells[ci]||{}).textContent||'';const nx=numOf(x),ny=numOf(y);const r=nx!=null&&ny!=null?nx-ny:x.localeCompare(y,'ar');return dir==='asc'?r:-r});rows.forEach(r=>body.appendChild(r))})});
+    const sec=tb.closest('[data-rp]');const h=sec&&sec.querySelector(':scope>.rp-h');if(!h||h.querySelector('.rp-cols'))return;
+    const hidden=new Set((saved['cols:'+(sec.dataset.rpName)]||[]));const apply=()=>{ths.forEach((th,ci)=>{const off=hidden.has(th.textContent.trim());[th,...[...tb.querySelectorAll('tbody tr, tfoot tr')].map(r=>r.cells[ci]).filter(Boolean)].forEach(c=>c.classList.toggle('rp-hide',off))})};apply();
+    const b=d.createElement('button');b.className='rp-cols';b.type='button';b.textContent='الأعمدة ▾';h.appendChild(b);
+    b.addEventListener('click',e=>{e.stopPropagation();d.querySelectorAll('.rp-pop').forEach(p=>p.remove());const pop=d.createElement('div');pop.className='rp-pop';
+      ths.forEach(th=>{const n=th.textContent.trim();if(!n)return;const l=d.createElement('label');const cb=d.createElement('input');cb.type='checkbox';cb.checked=!hidden.has(n);cb.addEventListener('change',()=>{cb.checked?hidden.delete(n):hidden.add(n);saved['cols:'+sec.dataset.rpName]=[...hidden];save();apply()});l.append(cb,d.createTextNode(' '+n));pop.appendChild(l)});
+      const pa=d.createElement('div');pa.className='rp-pa';const all=d.createElement('button');all.textContent='إظهار الكل';all.addEventListener('click',()=>{hidden.clear();saved['cols:'+sec.dataset.rpName]=[];save();apply();pop.querySelectorAll('input').forEach(i=>i.checked=true)});pa.appendChild(all);pop.appendChild(pa);
+      const r=b.getBoundingClientRect();pop.style.top=(r.bottom+w.scrollY+4)+'px';pop.style.left=(r.left+w.scrollX)+'px';d.body.appendChild(pop);setTimeout(()=>d.addEventListener('click',function off(ev){if(!pop.contains(ev.target)){pop.remove();d.removeEventListener('click',off)}}),0)})});
+  // شريط التحكم
+  const bar=d.createElement('div');bar.className='rp-bar';const btn=(t,fn)=>{const b=d.createElement('button');b.type='button';b.textContent=t;b.addEventListener('click',fn);bar.appendChild(b);return b};
+  btn('فتح كل الأقسام',()=>{blocks.forEach(b=>{b.classList.remove('rp-off');saved[b.dataset.rpName]=false});save();chips()});
+  btn('طي كل الأقسام',()=>{blocks.forEach(b=>{b.classList.add('rp-off');saved[b.dataset.rpName]=true});save();chips()});
+  btn('الملخص فقط',()=>{blocks.forEach((b,i)=>{const keep=/المؤشرات|الخلاصة|الرسوم/.test(b.dataset.rpName);b.classList.toggle('rp-off',!keep);saved[b.dataset.rpName]=!keep});save();chips()});
+  const q=d.createElement('input');q.type='search';q.placeholder='بحث داخل الجداول…';q.addEventListener('input',()=>{const v=q.value.trim();d.querySelectorAll('tbody tr').forEach(r=>r.classList.toggle('rp-nomatch',!!v&&!r.textContent.includes(v)))});bar.appendChild(q);
+  const ch=d.createElement('div');ch.className='rp-chips';bar.appendChild(ch);
+  function chips(){ch.replaceChildren(...blocks.map(b=>{const c=d.createElement('button');c.type='button';c.textContent=b.dataset.rpName;c.className=b.classList.contains('rp-off')?'off':'';c.title='اضغط للانتقال — ضغطتين للطي/الفتح';c.addEventListener('click',()=>{b.classList.remove('rp-off');saved[b.dataset.rpName]=false;save();chips();b.scrollIntoView({behavior:'smooth',block:'start'})});c.addEventListener('dblclick',()=>{b.classList.toggle('rp-off');saved[b.dataset.rpName]=b.classList.contains('rp-off');save();chips()});return c}))}
+  chips();(top||d.body.firstChild)&&(top?top.after(bar):d.body.prepend(bar));
+}catch(e){console.warn('rp',e)}}
+{const _wo=window.open;window.open=function(...a){const w=_wo.apply(this,a);try{if(w&&(!a[0]||a[0]==='about:blank'||a[0]==='')){const tryEnh=n=>{try{const d=w.document;if(d&&d.readyState==='complete'&&d.querySelector('.page'))uxRepEnhance(w);else if(n<80)setTimeout(()=>tryEnh(n+1),150)}catch(e){}};setTimeout(()=>tryEnh(0),200)}}catch(e){}return w}}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
