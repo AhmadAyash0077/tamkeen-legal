@@ -1065,6 +1065,20 @@ a.li:active{background:var(--fill)!important}
 .f label{font-weight:500;padding-inline:4px}
 .f input,.f select,.f textarea,.toolbar input,.toolbar select,.page-head select{min-height:44px;border:1px solid transparent!important;background-color:var(--fill)!important;border-radius:10px!important;padding-block:9px;font-size:1rem;color:var(--ink);transition:box-shadow .15s,background-color .15s}
 .f input,.f textarea,.toolbar input{padding-inline:14px!important}
+/* ——— محاذاة الخانات: لا تداخل بين الحقول في كل البرنامج ——— */
+.form{grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr))!important;align-items:start}
+.f{min-width:0}
+.f>label{min-height:1.4em}
+.dual{display:flex;gap:6px;min-width:0;width:100%}
+.dual>select{flex:0 0 96px!important;width:96px!important;min-width:0}
+.dual>span{flex:1 1 0;min-width:0;display:flex}
+.dual>span>input{flex:1 1 auto;width:100%!important;min-width:0}
+.f input[type=date],.f input[type=time]{min-width:0;max-width:100%}
+.att-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px}
+.att-slot{border:1px dashed var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0;background:var(--surface-2)}
+.att-slot.done{border-style:solid;border-color:color-mix(in srgb,var(--ok) 55%,transparent)}
+.att-slot .t{font-weight:600;display:flex;align-items:center;gap:6px}
+.att-slot .fl{font-size:.82rem;color:var(--ink-2);overflow-wrap:anywhere}
 .f input::placeholder,.f textarea::placeholder,.toolbar input::placeholder,.search input::placeholder{color:var(--ink-3)}
 .f input:focus,.f select:focus,.f textarea:focus,.toolbar input:focus,.toolbar select:focus,.page-head select:focus{outline:none!important;border-color:color-mix(in srgb,var(--accent) 60%,transparent)!important;background-color:var(--surface)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)!important}
 .toolbar{gap:10px}
@@ -3583,6 +3597,8 @@ function viewNew(mod){
   const form=splitForm(mod,d,null,false,false);
   let amountBox=null;
   if(mod==='bonds'){amountBox=bondAmountEditor(d,()=>{});}
+  const attPend={};let attBox=null;
+  if(mod==='attest'){attBox=h('div',{style:'display:flex;flex-direction:column;gap:8px;margin-top:14px'});const paintAtt=()=>attBox.replaceChildren(h('h3',{style:'margin:0'},'ورقة التصديق — قبل وبعد'),attestSlotsNode(c=>(attPend[c]||[]).map(f=>({name:f.name})),(c,fs)=>{attPend[c]=fs;paintAtt()},!assets),h('div',{class:'small muted'},'اختياري. تقدر ترفع النسخة بعد التصديق لاحقًا من صفحة التصديق.'));paintAtt()}
   const btn=h('button',{class:'btn primary',onclick:save},'حفظ');
   async function save(){
     err.replaceChildren();
@@ -3597,12 +3613,14 @@ function viewNew(mod){
     const res=await writeDoc(mod,id,{...d,source:'إدخال يدوي'},null,{create:true});
     btn.disabled=false;
     if(res.exists){err.append(h('div',{class:'banner bad'},'سجل بالمعرف نفسه موجود (سند مكرر).'));return}
-    if(res.ok){audit('إنشاء',mod,id,titleOf(mod,d));location.hash=`${mod}-${id}`}
+    if(res.ok){audit('إنشاء',mod,id,titleOf(mod,d));
+      if(mod==='attest'&&assets){for(const[c,fs]of Object.entries(attPend)){if(fs&&fs.length){btn.disabled=true;await uploadFiles(fs,['attest:'+id],(m,cl)=>{if(cl==='bad')toast(typeof m==='string'?m:'تعذر رفع ملف')},c)}}btn.disabled=false}
+      location.hash=`${mod}-${id}`}
     else err.append(h('div',{class:'banner bad'},'لم يُحفظ السجل. '+(res.e?errMsg(res.e):'')));
   }
   return{key:'new',el:h('div',{style:'display:flex;flex-direction:column;gap:14px'},
     h('a',{class:'crumb',href:'#'+mod},'← '+M.t),pageHead(M.one+' جديد',mod==='requests'?'بوابة استقبال طلبات الإدارات: صف الطلب وأرفق المستندات بعد الحفظ.':null),h('div',{class:'small muted'},TIP[mod]||''),
-    h('div',{class:'panel'},form,amountBox,err,h('div',{class:'row'},btn,h('a',{class:'btn ghost',href:'#'+mod},'إلغاء'),h('span',{class:'small muted'},'لا يظهر «تم الحفظ» إلا بعد تأكيد الخادم.'))))};
+    h('div',{class:'panel'},form,amountBox,attBox,err,h('div',{class:'row'},btn,h('a',{class:'btn ghost',href:'#'+mod},'إلغاء'),h('span',{class:'small muted'},'لا يظهر «تم الحفظ» إلا بعد تأكيد الخادم.'))))};
 }
 function normBondNo(s){return normDigits(s||'').replace(/[\s\-_/\\.]/g,'').toUpperCase()}
 function hex(s){return[...new TextEncoder().encode(s)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,120)}
@@ -3655,6 +3673,7 @@ function viewDetail(mod,id){
     const panels=[];
     if(mod==='contracts')panels.unshift(wfPanel(r,()=>draft),formDocPanel(r,()=>draft));
     if(mod==='lawyers')panels.unshift(lawyerCasesPanel(r));
+    if(mod==='attest')panels.unshift(attestFilesPanel(r));
     if(mod==='poa'){const v=poaValidity(r);if(r.status==='سارية'&&(v.expired||v.soon||v.none))panels.unshift(h('div',{class:'banner '+(v.expired?'bad':'warn')},`الحالة المسجلة «سارية» — الصلاحية الزمنية: ${v.l}.`+(v.expired?' لا تُستخدم حتى تُجدد أو يُسجل المستند البديل.':'')))}
     if(mod==='violations'){const ds=violDeadlines(r);if(ds.some(d=>d.legacy))panels.unshift(h('div',{class:'banner warn'},'هذه المخالفة فيها «مهلة غير مصنفة» من إصدار سابق. حدّد هل هي مهلة اعتراض أم سداد وانقلها مع مصدرها.'))}
     if(mod==='contracts')panels.push(stepper(r),contractAlerts(r),versionsPanel(r));
@@ -3814,6 +3833,18 @@ function dropZone(links,multiple=true,folder=false){
     h('div',{class:'small muted',style:'margin-top:6px'},'PDF، Word (docx)، Excel (xlsx)، صور، TXT/CSV — حتى 20 ميجابايت (14 لملفات Word وExcel). يُفحص توقيع الملف ويُكشف المكرر.'),inp,dir);
   return h('div',{style:'display:flex;flex-direction:column;gap:8px'},z,log);
 }
+const ATT_SLOTS=[['المستند قبل التصديق','الخطاب أو المستند كما صدر قبل رفعه للغرفة'],['المستند بعد التصديق','النسخة المصدَّقة من الغرفة (بالباركود أو الختم)']];
+function attestSlotsNode(get,onPick,ro){return h('div',{class:'att-slots'},ATT_SLOTS.map(([c,hint])=>{const ds=get(c);
+  const inp=h('input',{type:'file',hidden:true,multiple:true,accept:'.pdf,.png,.jpg,.jpeg,.webp,.docx'});inp.onchange=()=>{const fs=[...inp.files];inp.value='';if(fs.length)onPick(c,fs)};
+  return h('div',{class:'att-slot'+(ds.length?' done':'')},h('div',{class:'t'},h('span',{class:'chip sm',style:`--c:${ds.length?'#30d158':'#8e8e93'}`},icon(ds.length?'check':'clip')),c),
+    h('div',{class:'fl'},ds.length?ds.map((d,i)=>[i?' · ':'',d.id?h('a',{href:'#docs-'+d.id},d.name):d.name]):hint),
+    !ro?h('span',null,h('button',{class:'btn sm',type:'button',onclick:()=>inp.click()},ibtn('upload',ds.length?'إضافة / استبدال':'رفع')),inp):null)}))}
+function attestFilesPanel(r){const key='attest:'+r.id;const linked=()=>recs('docs').filter(d=>(d.links||[]).includes(key));
+  const log=h('div');const report=(m,c)=>log.replaceChildren(h('div',{class:'banner '+(c||'info')},m));
+  const ro=S.readOnly||!!r.deleted||!assets;
+  return h('div',{class:'panel'},ph('ورقة التصديق — قبل وبعد','stamp','#64d2ff'),
+    attestSlotsNode(c=>linked().filter(d=>d.category===c),(c,fs)=>uploadFiles(fs,[key],report,c),ro),log,
+    !assets?h('div',{class:'small muted'},'رفع الملفات متاح لمحرري التطبيق ومالكه.'):null)}
 function attachPanel(mod,r){const key=mod+':'+r.id;const ds=recs('docs').filter(d=>(d.links||[]).includes(key));
   return h('div',{class:'panel'},ph('المرفقات','clip','#0a84ff'),ds.length?h('div',{class:'list'},ds.map(d=>h('a',{class:'li',href:'#docs-'+d.id},h('div',null,h('div',{class:'li-t'},d.name),h('div',{class:'li-s'},`${(d.size/1024).toFixed(0)} ك.ب · ${d.textMethod||''}`)),h('span',{class:'pill '+(d.ocrStatus==='يحتاج OCR'?'warn':'')},d.ocrStatus==='يحتاج OCR'?'يحتاج OCR':d.ext.toUpperCase())))):h('div',{class:'empty'},'لا مرفقات.'),S.readOnly?null:dropZone([key],true,false))}
 function viewDocs(){
