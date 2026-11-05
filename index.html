@@ -2757,7 +2757,7 @@ async function renderPageCrop(buf,pageNo,top,bottom,width){const pdfjs=await pdf
   const full=document.createElement('canvas');full.width=Math.round(vp.width);full.height=Math.round(vp.height);const fx=full.getContext('2d');fx.fillStyle='#fff';fx.fillRect(0,0,full.width,full.height);await pg.render({canvasContext:fx,viewport:vp}).promise;
   const y0=Math.round(full.height*top),hh=Math.round(full.height*(bottom-top));const c=document.createElement('canvas');c.width=full.width;c.height=hh;c.getContext('2d').drawImage(full,0,y0,full.width,hh,0,0,full.width,hh);return new Promise(r=>c.toBlob(r,'image/jpeg',0.9))}
 async function renderPdfPages(buf,maxPages=30){const pdfjs=await pdfLib();const pdf=await pdfjs.getDocument({data:buf.slice(0)}).promise;const n=Math.min(pdf.numPages,maxPages);const out=[];
-  for(let i=1;i<=n;i++){const pg=await pdf.getPage(i);const v0=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(2.2,1100/v0.width)});const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+  for(let i=1;i<=n;i++){const pg=await pdf.getPage(i);const v0=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(2.6,1600/v0.width)});const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
     const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:ctx,viewport:vp}).promise;
     const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.82));out.push({page:i,blob,url:URL.createObjectURL(blob)})}
   return{pages:out,total:pdf.numPages}}
@@ -4869,7 +4869,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261105093458';
+const UX_BUILD='20261105094619';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5511,6 +5511,57 @@ function uxOcrPanel(){const box=h('section',{class:'ux-panel',style:'--pc:#30d15
       msg.textContent=n?`انعبّى ${n} بيان من السجل${info.state&&info.state!=='نشط'?' — انتبه: حالة السجل «'+info.state+'»':''}${info.name&&tn&&tn!==info.name?' — الاسم في السجل: «'+info.name+'»':''}. راجعها قبل الحفظ.${miss.length?` ما لقيت في الملفات: ${miss.join('، ')} — شهادة السجل الجديدة ما فيها هذي البيانات؛ ارفع معها «بيانات السجل» من صفحة الباركود (طباعة ← حفظ PDF) وهوية المالك.`:''}`:'ما قدرت أقرأ بيانات من الملف — جرّب PDF الأصلي من وزارة التجارة أو صورة أوضح.'}catch(e){msg.textContent='تعذر قراءة الملف: '+(e.message||e)}btn.disabled=false};
   const btn=h('button',{type:'button',class:'btn sm ux-cr-btn',title:'ارفع شهادة السجل وهوية المالك وبيانات السجل (لين 4 ملفات) ويعبّي الخانات',onclick:()=>{const inp=h('input',{type:'file',multiple:true,accept:'.pdf,.png,.jpg,.jpeg,.webp',hidden:true});inp.onchange=()=>{const fs=[...inp.files];inp.remove();if(fs.length)go(fs.slice(0,4))};document.body.append(inp);inp.click()}},icon('upload'),'قراءة السجل (باركود)');
   return h('span',{class:'row',style:'gap:8px;align-items:center;flex-wrap:wrap'},msg,btn,base)}}
+
+/* ========== 15) قراءة ملف العميل الكامل: كل بيانات نموذج تمكين + المفوضين + السند + السجل ========== */
+CD_FIELDS.push(['cr_confirm','تاريخ التأكيد السنوي','client','date'],['cr_entity','نوع الكيان','client'],['cr_state','حالة السجل','client'],['bond_type','نوع السند','bond'],
+  ['e1_name','المفوض الأول','deleg'],['e1_nat','جنسيته','deleg'],['e1_id','هويته','deleg'],['e1_title','وظيفته','deleg'],['e1_mobile','جواله','deleg'],
+  ['e2_name','المفوض الثاني','deleg'],['e2_nat','جنسيته','deleg'],['e2_id','هويته','deleg'],['e2_title','وظيفته','deleg'],['e2_mobile','جواله','deleg']);
+CD_GROUPS.deleg='المفوضون';
+Object.assign(CD_TO_CONTRACT,{cr_confirm:'cr_confirm',cr_entity:'cr_entity',cr_state:'cr_state',bond_type:'bond_type',bond_amount:'bond_amount',bond_no:'bond_no',e1_name:'e1_name',e1_nat:'e1_nat',e1_id:'e1_id',e1_title:'e1_title',e1_mobile:'e1_mobile',e2_name:'e2_name',e2_nat:'e2_nat',e2_id:'e2_id',e2_title:'e2_title',e2_mobile:'e2_mobile'});
+{const _cdd=cdContractDiffs;cdContractDiffs=function(cd,d){const rows=_cdd(cd,d);const out=[];for(const r of rows){if(r.ck==='cr_confirm'){const dv=parseAIDate(String(r.fv));if(!dv||!dv.g)continue;const cg=dateG(d.cr_confirm);if(cg===dv.g)continue;out.push({...r,fv:dv,kind:cg?'diff':'empty',cur:cg?fmtDate(d.cr_confirm,false):undefined});continue}
+  if(r.ck==='bond_amount'){const n=parseNum(String(r.fv));if(n==null||Number.isNaN(n))continue;if(Number(d.bond_amount)===n)continue;out.push({...r,fv:n});continue}
+  if(/^e[12]_(id|mobile)$/.test(r.ck)){r.fv=/mobile/.test(r.ck)?cleanMob(cleanNum(r.fv)):cleanNum(r.fv);if(normCmp(r.cur||'')===normCmp(r.fv))continue}out.push(r)}return out}}
+const UX_NATS=/(السعودية|سعودي|سعوديه|يمني|اليمن|مصري|مصر|سوداني|السودان|هندي|الهند|باكستاني|باكستان|اردني|الأردن|سوري|سوريا|بنجلاديشي|فلبيني)/;
+function uxSegs(line,labels){const hits=[];for(const[k,re]of labels){const m=re.exec(line);if(m)hits.push({k,at:m.index,end:m.index+m[0].length})}hits.sort((a,b)=>a.at-b.at);const o={};hits.forEach((x,i)=>{const v=line.slice(x.end,i+1<hits.length?hits[i+1].at:undefined).replace(/^[\s:：|\-_]+|[\s:：|\-_]+$/g,'').replace(/\s*\|\s*/g,' ').trim();if(v)o[x.k]=v});return o}
+function uxReadAuth(raw){const t=normDigits(raw);const lines=t.split('\n').map(s=>s.replace(/[‎‏]/g,'').replace(/\s+/g,' ').trim()).filter(Boolean);const f={};
+  const L=[['trade_name',/الاسم\s*التجاري/],['cr_no',/رقم\s*السجل\s*التجاري/],['cr_city',/مدينة\s*الإصدار|مدينة\s*الاصدار/],['cr_confirm',/تاريخ\s*التأكيد\s*السنوي(?:\s*للسجل(?:\s*التجاري)?)?|تاريخ\s*التاكيد\s*السنوي(?:\s*للسجل(?:\s*التجاري)?)?/],['activity',/نشاط\s*المنش[أا]ة/],['national_address',/العنوان\s*الوطني/],['manager_name',/اسم\s*الشخص\s*المسؤول/],['manager_title',/^الوظيفة|(?<=\s)الوظيفة/],['manager_mobile',/رقم\s*الجوال/],['email',/البريد\s*الال?كتروني/]];
+  const hi=lines.findIndex(l=>/الموظ\S*\s*المف[وق]ض/.test(l));
+  for(const [i,l] of lines.entries()){if(hi>=0&&i>=hi)break;const s=uxSegs(l,L);for(const[k,v]of Object.entries(s))if(!f[k])f[k]=v}
+  const top=lines.slice(0,8).join('\n');const rn=top.match(/(?:^|\n)\s*الرقم\s*[:：]?\s*(\d{2,6})/);if(rn)f.ref_no=rn[1];const dt=top.match(/التاريخ\s*[:：]?\s*(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/);if(dt){const p=dt[1].split(/[\/\-]/).map(Number);const[y,mo,d]=p[0]>999?p:[p[2],p[1],p[0]];f.contract_date=`G:${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+  if(f.cr_no){const m=f.cr_no.replace(/\s/g,'').match(/(70\d{8}|[1-5]\d{9})/);f.cr_no=m?m[1]:null}
+  if(f.cr_confirm){const m=f.cr_confirm.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})|(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);if(m){const[y,mo,d]=m[1]?[+m[1],+m[2],+m[3]]:[+m[6],+m[5],+m[4]];f.cr_confirm=(y<1600?'H:':'G:')+`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`}else delete f.cr_confirm}
+  if(f.manager_mobile){const d=f.manager_mobile.replace(/\D/g,'').replace(/^(00966|966)/,'').replace(/^0/,'');f.manager_mobile=/^5\d{8}$/.test(d)?'0'+d:null}
+  if(f.national_address){const m=f.national_address.match(/[A-Z]{4}\s?\d{4}/i);f.national_address=m?m[0].replace(/\s/,'').toUpperCase():f.national_address.length<40?f.national_address:null}
+  for(const k of['trade_name','manager_name','activity','cr_city','manager_title'])if(f[k]){f[k]=f[k].replace(/[^ء-ي0-9 ()\-]/g,' ').replace(/\s+/g,' ').trim();if(f[k].length<2)delete f[k]}
+  if(f.cr_city)f.cr_city=f.cr_city.split(' ')[0];
+  delete f.email;
+  // المفوضون
+  if(hi>=0){let n=0;for(let j=hi+1;j<Math.min(lines.length,hi+7)&&n<2;j++){const x=lines[j];if(/نفوض|تحملنا|التفويض/.test(x))break;const id=(x.match(/(?<!\d)([12]\d{9})(?!\d)/)||[])[1];if(!id)continue;n++;const p='e'+n;const before=x.slice(0,x.indexOf(id));const after=x.slice(x.indexOf(id)+10);
+      const nat=(before.match(UX_NATS)||[])[1];const nm=before.replace(UX_NATS,' ').replace(/[^ء-ي ]/g,' ').replace(/\s+/g,' ').trim();if(nm.split(' ').length>=2)f[p+'_name']=nm.split(' ').slice(0,6).join(' ');if(nat)f[p+'_nat']=/سعود/.test(nat)?'السعودية':nat;f[p+'_id']=id;
+      const mob=after.replace(/\s+/g,'').match(/(?:\+?966|0)?(5\d{8})(?!\d)/);if(mob)f[p+'_mobile']='0'+mob[1];const ttl=after.replace(/[^ء-ي ]/g,' ').replace(/\s+/g,' ').trim();if(ttl)f[p+'_title']=ttl.split(' ').slice(0,3).join(' ')}}
+  for(const k of Object.keys(f))if(f[k]==null||f[k]==='')delete f[k];return f}
+{const _rp=uxReadPage;uxReadPage=function(raw){const x=_rp(raw);try{const t=normDigits(raw);const f=x.fields||(x.fields={});
+  if(x.type==='contract_auth'||/الاسم\s*التجاري[\s\S]{0,200}رقم\s*السجل\s*التجاري/.test(t)){if(x.type!=='contract_auth'&&/الموظ\S*\s*المف[وق]ض|اسم\s*الشخص\s*المسؤول/.test(t))x.type='contract_auth';if(x.type==='contract_auth'){const g=uxReadAuth(raw);delete f.id_no;Object.assign(f,g)}}
+  if(x.type==='bond'){const elec=/منصة\s*نافذ|نافذ|nafith/i.test(t)||/رقم\s*السند\s*\d{14,}/.test(t.replace(/\s+/g,' '));f.bond_type=elec?'إلكتروني (نافذ)':'ورقي';
+    const am=(t.match(/قيمة\s*السند\s*(?:رقم[اًا]*)?\s*[:：]?\s*[|\[(]?\s*([\d.,]{4,12})/)||t.match(/مبلغ[اًا]*\s*و\s*قدره\s*[(]?\s*([\d.,]{4,12})/)||[])[1];if(am){const v=Number(am.replace(/[.,](?=\d{3}\b)/g,'').replace(/,/g,''));if(v>=1000&&v<=10000000)f.bond_amount=String(v)}
+    const bn=t.replace(/\s+/g,' ').match(/رقم\s*السند\s*[:：]?\s*(\d{12,20})/);if(bn){f.bond_no=bn[1];x.number=bn[1]}}
+  if(x.type==='cr'){const ci=uxCrParse(raw);if(ci.unified)f.cr_no=ci.unified;if(ci.entity)f.cr_entity=ci.entity;if(ci.state)f.cr_state=ci.state;if(ci.name&&!f.trade_name)f.trade_name=ci.name}
+  if(x.type==='national_id'){const ci=uxCrParse(raw);if(ci.owner&&!f.manager_name)f.manager_name=ci.owner}
+}catch(e){console.warn('uxReadPage+',e)}return x}}
+/* تحسينات: العنوان المختصر، وتقديم رقم الهوية من بطاقة الهوية إذا المفوض هو نفس المسؤول */
+{const _rp2=uxReadPage;uxReadPage=function(raw){const x=_rp2(raw);const f=x.fields||{};if(f.national_address&&!/^[A-Z]{4}\d{4}$/.test(f.national_address)&&f.national_address.replace(/\s/g,'').length<8)delete f.national_address;
+  if(x.type==='national_id'){const lines=normDigits(raw).split('\n').map(s=>s.replace(/[^ء-ي ]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);const bn=lines.find(l=>/\sبن\s|\sبنت\s/.test(' '+l+' ')&&l.split(' ').length>=3&&!/المملكة|الهوية|وزارة/.test(l));if(bn)f.manager_name=bn.split(' ').slice(0,7).join(' ');else if(f.manager_name&&!/\s/.test(f.manager_name))delete f.manager_name}
+  return x}}
+{const _mcd=mergeClientData;mergeClientData=function(info,cats,bond){const o=_mcd(info,cats,bond);try{if(o.e1_id&&o.id_no&&o.e1_name&&o.manager_name&&normCmp(o.e1_name)===normCmp(o.manager_name)&&normCmp(o.e1_id.v)!==normCmp(o.id_no.v)){o.e1_id={v:o.id_no.v,page:o.id_no.page,alt:[{v:o.e1_id.v,page:o.e1_id.page},...o.e1_id.alt]}}
+  if(o.e1_name&&!o.e1_nat&&o.nationality&&normCmp(o.e1_name)===normCmp(o.manager_name||''))o.e1_nat={v:/سعود/.test(o.nationality.v)?'السعودية':o.nationality.v,page:o.nationality.page,alt:[]}}catch(e){}return o}}
+/* القراءة المحلية: وضع الأعمدة (PSM 4) يقرأ الجداول بشكل أفضل، وتنظيف القيم */
+{const _lw=uxLangWorker;uxLangWorker=async function(){const fresh=!uxOcrWorker;const w=await _lw();if(fresh){try{await w.setParameters({tessedit_pageseg_mode:'4'})}catch(e){}}return w}}
+{const _rp3=uxReadPage;uxReadPage=function(raw){const x=_rp3(raw);const f=x.fields||{};const t=normDigits(raw);const TAM=/^(4030049348|7011006009)$/;
+  if(f.cr_no&&TAM.test(String(f.cr_no).replace(/\D/g,''))){const alt=(t.match(/(?<!\d)(70\d{8}|[1-5]\d{9})(?!\d)/g)||[]).find(n=>!TAM.test(n)&&n!==f.e1_id&&n!==f.id_no);if(alt)f.cr_no=alt;else delete f.cr_no}
+  if(f.cr_state&&!/^(نشط|موقوف|منتهي|مشطوب|ملغي|معلق)$/.test(f.cr_state))delete f.cr_state;
+  if(x.type==='contract_auth'){const lab=/الاسم\s*التجاري/.test(t);const we=t.replace(/\s+/g,' ').match(/نحن\s+((?:مؤسس\S*|شرك\S*|محل|مركز)[^\n]{3,70}?)\s+نفوض/);if(we){const nm=we[1].replace(/[^ء-ي0-9 ()]/g,' ').replace(/\s+/g,' ').replace(/^مؤسسبة|^موسسة/,'مؤسسة').trim();if(!lab||!f.trade_name||(f.manager_name&&normCmp(f.trade_name)===normCmp(f.manager_name)))f.trade_name=nm}else if(!lab&&f.trade_name&&f.manager_name&&normCmp(f.trade_name)===normCmp(f.manager_name))delete f.trade_name;
+    if(f.ref_no&&f.ref_no.length<4){const r=t.match(/(?:^|\n)\s*الرقم\s*[:：]?\s*(\d{3,6})/);if(r)f.ref_no=r[1]}}
+  return x}}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
