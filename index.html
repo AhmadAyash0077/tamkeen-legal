@@ -4052,9 +4052,9 @@ function viewReports(){
   function reportSheet(R){return uxReportSheet(R)}
   async function toPrint(){const R=build();document.querySelector('.print-sheet')?.remove();const sh=reportSheet(R);document.body.append(sh);document.body.classList.add('printing');const done=()=>{document.body.classList.remove('printing');sh.remove();window.removeEventListener('afterprint',done)};window.addEventListener('afterprint',done);
     try{await Promise.all([...sh.querySelectorAll('img')].map(img=>img.decode()));window.print();audit('طباعة تقرير','reports','',R.title)}catch(e){done();toast('الطباعة غير متاحة في هذا العارض؛ استخدم تصدير PDF (صور) أو Excel.')}setTimeout(()=>{if(document.body.classList.contains('printing'))done()},60000)}
-  async function toPdf(){const R=build();try{toast('جارٍ تجهيز التقرير…',2500);const blob=await uxReportPdf(R);await saveFile(`${R.title}-${todayISO()}.pdf`,blob);audit('تصدير PDF','reports','',R.title)}catch(e){toast('تعذر التصدير: '+(e.message||e.code))}}
+  async function toPdf(){const R=build();const w=uxPdfWin();try{toast('جارٍ تجهيز التقرير…',2500);const blob=await uxReportPdf(R);await uxOpenPdf(blob,`${R.title}-${todayISO()}.pdf`,w);audit('فتح تقرير PDF','reports','',R.title)}catch(e){try{w&&w.close()}catch(_){}toast('تعذر التصدير: '+(e.message||e.code))}}
   type.onchange=()=>{fillSt();preview()};[st,from,to,vGroup,vAuth,vCity,vMode].forEach(x=>x.onchange=preview);q.oninput=debounce(preview,200);fillSt();
-  const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},pageHead('التقارير','يشمل كل تقرير ما تملك صلاحية الاطلاع عليه فقط، ويُظهر تاريخه ومرشحاته، ولا يجمع العملات المختلفة.',h('button',{class:'btn primary',onclick:toXlsx},ibtn('download','Excel')),h('button',{class:'btn',onclick:toPdf},ibtn('pdf','تحميل PDF')),h('button',{class:'btn ghost',onclick:toPrint},ibtn('pages','طباعة'))),synBox,h('div',{class:'toolbar'},type,vMode,vGroup,vAuth,vCity,st,h('span',{class:'small muted'},'من'),from,h('span',{class:'small muted'},'إلى'),to,q),
+  const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},pageHead('التقارير','يشمل كل تقرير ما تملك صلاحية الاطلاع عليه فقط، ويُظهر تاريخه ومرشحاته، ولا يجمع العملات المختلفة.',h('button',{class:'btn primary',onclick:toXlsx},ibtn('download','Excel')),h('button',{class:'btn',onclick:toPdf},ibtn('pdf','فتح PDF')),h('button',{class:'btn ghost',onclick:toPrint},ibtn('pages','طباعة'))),synBox,h('div',{class:'toolbar'},type,vMode,vGroup,vAuth,vCity,st,h('span',{class:'small muted'},'من'),from,h('span',{class:'small muted'},'إلى'),to,q),
     h('div',{class:'small muted'},'«تحميل PDF» ينشئ تقريرًا جاهزًا بهوية تمكين: ترويسة، ملخص بالأرقام، جدول مرقّم مع الإجماليات، وترقيم للصفحات. «طباعة» تفتح نافذة الطباعة بنفس التصميم. Excel من اليمين لليسار بأرقام وتواريخ حقيقية قابلة للفرز.'),prev);
   preview();return{key:'reports',el,refresh:preview};
 }
@@ -4858,7 +4858,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261105084535';
+const UX_BUILD='20261105085014';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5312,6 +5312,12 @@ function uxDevPrompt(r){return['طلب تعديل على برنامج «المس
       h('a',{class:'btn',href:'https://claude.ai/new',target:'_blank',rel:'noopener'},icon('sparkles'),'فتح Claude'),st)))};
   const r0=v.refresh;v.refresh=f=>{r0(f);inject()};inject();return v}}
 {const _r5=route;route=function(){_r5();try{const a=(location.hash.slice(1)||'home').split('-');if(a.length===1&&a[0].split('~')[0]==='devreqs'){const vw=$('#view');const hd=vw&&vw.querySelector('.page-head');if(hd&&!vw.querySelector('.ux-dev-intro'))hd.after(h('div',{class:'banner info ux-dev-intro',style:'margin-bottom:12px'},icon('sparkles'),' تبي تعدّل شي في البرنامج؟ اضغط «إضافة» واكتب طلبك. بعدين افتح الطلب واضغط «نسخ الطلب» والصقه في Claude.'))}}catch(e){}}}
+
+/* ========== 10) تقارير PDF تنفتح بدل ما تنحفظ ========== */
+function uxPdfWin(){let w=null;try{w=window.open('','_blank')}catch(e){}if(w){try{w.document.write('<!doctype html><meta charset="utf-8"><title>جاري تجهيز التقرير…</title><body style="margin:0;display:grid;place-items:center;height:100vh;background:#0b1220;color:#e6f1ff;font:16px system-ui" dir="rtl">جاري تجهيز التقرير…</body>');w.document.close()}catch(e){}}return w}
+async function uxOpenPdf(blob,name,w){const f=new File([blob],name,{type:'application/pdf'});const url=URL.createObjectURL(f);setTimeout(()=>URL.revokeObjectURL(url),10*60*1000);
+  if(w&&!w.closed){try{w.location.href=url;return}catch(e){}}
+  const w2=window.open(url,'_blank');if(w2)return;toast('المتصفح منع فتح نافذة جديدة — بنحفظ الملف بدالها');await saveFile(name,blob)}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
