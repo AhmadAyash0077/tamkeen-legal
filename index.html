@@ -2133,7 +2133,7 @@ const MODS={
     {sec:'تفاصيل العقد الإضافية',k:'noticeDays',l:'مدة إشعار عدم التجديد (أيام)',t:'int',hint:'تُدخل من نص العقد؛ يُحسب منها آخر موعد للإشعار'},
     {sec:'تفاصيل العقد الإضافية',k:'renewal',l:'شروط التجديد',t:'area'},{sec:'تفاصيل العقد الإضافية',k:'termination',l:'شروط الإنهاء',t:'area'},{sec:'تفاصيل العقد الإضافية',k:'obligations',l:'الالتزامات',t:'area',w:1},
     {sec:'تفاصيل العقد الإضافية',k:'guarantees',l:'الضمانات',t:'area'},{sec:'تفاصيل العقد الإضافية',k:'owner',l:'المسؤول',t:'text'}],
-    st:['طلب','إعداد','مراجعة','تفاوض','اعتماد','توقيع','ساري','مجدد','منتهٍ','مؤرشف'],closed:['منتهٍ','مؤرشف'],confirmSt:['اعتماد','توقيع','ساري','مجدد'],cols:['trade_name','fileKind','ref_no','bond','stage']},
+    st:['طلب','إعداد','مراجعة','تفاوض','اعتماد','توقيع','ساري','مجدد','منتهٍ','مؤرشف'],closed:['منتهٍ','مؤرشف'],confirmSt:['اعتماد','توقيع','ساري','مجدد'],cols:['trade_name','fileKind','customer_code','bond','stage']},
   bonds:{t:'السندات والضمانات',one:'سند',grp:'العقود والسندات',main:'dueDate',fields:[
     {k:'bondNo',l:'رقم السند',t:'ltr',hint:'يمنع النظام تسجيل الرقم نفسه مرتين'},{k:'kind',l:'النوع',t:'select',o:['سند لأمر','شيك','ضمان بنكي','كمبيالة','أخرى']},
     {k:'debtor',l:'المدين',t:'text'},{k:'creditor',l:'الدائن',t:'text'},{k:'currency',l:'العملة',t:'select',o:CUR},
@@ -4869,7 +4869,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261105095409';
+const UX_BUILD='20261105095833';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
