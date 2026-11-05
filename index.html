@@ -4869,7 +4869,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261105100210';
+const UX_BUILD='20261105100830';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5554,11 +5554,11 @@ function uxReadAuth(raw){const t=normDigits(raw);const lines=t.split('\n').map(s
   if(x.type==='bond'){const elec=/منصة\s*نافذ|نافذ|nafith/i.test(t)||/رقم\s*السند\s*\d{14,}/.test(t.replace(/\s+/g,' '));f.bond_type=elec?'إلكتروني (نافذ)':'ورقي';
     const num=s=>{const v=Number(String(s).replace(/[.,](?=\d{3}(?!\d))/g,'').replace(/,/g,''));return v>=1000&&v<=10000000?v:null};let v=null;
     const m1=t.match(/قيمة\s*السند\s*(?:رقم[اًا]*)?\s*[:：]?\s*[|\[(#]?\s*([\d.,]{4,12})/);if(m1)v=num(m1[1]);
-    if(!v){const m2=t.match(/مبلغ[اًا]*\s*و\s*قدره\s*[(]?\s*([\d.,]{4,12})/);if(m2)v=num(m2[1])}
+    if(!v){const m2=t.match(/(?:مبلغ[اًا]*\s*)?و\s*قدره\s*[(]?\s*([\d.,]{4,12})/)||t.match(/[(]\s*(\d{1,3}(?:[,.]\d{3})+|\d{4,7})\s*[)]\s*ريال/)||t.match(/(?<![\d\/\-.])(\d{1,3}(?:,\d{3})+|\d{4,7})\s*ريال/);if(m2)v=num(m2[1])}
     if(!v){const i=t.search(/قيمة\s*السند\s*رقم/);if(i>=0){const seg=t.slice(i,i+160);const m3=seg.match(/(\d{1,3}(?:[,.]\d{3})+|\d{4,7})(?!\d)/);if(m3)v=num(m3[1])}}
     if(!v){const ms=(t.replace(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/g,' ').match(/(?<![\d])(\d{1,3}(?:,\d{3})+)(?![\d])/g)||[]).map(num).filter(Boolean);if(ms.length)v=ms.sort((a,b)=>b-a)[0]}
     if(!v){const W={'ألف':1000,'الف':1000,'آلاف':1000,'الاف':1000,'مائة':100,'مئة':100,'مليون':1e6};const U={'عشرة':10,'عشرون':20,'عشرين':20,'ثلاثون':30,'ثلاثين':30,'أربعون':40,'اربعون':40,'خمسون':50,'خمسين':50,'ستون':60,'سبعون':70,'ثمانون':80,'تسعون':90,'مائة':100,'مئة':100,'مائتان':200,'مائتين':200,'ثلاثمائة':300,'أربعمائة':400,'اربعمائة':400,'خمسمائة':500,'ستمائة':600,'سبعمائة':700,'ثمانمائة':800,'تسعمائة':900,'خمسة':5,'عشر':10,'خمس':5};
-      const ln=(t.match(/قيمة\s*السند\s*كتاب[ةه]\S*\s*[:：]?\s*([^\n]{0,80})/)||t.match(/((?:عشر\S*|ثلاث\S*|أربع\S*|اربع\S*|خمس\S*|ست\S*|سبع\S*|ثمان\S*|تسع\S*|مائ\S*|مئ\S*)[^\n]{0,40}(?:ألف|الف)\s*ريال)/)||[])[1];
+      const lnA=(t.match(/((?:عشر\S*|ثلاث\S*|أربع\S*|اربع\S*|خمس\S*|ست\S*|سبع\S*|ثمان\S*|تسع\S*|مائ\S*|مئ\S*)[^\n]{0,40}(?:ألف|الف)\s*ريال)/)||[])[1];const ln=lnA||(t.match(/قيمة\s*السند\s*كتاب[ةه]\S*\s*[:：]?\s*([^\n]{3,80})/)||t.match(/((?:عشر\S*|ثلاث\S*|أربع\S*|اربع\S*|خمس\S*|ست\S*|سبع\S*|ثمان\S*|تسع\S*|مائ\S*|مئ\S*)[^\n]{0,40}(?:ألف|الف)\s*ريال)/)||[])[1];
       if(ln){const ws=ln.split(/\s+/).map(w=>w.length>3&&w[0]==='و'&&!U[w]&&!W[w]?w.slice(1):w);let tot=0,cur=0;for(const w of ws){if(U[w]!=null&&!W[w])cur+=U[w];else if(W[w]){cur=(cur||1)*W[w];if(W[w]>=1000){tot+=cur;cur=0}}else if(/ريال/.test(w))break}tot+=cur;if(tot>=1000)v=tot}}
     if(v)f.bond_amount=String(v)
     const bn=t.replace(/\s+/g,' ').match(/رقم\s*السند\s*[:：]?\s*(\d{12,20})/);if(bn){f.bond_no=bn[1];x.number=bn[1]}}
