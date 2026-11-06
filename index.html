@@ -3560,7 +3560,7 @@ function viewList(mod,mk){
   const wrap=h('div');
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},
-    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='contracts'&&typeof uxBondConvertBtn==='function'?uxBondConvertBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
+    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'&&typeof uxBondDatesBtn==='function'?uxBondDatesBtn():null,mod==='contracts'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='contracts'&&typeof uxBondConvertBtn==='function'?uxBondConvertBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
     mod==='hearings'?h('div',{class:'small muted'},'الأوقات بتوقيت الرياض. للتنبيه على جوالك استخدم «تصدير إلى التقويم».'):null,
     extra,insBox,mfBox,
     mod==='violations'?vTabs:null,
@@ -4912,7 +4912,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261106220404';
+const UX_BUILD='20261106222444';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5812,6 +5812,8 @@ function uxBondFilter(onch){let v='';try{v=localStorage.getItem('uxBf')||''}catc
   sel.fill=rows=>{sel.replaceChildren(...UX_BF_OPTS.map(([k,l])=>h('option',{value:k},k?`${l} (${rows.filter(r=>uxBfMatch(r,k)).length})`:l)));sel.value=sel._v};
   sel.onchange=()=>{sel._v=sel.value;try{localStorage.setItem('uxBf',sel.value)}catch(e){}onch()};return sel}
 
+/* نهاية المهلة الانتقالية للسندات الورقية: نظام التنفيذ (م/237) البند خامساً — سنة بعد النفاذ؛ بدأ التطبيق 29/10/2026 حسب وزارة العدل */
+const UX_PAPER_DEADLINE='2027-10-28';
 /* ===== 22) إشعار تجديد السندات (المنتهي وقريب الانتهاء) — يجهّز خطابات للطباعة فقط، ما يرسل شي ===== */
 function uxBnDue(){return recs('contracts').filter(r=>{const x=uxCtBondInfo(r);return x.expired||x.soon}).map(r=>({r,x:uxCtBondInfo(r)})).sort((a,b)=>a.x.left-b.x.left)}
 function uxBnLetters(items,mode){const CV=mode==='convert';const w=uxPdfWin();if(!w){toast('اسمح بالنوافذ المنبثقة لهذا الموقع');return}
@@ -5826,8 +5828,8 @@ function uxBnLetters(items,mode){const CV=mode==='convert';const w=uxPdfWin();if
 <table class="inf"><tr><th>السجل التجاري</th><td>${esc(r.cr_no||'—')}</td><th>كود العميل</th><td>${esc(r.customer_code||'—')}</td></tr></table>
 <p>السلام عليكم ورحمة الله وبركاته،،</p>
 ${CV?`<p>إشارةً إلى ${what}، المقدَّم منكم ضمانًا لحساب توريد البضاعة الآجل لدى شركة تمكين الدولية،</p>
-<p>وحيث إن نظام التنفيذ الجديد اشترط لاكتساب السندات لأمر صفة السند التنفيذي تسجيلها في منصة إلكترونية معتمدة لدى وزارة العدل، وتستمر السندات لأمر الورقية الصادرة قبل بدء العمل بالنظام سندات تنفيذية خلال المهلة الانتقالية المقررة بسنة واحدة وفق أحكام النظام،</p>
-<p>فإننا نأمل منكم التكرم بتحرير سند أمر إلكتروني عبر منصة نافذ لصالح شركة تمكين الدولية${x.amount!=null&&!isNaN(x.amount)?' بمبلغ '+N0(x.amount)+' ريال':' بنفس مبلغ السند الحالي'}، بدلًا من السند الورقي، قبل انتهاء المهلة الانتقالية، وفي أقرب وقت ممكن.</p>
+<p>وحيث إن نظام التنفيذ الجديد اشترط لاكتساب السندات لأمر صفة السند التنفيذي تسجيلها في منصة إلكترونية معتمدة لدى وزارة العدل، وتستمر السندات لأمر الورقية الصادرة قبل بدء العمل بالنظام سندات تنفيذية خلال المهلة الانتقالية المقررة بسنة واحدة وفق أحكام النظام، <b>والتي تنتهي بتاريخ ${fmtG(UX_PAPER_DEADLINE)}</b>،</p>
+<p>فإننا نأمل منكم التكرم بتحرير سند أمر إلكتروني عبر منصة نافذ لصالح شركة تمكين الدولية${x.amount!=null&&!isNaN(x.amount)?' بمبلغ '+N0(x.amount)+' ريال':' بنفس مبلغ السند الحالي'}، بدلًا من السند الورقي، قبل تاريخ ${fmtG(UX_PAPER_DEADLINE)}، وفي أقرب وقت ممكن.</p>
 `:`<p>نحيطكم علمًا بأن ${what}، المقدَّم ضمانًا لحساب توريد البضاعة الآجل لدى شركة تمكين الدولية، ${st}.</p>
 <p>وعليه نأمل منكم التكرم بتحرير سند أمر جديد وتسليمه للشركة في أقرب وقت، حفاظًا على استمرار التعامل بينكم وبين الشركة.</p>
 `}<p>ولأي استفسار يمكنكم التواصل مع إدارة الشؤون القانونية.</p>
@@ -5875,7 +5877,7 @@ function uxBnMemo(items,mode){const CV=mode==='convert';const w=uxPdfWin();if(!w
   const ex=items.filter(i=>i.x.expired).length;const tot=items.reduce((a,i)=>a+(i.x.amount!=null&&!isNaN(i.x.amount)?i.x.amount:0),0);
   const kindL=k=>(UX_BK_KIND[k]||['غير محدد'])[0];
   const subj=CV?'كشف العملاء أصحاب السندات الورقية — طلب تحويلها إلى سندات إلكترونية (نافذ)':'كشف العملاء أصحاب السندات المنتهية وقريبة الانتهاء — طلب تجديدها';
-  const intro=CV?`نرفق لكم كشفًا بالعملاء الموضحين أدناه (${items.length} منشأة) ممن لديهم سندات أمر ورقية مقدَّمة ضمانًا لحسابات توريد البضاعة الآجل. وحيث إن نظام التنفيذ الجديد اشترط لاكتساب السندات لأمر صفة السند التنفيذي تسجيلها في منصة إلكترونية معتمدة لدى وزارة العدل، وتستمر السندات الورقية الصادرة قبل بدء العمل بالنظام سندات تنفيذية خلال المهلة الانتقالية المقررة بسنة واحدة فقط، فإننا نأمل منكم التنسيق مع العملاء لتحرير سندات أمر إلكترونية عبر منصة نافذ لصالح الشركة بدلًا من السندات الورقية قبل انتهاء المهلة، وتزويد إدارة الشؤون القانونية بما يتم أولًا بأول.`
+  const intro=CV?`نرفق لكم كشفًا بالعملاء الموضحين أدناه (${items.length} منشأة) ممن لديهم سندات أمر ورقية مقدَّمة ضمانًا لحسابات توريد البضاعة الآجل. وحيث إن نظام التنفيذ الجديد اشترط لاكتساب السندات لأمر صفة السند التنفيذي تسجيلها في منصة إلكترونية معتمدة لدى وزارة العدل، وتستمر السندات الورقية الصادرة قبل بدء العمل بالنظام سندات تنفيذية خلال المهلة الانتقالية المقررة بسنة واحدة فقط والتي تنتهي بتاريخ <b>${fmtG(UX_PAPER_DEADLINE)}</b>، فإننا نأمل منكم التنسيق مع العملاء لتحرير سندات أمر إلكترونية عبر منصة نافذ لصالح الشركة بدلًا من السندات الورقية قبل هذا التاريخ، وتزويد إدارة الشؤون القانونية بما يتم أولًا بأول.`
     :`نرفق لكم كشفًا بالعملاء الموضحين أدناه (${items.length} منشأة) ممن انتهت سنداتهم أو تقترب من الانتهاء وفق مدة صلاحية السندات المعتمدة لدى الشركة (${Y} سنوات من تاريخ التحرير)، منها ${ex} منتهية و${items.length-ex} تنتهي خلال 6 أشهر، ونأمل منكم التنسيق مع العملاء لتحرير سندات أمر جديدة، وتزويد إدارة الشؤون القانونية بما يتم.`;
   const rows=items.map(({r,x},i)=>`<tr><td>${i+1}</td><td class="nm">${esc(r.trade_name)}</td><td>${esc(r.customer_code||'—')}</td><td>${esc(r.cr_no||'—')}</td><td>${esc(kindL(x.kind))}</td><td>${esc(r.bond_no||'—')}</td><td>${x.date?fmtG(x.date):'—'}</td><td class="n">${x.amount!=null&&!isNaN(x.amount)?N0(x.amount):'—'}</td>${CV?'':`<td>${x.exp?fmtG(x.exp):'—'}</td><td><span class="st ${x.expired?'bad':'warn'}">${x.expired?'منتهي منذ '+spanAr(-x.left):'ينتهي بعد '+spanAr(x.left)}</span></td>`}<td class="nt"></td></tr>`).join('');
   const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${CV?'كشف تحويل السندات':'كشف تجديد السندات'} — إدارة الجملة — ${fmtG(t)}</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet"><style>
@@ -5897,11 +5899,53 @@ table{width:100%;border-collapse:collapse;font-size:12px}th{background:#273580;c
 <section class="pg"><header><div class="brand"><img src="${LOGO}" alt="تمكين"><div><b>شركة تمكين الدولية للأجهزة المنزلية</b><small>إدارة الشؤون القانونية</small></div></div><div class="meta"><span>التاريخ: ${fmtG(t)}</span><span>الرقم: ${no}</span></div></header>
 <div class="hd"><b>إلى:</b><span>إدارة الجملة &nbsp; المحترمين</span><b>من:</b><span>إدارة الشؤون القانونية</span><b>الموضوع:</b><span>${subj}</span></div>
 <p>السلام عليكم ورحمة الله وبركاته،،</p><p>${intro}</p>
-<div class="kp"><div>عدد المنشآت<b>${items.length}</b></div>${CV?'':`<div>منتهية<b>${ex}</b></div><div>قريبة الانتهاء<b>${items.length-ex}</b></div>`}<div>إجمالي مبالغ السندات المسجلة<b>${N0(tot)}</b> ريال</div></div>
+<div class="kp"><div>عدد المنشآت<b>${items.length}</b></div>${CV?`<div>تنتهي المهلة الانتقالية<b>${fmtG(UX_PAPER_DEADLINE)}</b></div><div>المتبقي<b>${Math.max(0,daysUntil(UX_PAPER_DEADLINE))}</b> يوم</div>`:`<div>منتهية<b>${ex}</b></div><div>قريبة الانتهاء<b>${items.length-ex}</b></div>`}<div>إجمالي مبالغ السندات المسجلة<b>${N0(tot)}</b> ريال</div></div>
 <table><thead><tr><th>#</th><th>اسم المنشأة</th><th>كود العميل</th><th>السجل التجاري</th><th>نوع السند</th><th>رقم السند</th><th>تاريخ السند</th><th>المبلغ</th>${CV?'':'<th>تاريخ الانتهاء</th><th>الحالة</th>'}<th>ملاحظات الجملة</th></tr></thead><tbody>${rows}</tbody></table>
 <p style="margin-top:14px">وتفضلوا بقبول فائق الاحترام والتقدير،،</p>
 <div class="sig"><div><b>إدارة الشؤون القانونية</b><span>التوقيع: ....................</span></div><div><b>إدارة الجملة — الاستلام</b><span>الاسم: ....................</span><span>التاريخ: ....................</span></div></div></section></body></html>`;
   w.document.open();w.document.write(html);w.document.close()}
+
+/* ===== 25) موظف تواريخ السندات: يقرأ تاريخ السند لكل عقد ناقص، والباقي إدخال سريع ===== */
+{const _bd0=uxBondDate;uxBondDate=function(raw){let g=_bd0(raw);if(g)return g;const t=normDigits(raw||'').replace(/\s+/g,' ');
+  const m=t.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](14\d{2})/);if(m&&typeof h2g==='function'){try{g=h2g(`${m[3]}-${m[2]}-${m[1]}`);if(g)return g}catch(e){}}return null}}
+const UXBD={run:false,done:0,found:0,log:[]};
+function uxBdTargets(){return recs('contracts').filter(c=>!dateG(c.bond_date)&&!/ما فيه/.test(String(c.bond_type||''))&&!c.bdTried)}
+function uxBdMissing(){return recs('contracts').filter(c=>!dateG(c.bond_date)&&!/ما فيه/.test(String(c.bond_type||'')))}
+function uxBdOk(g){return g&&g>='2008-01-01'&&g<=todayISO()}
+function uxBdFromPages(pages){const dates=new Set();let kind=null,amount=null,no=null;
+  for(const t of pages){const x=uxReadPage(t)||{};const isBond=x.type==='bond'||/سند\s*(?:لأمر|لامر|ل\s*أمر)|منصة\s*نافذ/.test(normDigits(t));if(!isBond)continue;
+    const g=uxBondDate(t);if(uxBdOk(g))dates.add(g);const f=x.fields||{};if(f.bond_type&&!kind)kind=f.bond_type;if(f.bond_amount&&!amount)amount=f.bond_amount;if(f.bond_no&&!no)no=f.bond_no}
+  return{dates:[...dates],kind,amount,no}}
+async function uxBdOne(c){const d=uxOcrDocFor(c);if(!d)return{err:'لا يوجد ملف'};let pages;
+  if(d.text&&d.text.length>200){pages=d.text.split(/—\s*صفحة\s*\d+\s*—/).filter(s=>s.trim())}
+  else{const bytes=await assetBytes(d);const isPdf=/pdf/i.test(d.ext||d.mime||'');const imgs=isPdf?(await renderPdfPages(bytes,14)).pages:[{blob:new Blob([bytes],{type:d.mime||'image/jpeg'})}];
+    const w=await uxLangWorker();pages=[];let text='';for(let i=0;i<imgs.length;i++){if(!UXBD.run)throw new Error('stopped');UXBD.cur=`${c.trade_name} — صفحة ${i+1}/${imgs.length}`;uxBdEmit();const r=await w.recognize(imgs[i].blob);const t=r.data.text||'';pages.push(t);text+=`— صفحة ${i+1} —\n${t}\n`}
+    try{await writeDoc('docs',d.id,{text:text.slice(0,30000),textMethod:'قراءة آلية (OCR) داخل البرنامج',ocrStatus:'تمت القراءة',truncated:text.length>30000},d.rev,{force:true})}catch(e){}}
+  return uxBdFromPages(pages)}
+let uxBdL=new Set();function uxBdEmit(){[...uxBdL].forEach(f=>{try{f()}catch(e){}})}
+async function uxBdRun(){if(UXBD.run)return;if(S.readOnly){toast('صلاحيتك مشاهدة فقط');return}UXBD.run=true;UXBD.done=0;UXBD.found=0;uxBdEmit();
+  try{while(UXBD.run){const q=uxBdTargets();if(!q.length)break;const c=q[0];UXBD.cur=c.trade_name;uxBdEmit();let res;try{res=await uxBdOne(c)}catch(e){if(String(e.message)==='stopped')break;res={err:String(e.message||e)}}
+    const cur=rec('contracts',c.id)||c;const patch={bdTried:new Date().toISOString()};
+    if(res.dates&&res.dates.length===1){const g=res.dates[0];patch.bond_date={orig:'g',g,h:g2h(g),verified:false};patch.bondDateAuto=true;UXBD.found++;UXBD.log.unshift(`✓ ${c.trade_name}: ${fmtG(g)}`)}
+    else if(res.dates&&res.dates.length>1){patch.bdCands=res.dates.slice(0,4);UXBD.log.unshift(`؟ ${c.trade_name}: أكثر من تاريخ`)}else UXBD.log.unshift(`— ${c.trade_name}: ${res.err||'التاريخ ما انقرأ'}`);
+    if(res.kind&&!cur.bond_type)patch.bond_type=res.kind;if(res.amount&&(cur.bond_amount==null||cur.bond_amount===''))patch.bond_amount=res.amount;if(res.no&&!cur.bond_no)patch.bond_no=res.no;
+    try{await writeDoc('contracts',c.id,patch,cur.rev,{force:true})}catch(e){}UXBD.done++;UXBD.log=UXBD.log.slice(0,6);uxBdEmit()}}
+  finally{UXBD.run=false;UXBD.cur=null;uxBdEmit();if(UXBD.done)toast(`موظف تواريخ السندات: قرأ ${UXBD.found} تاريخ من ${UXBD.done} ملف`)}}
+async function uxBdOpenFile(c){const d=uxOcrDocFor(c);if(!d){toast('ما فيه ملف مرفوع لهذا العقد');return}const w=uxPdfWin();try{const b=await assetBytes(d);uxOpenPdf(new Blob([b],{type:d.mime||'application/pdf'}),d.name||c.trade_name,w)}catch(e){try{w&&w.close()}catch(_){}toast('تعذر فتح الملف')}}
+function uxBondDates(){const body=h('div',{class:'ux-bd'});let dlg;let shown=40;
+  const paint=()=>{const miss=uxBdMissing();const left=uxBdTargets().length;const auto=recs('contracts').filter(c=>c.bondDateAuto&&dateG(c.bond_date)).length;
+    const head=h('div',{class:'ux-oe'},h('div',{class:'ux-oe-t'},h('b',null,UXBD.run?'جاري القراءة…':`${miss.length} عقد بدون تاريخ سند`),h('small',{class:'muted'},UXBD.run?(UXBD.cur||'')+` · خلّص ${UXBD.done} · لقى ${UXBD.found}`:`${left} ما انقرأت للحين · ${auto} تاريخ انقرأ آليًا (عليه علامة «آلي»)`)),
+      UXBD.run?h('button',{class:'btn',onclick:()=>{UXBD.run=false}},'إيقاف'):h('button',{class:'btn primary',disabled:!left||S.readOnly,onclick:()=>uxBdRun()},left?`ابدأ قراءة ${left} ملف`:'كل الملفات انقرأت'));
+    const log=UXBD.log.length?h('div',{class:'small muted',style:'margin:6px 0'},UXBD.log.join(' · ')):null;
+    const list=miss.slice(0,shown).map(c=>{const inp=h('input',{type:'date',max:todayISO(),'aria-label':'تاريخ السند'});const cands=(c.bdCands||[]).map(g=>h('button',{type:'button',class:'btn sm ghost',onclick:()=>{inp.value=g}},fmtG(g)));
+      const save=h('button',{class:'btn sm primary',disabled:S.readOnly,onclick:async()=>{if(!inp.value){toast('اختر التاريخ');return}const cur=rec('contracts',c.id)||c;save.disabled=true;try{await writeDoc('contracts',c.id,{bond_date:{orig:'g',g:inp.value,h:g2h(inp.value),verified:true},bondDateAuto:false},cur.rev,{force:true});toast('انحفظ');row.remove()}catch(e){save.disabled=false;toast('تعذر الحفظ')}}},'حفظ');
+      const row=h('div',{class:'ux-bn-row'},h('span',{class:'ux-bn-t'},h('b',null,c.trade_name||'—'),h('small',{class:'muted'},[c.customer_code,c.bond_type||'النوع غير محدد',c.bdTried?'ما انقرأ آليًا':'ما انقرأ للحين'].filter(Boolean).join(' · ')),cands.length?h('span',null,h('small',{class:'muted'},'مقترح: '),...cands):null),
+        h('button',{type:'button',class:'btn sm ghost',onclick:()=>uxBdOpenFile(c)},'📄 الملف'),inp,save);return row});
+    body.replaceChildren(head,log,h('div',{class:'small muted',style:'margin:8px 0'},'إدخال سريع: افتح الملف، شوف تاريخ السند، اكتبه واحفظ. التواريخ المقروءة آليًا تقدر تراجعها من فلتر السند.'),h('div',{class:'ux-bn-list'},list),miss.length>shown?h('button',{class:'btn sm ghost',onclick:()=>{shown+=40;paint()}},`عرض ${Math.min(40,miss.length-shown)} زيادة (باقي ${miss.length-shown})`):null)};
+  let last=UXBD.run;const L=()=>{const ch=last!==UXBD.run;last=UXBD.run;if(ch||!UXBD.run)paint();else{const t=body.querySelector('.ux-oe-t small');if(t)t.textContent=(UXBD.cur||'')+` · خلّص ${UXBD.done} · لقى ${UXBD.found}`;const lg=body.children[1];if(lg&&lg.classList.contains('small'))lg.textContent=UXBD.log.join(' · ')}};uxBdL.add(L);
+  paint();dlg=uxModal('تواريخ السندات',body,null);dlg.addEventListener('close',()=>uxBdL.delete(L))}
+function uxBondDatesBtn(){const n=uxBdMissing().length;return n?h('button',{class:'btn ux-bn-btn',onclick:()=>uxBondDates()},ibtn('calendar','تواريخ السندات'),h('span',{class:'count',style:'margin-inline-start:6px'},String(n))):null}
+{const _bc3=uxCtBondCell;uxCtBondCell=function(r){const el=_bc3(r);if(r.bondDateAuto&&dateG(r.bond_date)&&el.querySelector){const s=el.querySelector('small');if(s)s.append(h('span',{class:'pill',style:'margin-inline-start:4px;font-size:10px',title:'التاريخ مقروء آليًا من الملف — افتح العقد وتأكد منه'},'آلي'))}return el}}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
