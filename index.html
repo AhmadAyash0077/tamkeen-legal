@@ -2147,7 +2147,7 @@ const MODS={
     {k:'ref_no',l:'الرقم',t:'ltr',sec:'النموذج'},{k:'date',l:'التاريخ',t:'date',req:1,sec:'النموذج',hint:'يُكتب في الملف بالميلادي والهجري (أم القرى) ولا يتغير عند فتح الملف'},{k:'customer_code',l:'كود العميل',t:'ltr',sec:'النموذج'},
     {k:'trade_name',l:'الاسم التجاري',t:'text',req:1,sec:'بيانات العميل'},{k:'cr_no',l:'رقم السجل التجاري',t:'ltr',sec:'بيانات العميل',chk:'cr'},{k:'cr_city',l:'مدينة الإصدار',t:'text',sec:'بيانات العميل',list:CITIES},
     {k:'cr_confirm',l:'تاريخ التأكيد السنوي للسجل',t:'date',sec:'بيانات العميل'},{k:'cr_entity',l:'نوع الكيان',t:'text',sec:'بيانات العميل'},{k:'cr_state',l:'حالة السجل',t:'text',sec:'بيانات العميل'},{k:'bond_type',l:'نوع السند',t:'select',o:['إلكتروني (نافذ)','ورقي','إلكتروني + ورقي','ما فيه سند'],sec:'السند'},{k:'bond_amount',l:'مبلغ السند',t:'money',sec:'السند'},{k:'bond_date',l:'تاريخ السند',t:'date',sec:'السند'},{k:'bond_no',l:'رقم السند في نافذ',t:'ltr',sec:'السند'},{k:'activity',l:'نشاط المنشأة',t:'text',sec:'بيانات العميل',list:ACTS},{k:'national_address',l:'العنوان الوطني',t:'text',sec:'بيانات العميل',hint:'المدينة، الحي، رقم المبنى أو الرمز المختصر'},
-    {k:'manager_name',l:'اسم الشخص المسؤول',t:'text',sec:'الشخص المسؤول'},{k:'manager_title',l:'الوظيفة',t:'text',sec:'الشخص المسؤول',list:TITLES},{k:'manager_mobile',l:'رقم الجوال',t:'ltr',sec:'الشخص المسؤول',chk:'mobile'},{k:'inst_region',l:'منطقة التركيب',t:'text',sec:'بيانات التركيب',list:CITIES,hint:'تُكتب في التمهيد والبنود: مثال جدة'},{k:'manager_nat',l:'جنسية ممثل الطرف الثاني',t:'text',sec:'بيانات التركيب',list:NATS},{k:'manager_id',l:'رقم الهوية / السجل المدني للممثل',t:'ltr',sec:'بيانات التركيب',chk:'id'},{k:'inst_final',l:'تاريخ انتهاء العقد عند عدم التجديد',t:'date',sec:'بيانات التركيب',hint:'يُكتب في بند «فينتهي هذا العقد بتاريخ». إن تُرك فارغًا يُستخدم تاريخ نهاية العقد'},
+    {k:'manager_name',l:'اسم الشخص المسؤول',t:'text',sec:'الشخص المسؤول'},{k:'manager_title',l:'الوظيفة',t:'text',sec:'الشخص المسؤول',list:TITLES},{k:'manager_mobile',l:'رقم الجوال',t:'ltr',sec:'الشخص المسؤول',chk:'mobile'},{k:'inst_region',l:'منطقة التركيب',t:'text',sec:'بيانات التركيب',list:CITIES,hint:'تُكتب في التمهيد والبنود: مثال جدة'},{k:'ins_amount',l:'مبلغ التأمين (ريال)',t:'money',sec:'بيانات التركيب',hint:'مبلغ التأمين المودع قبل بدء العمل حسب العقد'},{k:'manager_nat',l:'جنسية ممثل الطرف الثاني',t:'text',sec:'بيانات التركيب',list:NATS},{k:'manager_id',l:'رقم الهوية / السجل المدني للممثل',t:'ltr',sec:'بيانات التركيب',chk:'id'},{k:'inst_final',l:'تاريخ انتهاء العقد عند عدم التجديد',t:'date',sec:'بيانات التركيب',hint:'يُكتب في بند «فينتهي هذا العقد بتاريخ». إن تُرك فارغًا يُستخدم تاريخ نهاية العقد'},
     {k:'e1_name',l:'اسم الموظف المفوض',t:'text',req:1,sec:'المفوض الأول'},{k:'e1_nat',l:'الجنسية',t:'text',sec:'المفوض الأول',list:NATS},{k:'e1_id',l:'رقم الهوية أو الإقامة',t:'ltr',sec:'المفوض الأول',chk:'id'},{k:'e1_title',l:'الوظيفة',t:'text',sec:'المفوض الأول',list:TITLES},{k:'e1_mobile',l:'رقم الجوال',t:'ltr',sec:'المفوض الأول',chk:'mobile'},
     {k:'e2_name',l:'اسم الموظف المفوض',t:'text',sec:'المفوض الثاني'},{k:'e2_nat',l:'الجنسية',t:'text',sec:'المفوض الثاني',list:NATS},{k:'e2_id',l:'رقم الهوية أو الإقامة',t:'ltr',sec:'المفوض الثاني',chk:'id'},{k:'e2_title',l:'الوظيفة',t:'text',sec:'المفوض الثاني',list:TITLES},{k:'e2_mobile',l:'رقم الجوال',t:'ltr',sec:'المفوض الثاني',chk:'mobile'},
     {sec:'تفاصيل العقد الإضافية',k:'ctype',l:'نوع العقد',t:'select',o:CT_TYPES_LIST,hint:'يحدد قائمة المستندات المطلوبة؛ الافتراضي «توريد بضاعة آجل»'},{sec:'تفاصيل العقد الإضافية',k:'title',l:'عنوان العقد',t:'text',w:1},{sec:'تفاصيل العقد الإضافية',k:'parties',l:'الأطراف',t:'area',w:1},
@@ -4912,7 +4912,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261106222756';
+const UX_BUILD='20261106234448';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5959,6 +5959,57 @@ async function uxBnXlsx(items,mode){const CV=mode==='convert';try{await libLoad(
   const n=head.length-1;ws['!merges']=[0,1,2,3,4].map(rw=>({s:{r:rw,c:0},e:{r:rw,c:n}}));ws['!autofilter']={ref:X.utils.encode_range({s:{r:6,c:0},e:{r:6+rows.length,c:n}})};
   const wb=X.utils.book_new();wb.Workbook={Views:[{RTL:true}]};X.utils.book_append_sheet(wb,ws,CV?'تحويل السندات':'تجديد السندات');
   X.writeFile(wb,`${CV?'كشف تحويل السندات الورقية':'كشف تجديد السندات'} - إدارة الجملة - ${t}.xlsx`);toast(`تم تنزيل كشف Excel بـ ${items.length} منشأة`)}
+
+/* ===== 26) تنقية المقروء + قراءة عقود التركيب (هيكل مختلف: لا سند، فيه مبلغ تأمين ومدة ومنطقة) ===== */
+const UX_LABEL_WORDS=/(رقم|السجل|الجوال|جوال|البريد|الكتروني|الإلكتروني|التوقيع|نموذج|الهوية|العنوان|الوظيفة|المسمى|الاسم|التاريخ|تاريخ|الجنسية|الختم|المدينة|الرمز|هاتف|فاكس|ص\.?\s*ب|@|www|http)/;
+const UX_TEXT_KEYS=/^(trade_name|manager_name|manager_title|manager_nat|e[12]_name|e[12]_title|e[12]_nat|activity|cr_city|cr_entity|cr_state|inst_region|owner_name)$/;
+function uxOcrSane(k,v){if(v==null)return false;const s=String(v).trim();if(!s)return false;
+  if(UX_TEXT_KEYS.test(k)){if(/\d/.test(s))return false;if(s.length>70||s.split(/\s+/).length>9)return false;
+    if(UX_LABEL_WORDS.test(s.replace(/^(?:شركة|مؤسسة|محل)\s+/,'')) && !/^(trade_name)$/.test(k))return false;
+    if(k==='trade_name'&&/(السجل|الجوال|البريد|التوقيع|نموذج|رقم)/.test(s))return false;
+    if(/[ء-ي]{2,}[A-Za-z]|[A-Za-z][ء-ي]/.test(s))return false;
+    if(/^(e[12]_title|manager_title)$/.test(k)&&s.split(/\s+/).length>4)return false;
+    if(/(قم|لس|لج)[ء-ي]*(السجل|الجوال|البريد)/.test(s))return false}
+  if(/mobile$/.test(k)&&!/^05\d{8}$/.test(s.replace(/\D/g,'')))return false;
+  if(/^(e[12]_id|manager_id|id_no|owner_id)$/.test(k)&&!uxIdOk(s))return false;
+  if(k==='national_address'&&!/^[A-Z]{4}\d{4}$/.test(s))return false;
+  if(k==='cr_no'&&(/^(4030049348|7011006009)$/.test(s)||!/^(7\d{9}|[1-5]\d{9})$/.test(s)))return false;
+  if(k==='bond_amount'&&!(Number(s)>=1000&&Number(s)<=5000000))return false;
+  return true}
+const uxIsInst=r=>!!r&&uxCtKind(r)==='تركيب';
+const UX_INST_BOND=/^(bond_type|bond_amount|bond_no|bond_date)$/;
+{const _rows=uxOcrRows;uxOcrRows=function(c){let R=_rows(c).filter(r=>uxOcrSane(r.k,r.v));if(uxIsInst(c))R=R.filter(r=>!UX_INST_BOND.test(r.k));return R}}
+function uxInstDates(seg){const t=seg.replace(/(\d)\s+(?=\d)/g,'$1');const out=[];const re=/(\d{1,4})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,4})/g;let m;
+  while((m=re.exec(t))){let a=+m[1],b=+m[2],c=+m[3];let y,mo,d;if(a>1900){y=a;mo=b;d=c}else if(c>1900){y=c;mo=b;d=a}else continue;if(y<2015||y>2035||mo<1||mo>12||d<1||d>31)continue;out.push(`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`)}return out}
+function uxReadInst(raw){const t=normDigits(String(raw||'')).replace(/ـ/g,'');const f={};
+  const head=t.slice(0,600);const rn=head.match(/\(\s*(\d{2,5})\s*\)/);if(rn)f.ref_no=rn[1];
+  const ag=t.match(/(?:تاري\s*خ|تاريخ)\s*((?:\d\s*){4}\s*-\s*\d{1,2}\s*-\s*\d{1,2})/);if(ag){const d=uxInstDates(ag[1])[0];if(d)f.date=d}
+  const iDur=t.search(/مدة\s*العقد/);if(iDur>=0){const ds=uxInstDates(t.slice(iDur,iDur+260));if(ds[0])f.start=ds[0];if(ds[1]&&ds[1]>ds[0])f.end=ds[1]}
+  const i2=t.search(/الطرف\s*(?:ال)?ثان/);const i3=t.search(/التمهيد/);const p2=i2>=0?t.slice(i2,i3>i2?i3:i2+700):'';
+  if(p2){const cr=(p2.match(/\b(7\d{9}|[1-5]\d{9})\b/g)||[]).filter(x=>!/^(4030049348|7011006009)$/.test(x));if(cr[0])f.cr_no=cr[0];
+    const na=p2.match(/\b([A-Z]{4}\s?\d{4})\b/);if(na)f.national_address=na[1].replace(/\s/g,'');
+    const mb=(p2.replace(/(\d)\s+(?=\d)/g,'$1').match(/\b(05\d{8})\b/)||[])[1];if(mb)f.manager_mobile=mb;
+    const ids=(p2.match(/\b([12]\d{9})\b/g)||[]).filter(x=>uxIdOk(x)&&x!==f.cr_no);if(ids.length)f.manager_id=ids[ids.length-1];
+    const nm=p2.match(/يمثله[اـ]?\s*\/\s*([ء-ي\s]{5,60}?)\s+(?:ال)?جنسية\s*([ء-ي]+)?/);if(nm){const n=nm[1].replace(/\s+/g,' ').trim();if(uxOcrSane('manager_name',n))f.manager_name=n;if(nm[2])f.manager_nat=nm[2]}}
+  const regs={};(t.match(/منطق[ةه]\s*\(\s*([^()]{2,30}?)\s*\)/g)||[]).forEach(x=>{const v=x.replace(/^منطق[ةه]\s*\(\s*|\s*\)$/g,'').trim();if(/^[ء-ي]+(?:\s[ء-ي]+){0,2}$/.test(v)&&!/(الطرف|عل|يقوم|وذلك)/.test(v))regs[v]=(regs[v]||0)+1});
+  const rg=Object.entries(regs).sort((a,b)=>b[1]-a[1])[0];if(rg)f.inst_region=rg[0];
+  const ins=t.match(/تأم[ءي-]*\s*ن?[^\d]{0,40}?\(?\s*(\d{1,3}(?:,\d{3})+|\d{3,6})\s*ريال/);if(ins){const v=Number(ins[1].replace(/,/g,''));if(v>=100&&v<=500000)f.ins_amount=v}
+  return f}
+function uxInstContractDoc(c){const ds=recs('docs').filter(d=>(d.links||[]).includes('contracts:'+c.id));return ds.find(d=>/العقد الموق/.test(d.category||''))||ds.find(d=>/عقد/.test(d.name||'')&&/تركيب/.test((d.text||'').slice(0,400)))||null}
+async function uxInstText(d){if(d.text&&d.text.length>800&&/مدة\s*العقد|الطرف/.test(d.text))return d.text;
+  const bytes=await assetBytes(d);const pages=(await renderPdfPages(bytes,6)).pages;const w=await uxLangWorker();let text='';for(let i=0;i<pages.length;i++){const r=await w.recognize(pages[i].blob);text+=`— صفحة ${i+1} —\n${r.data.text||''}\n`}return text}
+{const _one=uxOcrOne;uxOcrOne=async function(c){if(!uxIsInst(c))return _one(c);const d=uxInstContractDoc(c)||uxOcrDocFor(c);if(!d)throw new Error('لا يوجد ملف');
+  const text=await uxInstText(d);const raw=uxReadInst(text);const fields={};for(const[k,v]of Object.entries(raw)){if(/^(start|end|date)$/.test(k)||uxOcrSane(k,v))fields[k]=String(v)}
+  await writeDoc('contracts',c.id,{ocrSuggest:{fields,at:new Date().toISOString(),doc:d.id,inst:true}},(rec('contracts',c.id)||c).rev,{force:true});return Object.keys(fields).length}}
+{const _rows2=uxOcrRows;uxOcrRows=function(c){const s=c.ocrSuggest||{};if(!(uxIsInst(c)&&s.inst))return _rows2(c);const L={ref_no:'رقم العقد',date:'تاريخ العقد',start:'بداية العقد',end:'نهاية العقد',inst_region:'منطقة التركيب',cr_no:'السجل التجاري',national_address:'العنوان الوطني',manager_mobile:'جوال الممثل',manager_id:'هوية الممثل',manager_name:'اسم الممثل',manager_nat:'جنسية الممثل',ins_amount:'مبلغ التأمين'};const R=[];
+  for(const[k,v]of Object.entries(s.fields||{})){if(/^(start|end|date)$/.test(k))R.push({k,l:L[k],v,cur:dateG(c[k])||'',date:1});else R.push({k,l:L[k]||k,v,cur:c[k]==null?'':c[k]})}return R}}
+{const _fmt=uxOcrFmt;uxOcrFmt=function(k,v){return k==='ins_amount'?nf.format(Number(v))+' ريال':_fmt(k,v)}}
+{const _ap=uxOcrApply;uxOcrApply=function(c,picked){return _ap(c,picked.map(r=>r.k==='ins_amount'?{...r,v:Number(r.v)}:r))}}
+/* عقود التركيب ما لها سند: تُستبعد من عمود/فلاتر/إشعارات السندات وموظف تواريخ السندات */
+{const _bi=uxCtBondInfo;uxCtBondInfo=function(r){if(uxIsInst(r))return{date:null,kind:'',amount:null,exp:null,left:null,expired:false,soon:false,inst:true};return _bi(r)}}
+{const _bc4=uxCtBondCell;uxCtBondCell=function(r){if(uxIsInst(r)){const a=r.ins_amount;return h('div',{class:'ux-bcell'},h('span',{class:'pill'},'عقد تركيب — بدون سند'),a?h('small',{class:'muted'},'تأمين '+nf.format(a)+' ريال'):null)}return _bc4(r)}}
+{const _bm=uxBfMatch;uxBfMatch=function(r,v){if(v&&uxIsInst(r))return false;return _bm(r,v)}}
+if(typeof uxBdTargets==='function'){const _t=uxBdTargets;uxBdTargets=function(){return _t().filter(c=>!uxIsInst(c))};const _m=uxBdMissing;uxBdMissing=function(){return _m().filter(c=>!uxIsInst(c))}}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
