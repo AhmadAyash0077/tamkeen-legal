@@ -4912,7 +4912,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261106215229';
+const UX_BUILD='20261106215512';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5820,7 +5820,7 @@ function uxBnLetters(items,mode){const CV=mode==='convert';const w=uxPdfWin();if
   const page=({r,x},i)=>{const no=`${CV?'BC':'BN'}-${t.replace(/-/g,'')}-${String(i+1).padStart(3,'0')}`;const bno=String(r.bond_no||'').trim();
     const what=`سند الأمر ${kindTxt(x.kind)}${bno?' رقم ('+esc(bno)+')':''}${x.date?' المؤرخ في '+fmtG(x.date):''}${x.amount!=null&&!isNaN(x.amount)?' بمبلغ '+N0(x.amount)+' ريال':''}`;
     const st=x.expired?`قد تجاوز بتاريخ ${fmtG(x.exp)} مدة صلاحية السندات المعتمدة لدى الشركة (${bondRule().years} سنوات من تاريخ تحريره)`:`سيتجاوز بتاريخ ${fmtG(x.exp)} مدة صلاحية السندات المعتمدة لدى الشركة (${bondRule().years} سنوات من تاريخ تحريره)`;
-    return `<section class="pg"><header><div><b>شركة تمكين الدولية</b><small>إدارة الشؤون القانونية</small></div><div class="meta"><span>التاريخ: ${fmtG(t)}</span><span>رقم الإشعار: ${no}</span></div></header>
+    return `<section class="pg"><i class="wm"></i><header><div class="brand"><img src="${LOGO}" alt="تمكين"><div><b>شركة تمكين الدولية للأجهزة المنزلية</b><small>إدارة الشؤون القانونية</small></div></div><div class="meta"><span>التاريخ: ${fmtG(t)}</span><span>رقم الإشعار: ${no}</span></div></header>
 <h1>${CV?'إشعار بتحويل سند الأمر الورقي إلى سند إلكتروني':'إشعار بتجديد سند الأمر'}</h1>
 <p class="to">السادة / <b>${esc(r.trade_name||'')}</b> &nbsp; المحترمين</p>
 <table class="inf"><tr><th>السجل التجاري</th><td>${esc(r.cr_no||'—')}</td><th>كود العميل</th><td>${esc(r.customer_code||'—')}</td></tr></table>
@@ -5831,15 +5831,20 @@ ${CV?`<p>إشارةً إلى ${what}، المقدَّم منكم ضمانًا ل
 <p>وعليه نأمل منكم التكرم بتحرير سند أمر جديد وتسليمه للشركة في أقرب وقت، حفاظًا على استمرار التعامل بينكم وبين الشركة.</p>
 `}<p>ولأي استفسار يمكنكم التواصل مع إدارة الشؤون القانونية.</p>
 <p class="end">وتفضلوا بقبول فائق الاحترام والتقدير،،</p>
-<div class="sig"><b>إدارة الشؤون القانونية</b><span>شركة تمكين الدولية</span><span class="ln">التوقيع: ....................</span><span class="ln">الختم:</span></div></section>`};
+<div class="sig"><b>إدارة الشؤون القانونية</b><span>شركة تمكين الدولية للأجهزة المنزلية</span><span class="ln">التوقيع: ....................</span><span class="ln">الختم:</span></div><footer>شركة تمكين الدولية للأجهزة المنزلية — إدارة الشؤون القانونية</footer></section>`};
   const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${CV?'إشعارات تحويل السندات للإلكتروني':'إشعارات تجديد السندات'} — ${fmtG(t)}</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet"><style>
 @page{size:A4;margin:18mm}*{box-sizing:border-box}body{margin:0;background:#e9edf2;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;color:#111;line-height:2}
 .bar{position:sticky;top:0;background:#0b1220;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;z-index:2}.bar button{background:#c8a24a;border:0;color:#111;font:inherit;font-weight:700;padding:6px 16px;border-radius:8px;cursor:pointer}
-.pg{background:#fff;width:210mm;min-height:297mm;margin:16px auto;padding:20mm;box-shadow:0 4px 24px #0002;page-break-after:always;font-size:15px}
-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c8a24a;padding-bottom:10px;margin-bottom:24px}header b{font-size:19px;display:block}header small{color:#555}.meta{display:flex;flex-direction:column;font-size:13px;color:#333;text-align:left}
-h1{text-align:center;font-size:21px;margin:10px 0 24px;text-decoration:underline;text-underline-offset:8px}.to{font-size:16px}.inf{border-collapse:collapse;width:100%;margin:6px 0 16px;font-size:14px}.inf th,.inf td{border:1px solid #bbb;padding:4px 10px}.inf th{background:#f4efe2;width:18%}
-p{margin:0 0 12px;text-align:justify}.end{margin-top:22px}.sig{margin-top:30px;margin-inline-start:auto;width:250px;display:flex;flex-direction:column;text-align:center}.sig .ln{text-align:right;margin-top:16px}
-@media print{body{background:#fff}.bar{display:none}.pg{margin:0;box-shadow:none;width:auto;min-height:auto;padding:0}}</style></head><body>
+.pg{position:relative;overflow:hidden;background:#fff;width:210mm;min-height:297mm;margin:16px auto;padding:18mm 20mm 26mm;box-shadow:0 4px 24px #0002;page-break-after:always;font-size:15px;color:#1b2033}
+.pg>*{position:relative}.wm{position:absolute!important;inset:0;background:url("${LOGO}") center 55%/62% no-repeat;opacity:.05;pointer-events:none}
+header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #273580;padding-bottom:12px;margin-bottom:26px}header::after{content:"";position:absolute;bottom:-7px;right:0;width:130px;height:3px;background:#b08a3e}
+.brand{display:flex;align-items:center;gap:12px}.brand img{height:58px;width:auto}.brand div{display:flex;flex-direction:column;border-inline-start:1px solid #d8dbe6;padding-inline-start:12px;line-height:1.7}.brand b{font-size:14px;color:#273580}.brand small{color:#5a6178;font-size:12px}
+.meta{display:flex;flex-direction:column;font-size:12.5px;color:#273580;text-align:left;line-height:1.8}
+h1{text-align:center;font-size:21px;margin:6px 0 24px;color:#273580}h1::after{content:"";display:block;width:90px;height:3px;background:#b08a3e;margin:8px auto 0;border-radius:2px}
+.to{font-size:16px}.inf{border-collapse:collapse;width:100%;margin:6px 0 16px;font-size:14px}.inf th,.inf td{border:1px solid #c9cde0;padding:4px 10px}.inf th{background:#eef0f8;color:#273580;width:18%}
+p{margin:0 0 12px;text-align:justify}.end{margin-top:22px}.sig{margin-top:30px;margin-inline-start:auto;width:260px;display:flex;flex-direction:column;text-align:center}.sig b{color:#273580}.sig .ln{text-align:right;margin-top:16px}
+footer{position:absolute!important;bottom:10mm;left:20mm;right:20mm;border-top:2px solid #273580;padding-top:6px;text-align:center;font-size:11px;color:#5a6178}
+@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.bar{display:none}.pg{margin:0;box-shadow:none;width:auto;height:259mm;min-height:0;padding:0 0 18mm}footer{bottom:0;left:0;right:0}}</style></head><body>
 <div class="bar"><span>${items.length} إشعار — راجعها ثم اطبعها أو احفظها PDF. البرنامج ما يرسل شي للعملاء.</span><button onclick="print()">🖨 طباعة / حفظ PDF</button></div>${items.map(page).join('')}</body></html>`;
   w.document.open();w.document.write(html);w.document.close()}
 async function uxBnMark(items,mode){let n=0;for(const {r} of items){try{const c=rec('contracts',r.id)||r;const log=(c.bondNotices||[]).concat([{at:new Date().toISOString(),by:S.me?.id||null,type:mode||'renew'}]).slice(-10);await writeDoc('contracts',c.id,{bondNotices:log},c.rev,{force:true});n++}catch(e){}}return n}
