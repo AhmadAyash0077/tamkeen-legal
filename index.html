@@ -4912,7 +4912,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261106234800';
+const UX_BUILD='20261106235145';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5990,7 +5990,7 @@ function uxReadInst(raw){const t=normDigits(String(raw||'')).replace(/ـ/g,'');c
     const na=p2.match(/\b([A-Z]{4}\s?\d{4})\b/);if(na)f.national_address=na[1].replace(/\s/g,'');
     const mb=(p2.replace(/(\d)\s+(?=\d)/g,'$1').match(/\b(05\d{8})\b/)||[])[1];if(mb)f.manager_mobile=mb;
     const ids=(p2.match(/\b([12]\d{9})\b/g)||[]).filter(x=>uxIdOk(x)&&x!==f.cr_no);if(ids.length)f.manager_id=ids[ids.length-1];
-    const nm=p2.match(/يمثله[اـ]?\s*\/\s*([ء-ي\s]{5,60}?)\s+(?:ال)?جنسية\s*([ء-ي]+)?/);if(nm){const n=nm[1].replace(/\s+/g,' ').trim();if(uxOcrSane('manager_name',n))f.manager_name=n;if(nm[2])f.manager_nat=nm[2]}}
+    const nm=p2.match(/يمثله[اـ]?\s*\/\s*([ء-ي\s]{5,60}?)\s+(?:ال)?جنسية\s*([ء-ي]+)?/);if(nm){let n=nm[1].replace(/\s+/g,' ').trim();let nat=nm[2]||'';const tail=n.match(/\s((?:ال)?[ء-ي]{3,}ي(?:ة)?)$/);if(tail&&/^(?:ال)?(سعودي|يمني|مصري|سوداني|سوري|أردني|اردني|فلسطيني|هندي|باكستاني|بنغلاديشي|فلبيني|لبناني|إثيوبي|اثيوبي)(ة)?$/.test(tail[1])){if(!/ي(ة)?$/.test(nat))nat=tail[1];n=n.slice(0,tail.index).trim()}if(uxOcrSane('manager_name',n))f.manager_name=n;if(/^(?:ال)?[ء-ي]{3,}ي(?:ة)?$/.test(nat))f.manager_nat=nat}}
   const regs={};(t.match(/منطق[ةه]\s*\(\s*([^()]{2,30}?)\s*\)/g)||[]).forEach(x=>{const v=x.replace(/^منطق[ةه]\s*\(\s*|\s*\)$/g,'').trim();if(/^[ء-ي]+(?:\s[ء-ي]+){0,2}$/.test(v)&&!/(الطرف|عل|يقوم|وذلك)/.test(v))regs[v]=(regs[v]||0)+1});
   const rg=Object.entries(regs).sort((a,b)=>b[1]-a[1])[0];if(rg)f.inst_region=rg[0];
   const ins=t.match(/تأم[ءي-]*\s*ن?[^\d]{0,40}?\(?\s*(\d{1,3}(?:,\d{3})+|\d{3,6})\s*ريال/);if(ins){const v=Number(ins[1].replace(/,/g,''));if(v>=100&&v<=500000)f.ins_amount=v}
