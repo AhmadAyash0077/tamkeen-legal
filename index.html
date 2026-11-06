@@ -4917,7 +4917,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261107002154';
+const UX_BUILD='20261107002358';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -6114,6 +6114,8 @@ async function uxCbSkip(b,r){const cur=rec(b.mod,r.id)||r;const s={...(cur.cbSki
 setTimeout(async()=>{try{if(S.readOnly||!canAdmin())return;const t=todayISO();if(localStorage.getItem('uxCbAuto')===t)return;localStorage.setItem('uxCbAuto',t);let n=0;
   for(const b of uxCbCfg().custom.filter(x=>x.status!=='موقوف'&&x.action&&x.action.mode==='auto'&&x.action.f)){for(const r of uxCbRun(b)){const x=uxCbRec(b,r);if(x&&!x.ok)continue;if(await uxCbDo(b,r))n++}}
   if(n)toast(`الموظفون الإلكترونيون نفذوا ${n} إجراء تلقائي — القيم القديمة محفوظة`,8000)}catch(e){}},40000);
+/* قارئ الملفات: الملف اللي ما طلع منه شي صالح ما يظهر في المراجعة (ينحسب «ما فيه جديد») */
+{const _pd=uxOcrPending;uxOcrPending=function(){return _pd().filter(c=>{try{return uxOcrRows(c).some(r=>String(r.cur??'')!==String(r.v??''))}catch(e){return true}})}}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
