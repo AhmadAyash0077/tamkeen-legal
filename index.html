@@ -3560,7 +3560,7 @@ function viewList(mod,mk){
   const wrap=h('div');
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},
-    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
+    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='contracts'&&typeof uxBondConvertBtn==='function'?uxBondConvertBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
     mod==='hearings'?h('div',{class:'small muted'},'الأوقات بتوقيت الرياض. للتنبيه على جوالك استخدم «تصدير إلى التقويم».'):null,
     extra,insBox,mfBox,
     mod==='violations'?vTabs:null,
@@ -4912,7 +4912,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261106214754';
+const UX_BUILD='20261106215229';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5814,23 +5814,25 @@ function uxBondFilter(onch){let v='';try{v=localStorage.getItem('uxBf')||''}catc
 
 /* ===== 22) إشعار تجديد السندات (المنتهي وقريب الانتهاء) — يجهّز خطابات للطباعة فقط، ما يرسل شي ===== */
 function uxBnDue(){return recs('contracts').filter(r=>{const x=uxCtBondInfo(r);return x.expired||x.soon}).map(r=>({r,x:uxCtBondInfo(r)})).sort((a,b)=>a.x.left-b.x.left)}
-function uxBnLetters(items){const w=uxPdfWin();if(!w){toast('اسمح بالنوافذ المنبثقة لهذا الموقع');return}
+function uxBnLetters(items,mode){const CV=mode==='convert';const w=uxPdfWin();if(!w){toast('اسمح بالنوافذ المنبثقة لهذا الموقع');return}
   const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));const t=todayISO();const N0=v=>new Intl.NumberFormat('en-US').format(v);
   const kindTxt=k=>k==='elec'?'الإلكتروني (منصة نافذ)':k==='paper'?'الورقي':k==='both'?'':'';
-  const page=({r,x},i)=>{const no=`BN-${t.replace(/-/g,'')}-${String(i+1).padStart(3,'0')}`;const bno=String(r.bond_no||'').trim();
-    const what=`سند الأمر ${kindTxt(x.kind)}${bno?' رقم ('+esc(bno)+')':''} المؤرخ في ${fmtG(x.date)}${x.amount!=null&&!isNaN(x.amount)?' بمبلغ '+N0(x.amount)+' ريال':''}`;
+  const page=({r,x},i)=>{const no=`${CV?'BC':'BN'}-${t.replace(/-/g,'')}-${String(i+1).padStart(3,'0')}`;const bno=String(r.bond_no||'').trim();
+    const what=`سند الأمر ${kindTxt(x.kind)}${bno?' رقم ('+esc(bno)+')':''}${x.date?' المؤرخ في '+fmtG(x.date):''}${x.amount!=null&&!isNaN(x.amount)?' بمبلغ '+N0(x.amount)+' ريال':''}`;
     const st=x.expired?`قد تجاوز بتاريخ ${fmtG(x.exp)} مدة صلاحية السندات المعتمدة لدى الشركة (${bondRule().years} سنوات من تاريخ تحريره)`:`سيتجاوز بتاريخ ${fmtG(x.exp)} مدة صلاحية السندات المعتمدة لدى الشركة (${bondRule().years} سنوات من تاريخ تحريره)`;
     return `<section class="pg"><header><div><b>شركة تمكين الدولية</b><small>إدارة الشؤون القانونية</small></div><div class="meta"><span>التاريخ: ${fmtG(t)}</span><span>رقم الإشعار: ${no}</span></div></header>
-<h1>إشعار بتجديد سند الأمر</h1>
+<h1>${CV?'إشعار بتحويل سند الأمر الورقي إلى سند إلكتروني':'إشعار بتجديد سند الأمر'}</h1>
 <p class="to">السادة / <b>${esc(r.trade_name||'')}</b> &nbsp; المحترمين</p>
 <table class="inf"><tr><th>السجل التجاري</th><td>${esc(r.cr_no||'—')}</td><th>كود العميل</th><td>${esc(r.customer_code||'—')}</td></tr></table>
 <p>السلام عليكم ورحمة الله وبركاته،،</p>
-<p>نحيطكم علمًا بأن ${what}، المقدَّم ضمانًا لحساب توريد البضاعة الآجل لدى شركة تمكين الدولية، ${st}.</p>
+${CV?`<p>إشارةً إلى ${what}، المقدَّم منكم ضمانًا لحساب توريد البضاعة الآجل لدى شركة تمكين الدولية،</p>
+<p>وحرصًا على تنظيم الضمانات وتسهيل إجراءاتها، نأمل منكم التكرم بتحرير سند أمر إلكتروني عبر منصة نافذ لصالح شركة تمكين الدولية${x.amount!=null&&!isNaN(x.amount)?' بمبلغ '+N0(x.amount)+' ريال':' بنفس مبلغ السند الحالي'}، بدلًا من السند الورقي، في أقرب وقت.</p>
+`:`<p>نحيطكم علمًا بأن ${what}، المقدَّم ضمانًا لحساب توريد البضاعة الآجل لدى شركة تمكين الدولية، ${st}.</p>
 <p>وعليه نأمل منكم التكرم بتحرير سند أمر جديد وتسليمه للشركة في أقرب وقت، حفاظًا على استمرار التعامل بينكم وبين الشركة.</p>
-<p>ولأي استفسار يمكنكم التواصل مع إدارة الشؤون القانونية.</p>
+`}<p>ولأي استفسار يمكنكم التواصل مع إدارة الشؤون القانونية.</p>
 <p class="end">وتفضلوا بقبول فائق الاحترام والتقدير،،</p>
 <div class="sig"><b>إدارة الشؤون القانونية</b><span>شركة تمكين الدولية</span><span class="ln">التوقيع: ....................</span><span class="ln">الختم:</span></div></section>`};
-  const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إشعارات تجديد السندات — ${fmtG(t)}</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet"><style>
+  const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${CV?'إشعارات تحويل السندات للإلكتروني':'إشعارات تجديد السندات'} — ${fmtG(t)}</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet"><style>
 @page{size:A4;margin:18mm}*{box-sizing:border-box}body{margin:0;background:#e9edf2;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;color:#111;line-height:2}
 .bar{position:sticky;top:0;background:#0b1220;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;z-index:2}.bar button{background:#c8a24a;border:0;color:#111;font:inherit;font-weight:700;padding:6px 16px;border-radius:8px;cursor:pointer}
 .pg{background:#fff;width:210mm;min-height:297mm;margin:16px auto;padding:20mm;box-shadow:0 4px 24px #0002;page-break-after:always;font-size:15px}
@@ -5840,19 +5842,24 @@ p{margin:0 0 12px;text-align:justify}.end{margin-top:22px}.sig{margin-top:30px;m
 @media print{body{background:#fff}.bar{display:none}.pg{margin:0;box-shadow:none;width:auto;min-height:auto;padding:0}}</style></head><body>
 <div class="bar"><span>${items.length} إشعار — راجعها ثم اطبعها أو احفظها PDF. البرنامج ما يرسل شي للعملاء.</span><button onclick="print()">🖨 طباعة / حفظ PDF</button></div>${items.map(page).join('')}</body></html>`;
   w.document.open();w.document.write(html);w.document.close()}
-async function uxBnMark(items){let n=0;for(const {r} of items){try{const c=rec('contracts',r.id)||r;const log=(c.bondNotices||[]).concat([{at:new Date().toISOString(),by:S.me?.id||null}]).slice(-10);await writeDoc('contracts',c.id,{bondNotices:log},c.rev,{force:true});n++}catch(e){}}return n}
-function uxBondNotice(only){const all=only?only.map(r=>({r,x:uxCtBondInfo(r)})):uxBnDue();
-  if(!all.length){toast('ما فيه سندات منتهية أو قريبة الانتهاء (لازم يكون للسند تاريخ)');return}
-  const chk=new Set(all.map(i=>i.r.id));const last=r=>{const l=(r.bondNotices||[]).slice(-1)[0];return l?fmtG(String(l.at).slice(0,10)):null};
+async function uxBnMark(items,mode){let n=0;for(const {r} of items){try{const c=rec('contracts',r.id)||r;const log=(c.bondNotices||[]).concat([{at:new Date().toISOString(),by:S.me?.id||null,type:mode||'renew'}]).slice(-10);await writeDoc('contracts',c.id,{bondNotices:log},c.rev,{force:true});n++}catch(e){}}return n}
+function uxBondNotice(only,mode){const CV=mode==='convert';const all=only?only.map(r=>({r,x:uxCtBondInfo(r)})):CV?uxBcDue():uxBnDue();
+  if(!all.length){toast(CV?'ما فيه سندات ورقية مسجلة':'ما فيه سندات منتهية أو قريبة الانتهاء (لازم يكون للسند تاريخ)');return}
+  const chk=new Set(all.map(i=>i.r.id));const last=r=>{const l=(r.bondNotices||[]).filter(n=>(n.type||'renew')===(mode||'renew')).slice(-1)[0];return l?fmtG(String(l.at).slice(0,10)):null};
   const cnt=h('b');const upd=()=>cnt.textContent=String(chk.size);
   const rows=all.map(({r,x})=>{const cb=h('input',{type:'checkbox',checked:true,onchange:()=>{cb.checked?chk.add(r.id):chk.delete(r.id);upd()}});
-    return h('label',{class:'ux-bn-row'},cb,h('span',{class:'ux-bn-t'},h('b',null,r.trade_name||'—'),h('small',{class:'muted'},[r.customer_code,UX_BK_KIND[x.kind]?.[0]||'النوع غير محدد','بتاريخ '+fmtG(x.date),last(r)?'آخر إشعار '+last(r):null].filter(Boolean).join(' · '))),h('span',{class:'pill '+(x.expired?'bad':'warn')},x.expired?'منتهي منذ '+spanAr(-x.left):'ينتهي بعد '+spanAr(x.left)))});
+    return h('label',{class:'ux-bn-row'},cb,h('span',{class:'ux-bn-t'},h('b',null,r.trade_name||'—'),h('small',{class:'muted'},[r.customer_code,UX_BK_KIND[x.kind]?.[0]||'النوع غير محدد',x.date?'بتاريخ '+fmtG(x.date):'بدون تاريخ',last(r)?'آخر إشعار '+last(r):null].filter(Boolean).join(' · '))),CV?h('span',{class:'pill brass'},'ورقي'+(x.amount!=null&&!isNaN(x.amount)?' · '+nf.format(x.amount):'')):h('span',{class:'pill '+(x.expired?'bad':'warn')},x.expired?'منتهي منذ '+spanAr(-x.left):'ينتهي بعد '+spanAr(x.left)))});
   const ex=all.filter(i=>i.x.expired).length;
-  const body=h('div',{class:'ux-bn'},h('div',{class:'small muted'},`${ex} منتهي · ${all.length-ex} قريب الانتهاء (خلال 6 أشهر). يجهّز خطاب لكل عميل تطبعه وتسلمه بنفسك — البرنامج ما يرسل شي.`),h('div',{class:'ux-bn-list'},rows));
-  let dlg;dlg=uxModal('إشعار تجديد السندات',body,[h('span',{class:'small muted',style:'margin-inline-end:auto'},'المحدد: ',cnt),h('button',{class:'btn ghost',onclick:()=>dlg.close()},'إلغاء'),
-    h('button',{class:'btn primary',onclick:async()=>{const sel=all.filter(i=>chk.has(i.r.id));if(!sel.length){toast('اختر عميل واحد على الأقل');return}uxBnLetters(sel);dlg.close();if(!S.readOnly){const n=await uxBnMark(sel);toast(`تم تجهيز ${sel.length} إشعار وتسجيله في ملفات العملاء`)}}},ibtn('file','تجهيز الإشعارات'))]);upd()}
+  const body=h('div',{class:'ux-bn'},h('div',{class:'small muted'},CV?`${all.length} سند ورقي. يجهّز خطاب لكل عميل يطلب تحرير سند إلكتروني عبر نافذ بدل الورقي — تطبعه وتسلمه بنفسك، البرنامج ما يرسل شي.`:`${ex} منتهي · ${all.length-ex} قريب الانتهاء (خلال 6 أشهر). يجهّز خطاب لكل عميل تطبعه وتسلمه بنفسك — البرنامج ما يرسل شي.`),h('div',{class:'ux-bn-list'},rows));
+  let dlg;dlg=uxModal(CV?'إشعار تحويل السندات الورقية إلى إلكترونية':'إشعار تجديد السندات',body,[h('span',{class:'small muted',style:'margin-inline-end:auto'},'المحدد: ',cnt),h('button',{class:'btn ghost',onclick:()=>dlg.close()},'إلغاء'),
+    h('button',{class:'btn primary',onclick:async()=>{const sel=all.filter(i=>chk.has(i.r.id));if(!sel.length){toast('اختر عميل واحد على الأقل');return}uxBnLetters(sel,mode);dlg.close();if(!S.readOnly){const n=await uxBnMark(sel,mode);toast(`تم تجهيز ${sel.length} إشعار وتسجيله في ملفات العملاء`)}}},ibtn('file','تجهيز الإشعارات'))]);upd()}
 function uxBondNoticeBtn(){const n=uxBnDue().length;return h('button',{class:'btn'+(n?' ux-bn-btn':''),onclick:()=>uxBondNotice()},ibtn('bell','إشعار تجديد السندات'),n?h('span',{class:'count',style:'margin-inline-start:6px'},String(n)):null)}
-{const _bc=uxCtBondCell;uxCtBondCell=function(r){const el=_bc(r);const x=uxCtBondInfo(r);if((x.expired||x.soon)&&el.classList&&el.classList.contains('ux-bcell')){const l=(r.bondNotices||[]).slice(-1)[0];el.append(h('button',{type:'button',class:'btn sm ux-bn-mini',title:'تجهيز خطاب إشعار تجديد لهذا العميل',onclick:e=>{e.stopPropagation();uxBondNotice([r])}},'🔔 إشعار تجديد'+(l?' · أُشعر '+fmtG(String(l.at).slice(0,10)):'')))}return el}}
+{const _bc=uxCtBondCell;uxCtBondCell=function(r){const el=_bc(r);const x=uxCtBondInfo(r);if((x.expired||x.soon)&&el.classList&&el.classList.contains('ux-bcell')){const l=(r.bondNotices||[]).filter(n=>(n.type||'renew')==='renew').slice(-1)[0];el.append(h('button',{type:'button',class:'btn sm ux-bn-mini',title:'تجهيز خطاب إشعار تجديد لهذا العميل',onclick:e=>{e.stopPropagation();uxBondNotice([r])}},'🔔 إشعار تجديد'+(l?' · أُشعر '+fmtG(String(l.at).slice(0,10)):'')))}return el}}
+
+/* ===== 23) إشعار تحويل السندات الورقية إلى إلكترونية ===== */
+function uxBcDue(){return recs('contracts').map(r=>({r,x:uxCtBondInfo(r)})).filter(i=>i.x.kind==='paper').sort((a,b)=>{const la=(a.r.bondNotices||[]).some(n=>n.type==='convert'),lb=(b.r.bondNotices||[]).some(n=>n.type==='convert');return la-lb||String(a.r.trade_name||'').localeCompare(String(b.r.trade_name||''),'ar')})}
+function uxBondConvertBtn(){const n=uxBcDue().length;return h('button',{class:'btn',onclick:()=>uxBondNotice(null,'convert')},ibtn('refresh','إشعار تحويل للإلكتروني'),n?h('span',{class:'count',style:'margin-inline-start:6px'},String(n)):null)}
+{const _bc2=uxCtBondCell;uxCtBondCell=function(r){const el=_bc2(r);const x=uxCtBondInfo(r);if(x.kind==='paper'&&el.classList&&el.classList.contains('ux-bcell')){const l=(r.bondNotices||[]).filter(n=>n.type==='convert').slice(-1)[0];el.append(h('button',{type:'button',class:'btn sm ux-bn-mini',title:'تجهيز خطاب يطلب تحويل السند الورقي إلى إلكتروني (نافذ)',onclick:e=>{e.stopPropagation();uxBondNotice([r],'convert')}},'⇄ تحويل لإلكتروني'+(l?' · أُشعر '+fmtG(String(l.at).slice(0,10)):'')))}return el}}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
