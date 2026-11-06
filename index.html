@@ -4912,7 +4912,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261106215645';
+const UX_BUILD='20261106220404';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5826,7 +5826,8 @@ function uxBnLetters(items,mode){const CV=mode==='convert';const w=uxPdfWin();if
 <table class="inf"><tr><th>السجل التجاري</th><td>${esc(r.cr_no||'—')}</td><th>كود العميل</th><td>${esc(r.customer_code||'—')}</td></tr></table>
 <p>السلام عليكم ورحمة الله وبركاته،،</p>
 ${CV?`<p>إشارةً إلى ${what}، المقدَّم منكم ضمانًا لحساب توريد البضاعة الآجل لدى شركة تمكين الدولية،</p>
-<p>وحرصًا على تنظيم الضمانات وتسهيل إجراءاتها، نأمل منكم التكرم بتحرير سند أمر إلكتروني عبر منصة نافذ لصالح شركة تمكين الدولية${x.amount!=null&&!isNaN(x.amount)?' بمبلغ '+N0(x.amount)+' ريال':' بنفس مبلغ السند الحالي'}، بدلًا من السند الورقي، في أقرب وقت.</p>
+<p>وحيث إن نظام التنفيذ الجديد اشترط لاكتساب السندات لأمر صفة السند التنفيذي تسجيلها في منصة إلكترونية معتمدة لدى وزارة العدل، وتستمر السندات لأمر الورقية الصادرة قبل بدء العمل بالنظام سندات تنفيذية خلال المهلة الانتقالية المقررة بسنة واحدة وفق أحكام النظام،</p>
+<p>فإننا نأمل منكم التكرم بتحرير سند أمر إلكتروني عبر منصة نافذ لصالح شركة تمكين الدولية${x.amount!=null&&!isNaN(x.amount)?' بمبلغ '+N0(x.amount)+' ريال':' بنفس مبلغ السند الحالي'}، بدلًا من السند الورقي، قبل انتهاء المهلة الانتقالية، وفي أقرب وقت ممكن.</p>
 `:`<p>نحيطكم علمًا بأن ${what}، المقدَّم ضمانًا لحساب توريد البضاعة الآجل لدى شركة تمكين الدولية، ${st}.</p>
 <p>وعليه نأمل منكم التكرم بتحرير سند أمر جديد وتسليمه للشركة في أقرب وقت، حفاظًا على استمرار التعامل بينكم وبين الشركة.</p>
 `}<p>ولأي استفسار يمكنكم التواصل مع إدارة الشؤون القانونية.</p>
@@ -5874,7 +5875,7 @@ function uxBnMemo(items,mode){const CV=mode==='convert';const w=uxPdfWin();if(!w
   const ex=items.filter(i=>i.x.expired).length;const tot=items.reduce((a,i)=>a+(i.x.amount!=null&&!isNaN(i.x.amount)?i.x.amount:0),0);
   const kindL=k=>(UX_BK_KIND[k]||['غير محدد'])[0];
   const subj=CV?'كشف العملاء أصحاب السندات الورقية — طلب تحويلها إلى سندات إلكترونية (نافذ)':'كشف العملاء أصحاب السندات المنتهية وقريبة الانتهاء — طلب تجديدها';
-  const intro=CV?`نرفق لكم كشفًا بالعملاء الموضحين أدناه (${items.length} منشأة) ممن لديهم سندات أمر ورقية مقدَّمة ضمانًا لحسابات توريد البضاعة الآجل، ونأمل منكم التنسيق معهم لتحرير سندات أمر إلكترونية عبر منصة نافذ لصالح الشركة بدلًا من السندات الورقية، وتزويد إدارة الشؤون القانونية بما يتم.`
+  const intro=CV?`نرفق لكم كشفًا بالعملاء الموضحين أدناه (${items.length} منشأة) ممن لديهم سندات أمر ورقية مقدَّمة ضمانًا لحسابات توريد البضاعة الآجل. وحيث إن نظام التنفيذ الجديد اشترط لاكتساب السندات لأمر صفة السند التنفيذي تسجيلها في منصة إلكترونية معتمدة لدى وزارة العدل، وتستمر السندات الورقية الصادرة قبل بدء العمل بالنظام سندات تنفيذية خلال المهلة الانتقالية المقررة بسنة واحدة فقط، فإننا نأمل منكم التنسيق مع العملاء لتحرير سندات أمر إلكترونية عبر منصة نافذ لصالح الشركة بدلًا من السندات الورقية قبل انتهاء المهلة، وتزويد إدارة الشؤون القانونية بما يتم أولًا بأول.`
     :`نرفق لكم كشفًا بالعملاء الموضحين أدناه (${items.length} منشأة) ممن انتهت سنداتهم أو تقترب من الانتهاء وفق مدة صلاحية السندات المعتمدة لدى الشركة (${Y} سنوات من تاريخ التحرير)، منها ${ex} منتهية و${items.length-ex} تنتهي خلال 6 أشهر، ونأمل منكم التنسيق مع العملاء لتحرير سندات أمر جديدة، وتزويد إدارة الشؤون القانونية بما يتم.`;
   const rows=items.map(({r,x},i)=>`<tr><td>${i+1}</td><td class="nm">${esc(r.trade_name)}</td><td>${esc(r.customer_code||'—')}</td><td>${esc(r.cr_no||'—')}</td><td>${esc(kindL(x.kind))}</td><td>${esc(r.bond_no||'—')}</td><td>${x.date?fmtG(x.date):'—'}</td><td class="n">${x.amount!=null&&!isNaN(x.amount)?N0(x.amount):'—'}</td>${CV?'':`<td>${x.exp?fmtG(x.exp):'—'}</td><td><span class="st ${x.expired?'bad':'warn'}">${x.expired?'منتهي منذ '+spanAr(-x.left):'ينتهي بعد '+spanAr(x.left)}</span></td>`}<td class="nt"></td></tr>`).join('');
   const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${CV?'كشف تحويل السندات':'كشف تجديد السندات'} — إدارة الجملة — ${fmtG(t)}</title><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet"><style>
