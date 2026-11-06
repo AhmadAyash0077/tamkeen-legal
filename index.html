@@ -4917,7 +4917,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261107002617';
+const UX_BUILD='20261107003025';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5809,7 +5809,7 @@ function uxCtBondCell(r){const x=uxCtBondInfo(r);if(!x.date&&!x.kind&&x.amount==
     h('div',null,k?h('span',{class:'pill '+k[1]},k[0]):h('span',{class:'pill'},'النوع غير محدد'),x.amount!=null&&!isNaN(x.amount)?h('span',{class:'num',style:'margin-inline-start:6px'},nf.format(x.amount)):null),
     h('small',{class:'muted'},x.date?'بتاريخ '+fmtG(x.date):'بدون تاريخ'),
     x.exp?h('span',{class:'pill '+(x.expired?'bad':x.soon?'warn':'ok'),title:`${bondRule().years} سنوات من تاريخ السند`},x.expired?'منتهي منذ '+spanAr(-x.left):x.soon?'ينتهي بعد '+spanAr(x.left):'ساري حتى '+fmtG(x.exp)):null)}
-const UX_BF_OPTS=[['','كل السندات'],['elec','إلكتروني'],['paper','ورقي'],['both','إلكتروني + ورقي'],['expired','منتهي (أكثر من 4 سنوات)'],['soon','ينتهي خلال 6 أشهر'],['valid','ساري'],['nodate','بدون تاريخ سند'],['notype','النوع غير محدد']];
+const UX_BF_OPTS=[['','كل السندات'],['elec','إلكتروني (يشمل المزدوج)'],['paper','ورقي (يشمل المزدوج)'],['both','إلكتروني + ورقي'],['expired','منتهي (أكثر من 4 سنوات)'],['soon','ينتهي خلال 6 أشهر'],['valid','ساري'],['nodate','بدون تاريخ سند'],['notype','النوع غير محدد']];
 function uxBfMatch(r,v){if(!v)return true;const x=uxCtBondInfo(r);
   return v==='elec'?x.kind==='elec'||x.kind==='both':v==='paper'?x.kind==='paper'||x.kind==='both':v==='both'?x.kind==='both':v==='expired'?x.expired:v==='soon'?x.soon:v==='valid'?(x.exp&&!x.expired):v==='nodate'?!x.date:v==='notype'?!x.kind:true}
 function uxBondFilter(onch){let v='';try{v=localStorage.getItem('uxBf')||''}catch(e){}
@@ -5872,9 +5872,9 @@ function uxBondNoticeBtn(){const n=uxBnDue().length;return h('button',{class:'bt
 {const _bc=uxCtBondCell;uxCtBondCell=function(r){const el=_bc(r);const x=uxCtBondInfo(r);if((x.expired||x.soon)&&el.classList&&el.classList.contains('ux-bcell')){const l=(r.bondNotices||[]).filter(n=>(n.type||'renew')==='renew').slice(-1)[0];el.append(h('button',{type:'button',class:'btn sm ux-bn-mini',title:'تجهيز خطاب إشعار تجديد لهذا العميل',onclick:e=>{e.stopPropagation();uxBondNotice([r])}},'🔔 إشعار تجديد'+(l?' · أُشعر '+fmtG(String(l.at).slice(0,10)):'')))}return el}}
 
 /* ===== 23) إشعار تحويل السندات الورقية إلى إلكترونية ===== */
-function uxBcDue(){return recs('contracts').map(r=>({r,x:uxCtBondInfo(r)})).filter(i=>i.x.kind==='paper').sort((a,b)=>{const la=(a.r.bondNotices||[]).some(n=>n.type==='convert'),lb=(b.r.bondNotices||[]).some(n=>n.type==='convert');return la-lb||String(a.r.trade_name||'').localeCompare(String(b.r.trade_name||''),'ar')})}
+function uxBcDue(){return recs('contracts').map(r=>({r,x:uxCtBondInfo(r)})).filter(i=>i.x.kind==='paper'||i.x.kind==='both').sort((a,b)=>{const la=(a.r.bondNotices||[]).some(n=>n.type==='convert'),lb=(b.r.bondNotices||[]).some(n=>n.type==='convert');return la-lb||String(a.r.trade_name||'').localeCompare(String(b.r.trade_name||''),'ar')})}
 function uxBondConvertBtn(){const n=uxBcDue().length;return h('button',{class:'btn',onclick:()=>uxBondNotice(null,'convert')},ibtn('refresh','إشعار تحويل للإلكتروني'),n?h('span',{class:'count',style:'margin-inline-start:6px'},String(n)):null)}
-{const _bc2=uxCtBondCell;uxCtBondCell=function(r){const el=_bc2(r);const x=uxCtBondInfo(r);if(x.kind==='paper'&&el.classList&&el.classList.contains('ux-bcell')){const l=(r.bondNotices||[]).filter(n=>n.type==='convert').slice(-1)[0];el.append(h('button',{type:'button',class:'btn sm ux-bn-mini',title:'تجهيز خطاب يطلب تحويل السند الورقي إلى إلكتروني (نافذ)',onclick:e=>{e.stopPropagation();uxBondNotice([r],'convert')}},'⇄ تحويل لإلكتروني'+(l?' · أُشعر '+fmtG(String(l.at).slice(0,10)):'')))}return el}}
+{const _bc2=uxCtBondCell;uxCtBondCell=function(r){const el=_bc2(r);const x=uxCtBondInfo(r);if((x.kind==='paper'||x.kind==='both')&&el.classList&&el.classList.contains('ux-bcell')){const l=(r.bondNotices||[]).filter(n=>n.type==='convert').slice(-1)[0];el.append(h('button',{type:'button',class:'btn sm ux-bn-mini',title:'تجهيز خطاب يطلب تحويل السند الورقي إلى إلكتروني (نافذ)',onclick:e=>{e.stopPropagation();uxBondNotice([r],'convert')}},'⇄ تحويل لإلكتروني'+(l?' · أُشعر '+fmtG(String(l.at).slice(0,10)):'')))}return el}}
 
 /* ===== 24) كشف موحد لإدارة الجملة: كل المنشآت في جدول واحد ===== */
 function uxBnMemo(items,mode){const CV=mode==='convert';const w=uxPdfWin();if(!w){toast('اسمح بالنوافذ المنبثقة لهذا الموقع');return}
