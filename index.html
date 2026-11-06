@@ -4916,7 +4916,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261107000116';
+const UX_BUILD='20261107001135';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5983,12 +5983,12 @@ function uxOcrSane(k,v){if(v==null)return false;const s=String(v).trim();if(!s)r
 const uxIsInstC=r=>!!r&&uxCtKind(r)==='تركيب';
 const UX_INST_BOND=/^(bond_type|bond_amount|bond_no|bond_date)$/;
 {const _rows=uxOcrRows;uxOcrRows=function(c){let R=_rows(c).filter(r=>uxOcrSane(r.k,r.v));if(uxIsInstC(c))R=R.filter(r=>!UX_INST_BOND.test(r.k));return R}}
-function uxInstDates(seg){const t=seg.replace(/(\d)\s+(?=\d)/g,'$1');const out=[];const re=/(\d{1,4})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,4})/g;let m;
+function uxInstDatesR(seg){const t=seg.replace(/(\d)\s+(?=\d)/g,'$1');const out=[];const re=/(\d{1,4})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,4})/g;let m;
   while((m=re.exec(t))){let a=+m[1],b=+m[2],c=+m[3];let y,mo,d;if(a>1900){y=a;mo=b;d=c}else if(c>1900){y=c;mo=b;d=a}else continue;if(y<2015||y>2035||mo<1||mo>12||d<1||d>31)continue;out.push(`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`)}return out}
 function uxReadInst(raw){const t=normDigits(String(raw||'')).replace(/ـ/g,'');const f={};
   const head=t.slice(0,600);const rn=head.match(/\(\s*(\d{2,5})\s*\)/);if(rn)f.ref_no=rn[1];
-  const ag=t.match(/(?:تاري\s*خ|تاريخ)\s*((?:\d\s*){4}\s*-\s*\d{1,2}\s*-\s*\d{1,2})/);if(ag){const d=uxInstDates(ag[1])[0];if(d)f.date=d}
-  const iDur=t.search(/مدة\s*العقد/);if(iDur>=0){const ds=uxInstDates(t.slice(iDur,iDur+260));if(ds[0])f.start=ds[0];if(ds[1]&&ds[1]>ds[0])f.end=ds[1]}
+  const ag=t.match(/(?:تاري\s*خ|تاريخ)\s*((?:\d\s*){4}\s*-\s*\d{1,2}\s*-\s*\d{1,2})/);if(ag){const d=uxInstDatesR(ag[1])[0];if(d)f.date=d}
+  const iDur=t.search(/مدة\s*العقد/);if(iDur>=0){const ds=uxInstDatesR(t.slice(iDur,iDur+260));if(ds[0])f.start=ds[0];if(ds[1]&&ds[1]>ds[0])f.end=ds[1]}
   const i2=t.search(/الطرف\s*(?:ال)?ثان/);const i3=t.search(/التمهيد/);const p2=i2>=0?t.slice(i2,i3>i2?i3:i2+700):'';
   if(p2){const cr=(p2.match(/\b(7\d{9}|[1-5]\d{9})\b/g)||[]).filter(x=>!/^(4030049348|7011006009)$/.test(x));if(cr[0])f.cr_no=cr[0];
     const na=p2.match(/\b([A-Z]{4}\s?\d{4})\b/);if(na)f.national_address=na[1].replace(/\s/g,'');
@@ -6037,9 +6037,9 @@ function uxCbEditor(b0){const b=b0?JSON.parse(JSON.stringify(b0)):{id:'cb'+Date.
     const name=h('input',{value:b.name,placeholder:'مثال: موظف السجلات الناقصة',oninput:e=>b.name=e.target.value});
     const note=h('textarea',{rows:2,placeholder:'وش تبيه يسوي؟ (وصف لك، والشغل الفعلي حسب الشروط تحت)',oninput:e=>b.note=e.target.value},b.note||'');
     const mod=h('select',{onchange:e=>{b.mod=e.target.value;b.conds=[{f:'',op:'empty',v:''}];paint()}},uxCbMods().map(([k,t])=>h('option',{value:k,selected:k===b.mod},t)));
-    const conds=b.conds.map((c,i)=>{const fs=h('select',{onchange:e=>{c.f=e.target.value;cnt()}},h('option',{value:''},'— اختر البيان —'),fopts.map(([k,l])=>h('option',{value:k,selected:k===c.f},l)));
+    const conds=b.conds.map((c,i)=>{const fs=h('select',{onchange:e=>{c.f=e.target.value;c.v='';paint()}},h('option',{value:''},'— اختر البيان —'),fopts.map(([k,l])=>h('option',{value:k,selected:k===c.f},l)));
       const os=h('select',{onchange:e=>{c.op=e.target.value;paint()}},UXCB_OPS.map(([k,l])=>h('option',{value:k,selected:k===c.op},l)));
-      const vi=['empty','notempty','past'].includes(c.op)?null:h('input',{value:c.v||'',placeholder:['within','older','gt','lt'].includes(c.op)?'رقم':'القيمة',oninput:e=>{c.v=e.target.value;cnt()}});
+      const fd=c.f==='_status'?{o:M.st||[]}:(M.fields.find(x=>x.k===c.f)||{});const opts=Array.isArray(fd.o)?fd.o:(Array.isArray(fd.list)?fd.list:null);const vi=['empty','notempty','past'].includes(c.op)?null:(opts&&['eq','ne','contains'].includes(c.op)?h('select',{onchange:e=>{c.v=e.target.value;cnt()}},h('option',{value:''},'— اختر —'),opts.map(o=>h('option',{value:o,selected:o===c.v},o))):h('input',{value:c.v||'',placeholder:['within','older','gt','lt'].includes(c.op)?'رقم':'القيمة',oninput:e=>{c.v=e.target.value;cnt()}}));
       return h('div',{class:'ux-cb-cond'},h('span',{class:'small muted'},i?'و':'إذا'),fs,os,vi,b.conds.length>1?h('button',{type:'button',class:'btn sm ghost',onclick:()=>{b.conds.splice(i,1);paint()}},'✕'):null)});
     const sw=UXCB_COLORS.map(col=>h('button',{type:'button',class:'ux-cb-sw'+(b.color===col?' on':''),style:'background:'+col,'aria-label':'لون',onclick:()=>{b.color=col;paint()}}));
     const res=h('div',{class:'ux-cb-res small'});const cnt=()=>{const ok=b.conds.every(c=>c.f);const n=ok?uxCbRun(b).length:null;res.textContent=ok?`الحين ينطبق على ${n} سجل`:'اختر البيان في كل شرط'};
