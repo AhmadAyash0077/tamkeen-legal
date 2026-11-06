@@ -4917,7 +4917,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261107002358';
+const UX_BUILD='20261107002617';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -6116,6 +6116,16 @@ setTimeout(async()=>{try{if(S.readOnly||!canAdmin())return;const t=todayISO();if
   if(n)toast(`الموظفون الإلكترونيون نفذوا ${n} إجراء تلقائي — القيم القديمة محفوظة`,8000)}catch(e){}},40000);
 /* قارئ الملفات: الملف اللي ما طلع منه شي صالح ما يظهر في المراجعة (ينحسب «ما فيه جديد») */
 {const _pd=uxOcrPending;uxOcrPending=function(){return _pd().filter(c=>{try{return uxOcrRows(c).some(r=>String(r.cur??'')!==String(r.v??''))}catch(e){return true}})}}
+/* تشديد التنقية: الأسماء 3 كلمات فأكثر، الوظيفة من قائمة معروفة، كود العميل بصيغته، والسجل ما يكون رقم هوية */
+const UX_TITLES=/^(مالك|المالك|مالكة|صاحب المؤسسة|مدير|المدير|مديرة|مدير عام|المدير العام|مدير تنفيذي|الرئيس التنفيذي|رئيس مجلس الإدارة|مدير مالي|المدير المالي|محاسب|محاسبة|مندوب|مندوب مبيعات|مشرف|مشرف مبيعات|موظف|موظفة|شريك|الشريك|نائب|نائب المدير|مدير فرع|مدير مبيعات|مدير مشتريات|مسؤول مشتريات|أمين صندوق|كاشير|بائع|سكرتير|مفوض|وكيل|مدير المؤسسة|مدير الشركة|مسوق|مدير تسويق|مدير عمليات)$/;
+{const _sane=uxOcrSane;uxOcrSane=function(k,v){if(!_sane(k,v))return false;const s=String(v).trim();
+  if(/^(manager_name|e[12]_name|owner_name)$/.test(k)){const w=s.split(/\s+/).filter(x=>x.length>=2);if(w.length<3)return false}
+  if(/^(e[12]_title|manager_title)$/.test(k)&&!UX_TITLES.test(s.replace(/\s+/g,' ')))return false;
+  if(k==='customer_code'&&!/^(CW-)?\d{3,6}$/i.test(s))return false;
+  if(k==='cr_no'&&/^[12]/.test(s)&&uxIdOk(s))return false;
+  return true}}
+{const _r4=uxOcrRows;uxOcrRows=function(c){let R=_r4(c).filter(r=>uxOcrSane(r.k,r.v)||r.date);const ids=new Set(R.filter(r=>/(_id|id_no)$/.test(r.k)).map(r=>String(r.v)));R=R.filter(r=>!(r.k==='cr_no'&&ids.has(String(r.v))));
+  const keys=new Set(R.map(r=>r.k));R=R.filter(r=>{const m=r.k.match(/^(e[12])_(title|id|mobile|nat)$/);return!m||keys.has(m[1]+'_name')||String(c[m[1]+'_name']||'').trim()});return R}}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
