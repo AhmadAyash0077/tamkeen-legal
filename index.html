@@ -4908,7 +4908,7 @@ const uxIsInst=r=>!!r&&(r.fileKind==='تركيب'||r.ctype==='تركيب');
 {const _vd2=viewDetail;viewDetail=function(mod,id){const v=_vd2(mod,id);if(mod!=='contracts')return v;const fix=()=>{const r=rec('contracts',id);if(!uxIsInst(r))return;const w=document.createTreeWalker(v.el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const t=n.nodeValue;if(/سند/.test(t))n.nodeValue=t.replace('العقد الموقّع والسند وأوراق المنشأة','العقد الموقّع وأوراق المنشأة').replace('، ويقرأ السند ويحفظه','').replace('اربط القضية بالعقد والسندات والمخالفات ذات الصلة','اربط العقد بالسجلات ذات الصلة')}};const r0=v.refresh;v.refresh=f=>{r0(f);fix()};fix();return v}}
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
-const UX_BUILD='20261106210516';
+const UX_BUILD='20261106211544';
 async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
@@ -5754,9 +5754,9 @@ function uxBkrMatches(){const L=recs('bankrupt').filter(b=>b.status!=='مرفو�
 function uxBkrDue(){return recs('contracts').filter(c=>!c.deleted&&!MODS.contracts.closed.includes(c.status)).filter(c=>{const t=c.bkCheck&&c.bkCheck.at;return!t||daysUntil(String(t).slice(0,10))<-UXBK_DAYS})}
 async function uxBkrMark(c,res){const cur=rec('contracts',c.id)||c;await writeDoc('contracts',c.id,{bkCheck:{at:new Date().toISOString(),res,by:S.me?.name||''}},cur.rev,{force:true});audit(res==='سليم'?'تحقق إفلاس: سليم':'تحقق إفلاس: مسجل','contracts',c.id,c.trade_name||'');
   if(res!=='سليم'){const ex=recs('bankrupt').find(b=>uxDig(b.cr_no)&&uxDig(b.cr_no)===uxDig(c.cr_no));if(!ex){const id=uid();await writeDoc('bankrupt',id,{name:c.trade_name,cr_no:c.cr_no||null,procedure:'غير محدد',status:'مفتتح',source:'تحقق من موقع لجنة الإفلاس'},null,{create:true});toast('انضافت للقائمة — كمّل بياناتها (الإجراء والتاريخ)');location.hash='#bankrupt-'+id}}}
-function uxBkrPanel(){const box=h('section',{class:'ux-panel',style:'--pc:#ff453a'});let q='',filt='due',shown=30,busy=false;
+function uxBkrPanel(){const box=h('section',{class:'ux-panel',style:'--pc:#ff453a'});let q='',filt='today',shown=30,busy=false;
   const paint=()=>{const M=uxBkrMatches(),list=recs('bankrupt'),due=uxBkrDue(),allC=recs('contracts').filter(c=>!c.deleted&&!MODS.contracts.closed.includes(c.status));const canW=!S.readOnly;
-    const rows=(filt==='due'?due:filt==='bad'?allC.filter(c=>c.bkCheck&&c.bkCheck.res!=='سليم'):allC).filter(c=>!q||uxAr((c.trade_name||'')+' '+(c.cr_no||'')+' '+(c.customer_code||'')).includes(uxAr(q)));
+    const rows=(filt==='today'?uxBkrToday():filt==='due'?due:filt==='bad'?allC.filter(c=>c.bkCheck&&c.bkCheck.res!=='سليم'):allC).filter(c=>!q||uxAr((c.trade_name||'')+' '+(c.cr_no||'')+' '+(c.customer_code||'')).includes(uxAr(q)));
     const chk=c=>{const k=c.bkCheck;return k?`${k.res} · ${fmtDate(String(k.at).slice(0,10),false)}`:'ما تم التحقق'};
     const act=async(fn,b)=>{if(busy)return;busy=true;b.disabled=true;try{await fn()}finally{busy=false;paint()}};
     box.replaceChildren(h('div',{class:'ux-panel-h'},h('h2',null,h('span',{class:'ux-ph-ic'},icon('alert')),'موظف الإفلاس')),
@@ -5766,7 +5766,7 @@ function uxBkrPanel(){const box=h('section',{class:'ux-panel',style:'--pc:#ff453
       h('div',{class:'row',style:'gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0'},h('a',{class:'btn sm',href:'#bankrupt'},icon('list'),'قائمة الإفلاس'),canW?h('a',{class:'btn sm primary',href:'#new-bankrupt'},icon('plus'),'إضافة منشأة للقائمة'):null,h('a',{class:'btn sm ghost',href:UXBK_SITE,target:'_blank',rel:'noopener noreferrer'},icon('link'),'موقع لجنة الإفلاس')),
       h('h3',{class:'ux-subh'},icon('clock'),'التحقق الرسمي من العملاء'),
       h('div',{class:'row',style:'gap:8px;flex-wrap:wrap;align-items:center'},h('input',{type:'search',placeholder:'بحث بالاسم أو السجل أو الكود',value:q,oninput:e=>{q=e.target.value;clearTimeout(box._t);box._t=setTimeout(()=>{paint();box.querySelector('input[type=search]')?.focus()},250)}}),
-        h('div',{class:'ux-tabs'},[['due','يحتاج تحقق'],['bad','مسجل في الإفلاس'],['all','الكل']].map(([k,t])=>h('button',{class:'btn sm'+(filt===k?' primary':' ghost'),onclick:()=>{filt=k;shown=30;paint()}},t)))),
+        h('div',{class:'ux-tabs'},[['today',`قائمة اليوم (${uxBkrToday().length})`],['due','يحتاج تحقق'],['bad','مسجل في الإفلاس'],['all','الكل']].map(([k,t])=>h('button',{class:'btn sm'+(filt===k?' primary':' ghost'),onclick:()=>{filt=k;shown=30;paint()}},t)))),
       h('div',{class:'ux-laws-list'},rows.slice(0,shown).map(c=>h('div',{class:'ux-law-li ux-lx-row'},h('a',{href:'#contracts-'+c.id,style:'flex:1;min-width:0;text-decoration:none;color:inherit'},h('b',null,c.trade_name||'—'),h('small',{dir:'auto'},[c.cr_no||'بدون سجل',c.customer_code,chk(c)].filter(Boolean).join(' · '))),
         h('div',{class:'row',style:'gap:6px;flex-wrap:wrap'},h('button',{class:'btn sm ghost',title:'ينسخ رقم السجل ويفتح موقع لجنة الإفلاس',onclick:async()=>{try{await navigator.clipboard.writeText(c.cr_no||c.trade_name||'')}catch(e){}toast(c.cr_no?'انتسخ رقم السجل — الصقه في البحث':'انتسخ الاسم');window.open(UXBK_SITE,'_blank','noopener')}},icon('link'),'تحقق'),
           canW?h('button',{class:'btn sm',onclick:e=>act(()=>uxBkrMark(c,'سليم'),e.currentTarget)},icon('check'),'سليم'):null,canW?h('button',{class:'btn sm ux-bkr-bad',onclick:e=>act(()=>uxBkrMark(c,'مسجل في الإفلاس'),e.currentTarget)},icon('alert'),'مسجل'):null))).concat(rows.length>shown?[h('button',{class:'btn ghost',onclick:()=>{shown+=30;paint()}},`عرض المزيد (${rows.length-shown})`)]:rows.length?[]:[h('p',{class:'small muted'},'لا يوجد.')])))};
@@ -5780,6 +5780,11 @@ function uxBkrPanel(){const box=h('section',{class:'ux-panel',style:'--pc:#ff453
   main.prepend(h('div',{id:'uxBkrWarn',class:'banner bad',style:'margin-bottom:12px'},icon('alert'),m?` هذا العميل في قائمة الإفلاس (${m.b.procedure||'إجراء إفلاس'}${m.b.opened?' — '+fmtDate(m.b.opened,false):''}) — طابق ${m.how}. `:' سُجّل في التحقق الرسمي إن العميل عليه إجراء إفلاس. ',m?h('a',{href:'#bankrupt-'+m.b.id},'التفاصيل'):null))};const r0=v.refresh;v.refresh=f=>{r0(f);inject()};inject();return v}}
 /* تنبيه يومي في الصفحة الرئيسية */
 setTimeout(()=>{try{const m=uxBkrMatches();if(m.length)toast(`⚠ موظف الإفلاس: ${m.length} من عملائك في قائمة الإفلاس — شوف صفحته`,6000)}catch(e){}},20000);
+
+/* قائمة يومية تلقائية: كل يوم 15 عميل (الأقدم تحقق أولاً) + تنبيه الصباح */
+const UXBK_DAILY=15;
+function uxBkrToday(){const t=todayISO();const done=recs('contracts').filter(c=>c.bkCheck&&String(c.bkCheck.at).slice(0,10)===t);const due=uxBkrDue().sort((a,b)=>String((a.bkCheck||{}).at||'').localeCompare(String((b.bkCheck||{}).at||''))||String(a.trade_name||'').localeCompare(String(b.trade_name||''),'ar'));return due.slice(0,Math.max(0,UXBK_DAILY-done.length))}
+setTimeout(()=>{try{if(S.readOnly)return;const k='uxBkrDay',t=todayISO();if(localStorage.getItem(k)===t)return;const n=uxBkrToday().length;if(n){toast(`موظف الإفلاس: عندك ${n} عميل للتحقق اليوم — الموظفون الإلكترونيون ← موظف الإفلاس`,7000);localStorage.setItem(k,t)}}catch(e){}},26000);
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
