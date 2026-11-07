@@ -3565,7 +3565,7 @@ function viewList(mod,mk){
   const wrap=h('div');
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},
-    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='contracts'&&!S.readOnly?h('a',{class:'btn',href:'#import~wholesale'},ibtn('upload','استيراد Excel — ملفات جملة')):null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'&&typeof uxBondDatesBtn==='function'?uxBondDatesBtn():null,mod==='contracts'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='contracts'&&typeof uxBondConvertBtn==='function'?uxBondConvertBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
+    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='contracts'&&!S.readOnly?h('a',{class:'btn',href:'#import~wholesale'},ibtn('upload','استيراد Excel — ملفات جملة')):null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'?h('button',{class:'btn',onclick:()=>uxDupOpen(mk==='ct_inst'?'تركيب':mk==='ct_whole'?'جملة':'')},'كشف الملفات المتكررة'):null,mod==='contracts'&&typeof uxBondDatesBtn==='function'?uxBondDatesBtn():null,mod==='contracts'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='contracts'&&typeof uxBondConvertBtn==='function'?uxBondConvertBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
     mod==='hearings'?h('div',{class:'small muted'},'الأوقات بتوقيت الرياض. للتنبيه على جوالك استخدم «تصدير إلى التقويم».'):null,
     extra,insBox,mfBox,
     mod==='violations'?vTabs:null,
@@ -6026,6 +6026,35 @@ async function uxInstText(d){if(d.text&&d.text.length>800&&/مدة\s*العقد|
 {const _bc4=uxCtBondCell;uxCtBondCell=function(r){if(uxIsInstC(r)){const a=r.ins_amount;return h('div',{class:'ux-bcell'},h('span',{class:'pill'},'عقد تركيب — بدون سند'),a?h('small',{class:'muted'},'تأمين '+nf.format(a)+' ريال'):null)}return _bc4(r)}}
 {const _bm=uxBfMatch;uxBfMatch=function(r,v){if(v&&uxIsInstC(r))return false;return _bm(r,v)}}
 if(typeof uxBdTargets==='function'){const _t=uxBdTargets;uxBdTargets=function(){return _t().filter(c=>!uxIsInstC(c))};const _m=uxBdMissing;uxBdMissing=function(){return _m().filter(c=>!uxIsInstC(c))}}
+
+/* Read-only duplicate review: never changes records. */
+function uxDupName(v){return normDigits(v||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670ـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase()}
+function uxDupCode(v){return normDigits(v||'').trim().toUpperCase().replace(/^CW[-\s]*/,'').replace(/\s/g,'')}
+function uxDupScan(records){
+  const rows=records.filter(r=>!r.deleted), group=key=>{const m=new Map();for(const r of rows){const k=key(r);if(!k)continue;const a=m.get(k)||[];a.push(r);m.set(k,a)}return [...m.values()].filter(a=>a.length>1).sort((a,b)=>b.length-a.length||String(a[0].trade_name||'').localeCompare(String(b[0].trade_name||''),'ar'))};
+  const nk=r=>{const n=uxDupName(r.trade_name);return n?uxCtKind(r)+'|'+n:''};
+  return{rows,name:group(nk),code:group(r=>{const c=uxDupCode(r.customer_code);return c&&c!=='—'&&c!=='-'?uxCtKind(r)+'|'+c:''}),strong:group(r=>{const n=nk(r),d=dateG(r.bond_date);return n&&d&&uxCtKind(r)==='جملة'?n+'|'+d:''})};
+}
+function uxDupOpen(initialKind){
+  if(!canSee('contracts'))return;
+  let kind=initialKind||'',mode='strong',query='',dlg;const body=h('div');
+  const paint=()=>{
+    const source=recs('contracts').filter(r=>!kind||uxCtKind(r)===kind),data=uxDupScan(source),groups=data[mode],q=uxDupName(query);
+    const shown=q?groups.filter(g=>g.some(r=>uxDupName((r.trade_name||'')+' '+(r.customer_code||'')).includes(q))):groups;
+    const labels={strong:'الاسم وتاريخ السند',name:'الاسم التجاري',code:'كود العميل دون CW-'};
+    const result=h('div');const renderGroups=()=>{
+      const search=uxDupName(query),filtered=search?groups.filter(g=>g.some(r=>uxDupName((r.trade_name||'')+' '+(r.customer_code||'')).includes(search))):groups;
+      result.replaceChildren(h('p',{class:'small muted',role:'status'},`${filtered.length} مجموعة · ${new Set(filtered.flatMap(g=>g.map(r=>r.id))).size} ملف ضمن النتائج`),...filtered.map((g,i)=>{
+        const facts=[['رقم السجل التجاري',r=>String(r.cr_no||'').trim()],['مبلغ السند',r=>r.bond_amount==null||r.bond_amount===''?'':String(r.bond_amount)],['تاريخ السند',r=>dateG(r.bond_date)||'']];
+        const conflicts=facts.filter(([,f])=>new Set(g.map(f).filter(Boolean)).size>1).map(([l])=>l);
+        return h('details',{class:'card',style:'margin:10px 0;padding:14px',open:filtered.length===1},h('summary',{style:'cursor:pointer;font-weight:700'},`${i+1}. ${g[0].trade_name||'بدون اسم'} — ${g.length} ملفات`),h('p',{class:'small muted'},'سبب المطابقة: '+labels[mode]+(conflicts.length?' · بيانات مختلفة: '+conflicts.join('، '):'')),h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,['الاسم التجاري','نوع الملف','كود العميل','السجل التجاري','مبلغ السند','تاريخ السند','نوع السند','الحالة','الملف'].map(t=>h('th',null,t)))),h('tbody',null,g.map(r=>h('tr',null,h('td',null,r.trade_name||'—'),h('td',null,uxCtKind(r)),h('td',{dir:'ltr'},r.customer_code||'—'),h('td',{dir:'ltr'},r.cr_no||'—'),h('td',null,r.bond_amount==null||r.bond_amount===''?'—':nf.format(r.bond_amount)),h('td',null,dateG(r.bond_date)?fmtG(dateG(r.bond_date)):'—'),h('td',null,r.bond_type||'غير محدد'),h('td',null,r.status||'—'),h('td',null,h('a',{class:'btn sm',href:'#contracts-'+r.id,onclick:()=>dlg.close()},'فتح الملف'))))))));
+      }),filtered.length?null:h('div',{class:'banner'},query?'لا توجد نتائج لهذا البحث.':'لم تظهر مجموعات بهذا المعيار. جرّب الاسم التجاري أو كود العميل؛ هذه النتيجة لا تثبت خلو جميع الملفات من التكرار.'));
+    };
+    body.replaceChildren(h('p',null,'مراجعة مباشرة للملفات المتشابهة، تشمل المفتوح والمغلق وتستبعد المحذوفات. افتح اسم العميل لمقارنة ملفاته.'),h('div',{class:'banner'},'النتائج اشتباه تكرار للمراجعة؛ اختلاف العقود أو الفروع قد يكون صحيحًا. لا يُحذف أو يُدمج أي ملف هنا.'),h('div',{class:'row',style:'margin:14px 0;flex-wrap:wrap'},h('select',{'aria-label':'نوع الملفات في فحص التكرار',onchange:e=>{kind=e.target.value;paint()}},[['','كل العقود'],['جملة','ملفات جملة'],['تركيب','ملفات تركيب']].map(([v,l])=>h('option',{value:v,selected:kind===v},l))),h('button',{class:'btn',onclick:paint},'إعادة الفحص')),
+      h('div',{class:'row',style:'flex-wrap:wrap'},Object.keys(labels).map(k=>h('button',{class:'btn'+(mode===k?' primary':''),'aria-pressed':String(mode===k),onclick:()=>{mode=k;paint()}},labels[k]+' ('+data[k].length+')'))),h('p',{class:'small muted'},`فُحص ${data.rows.length} ملف. أعداد المعايير متداخلة ولا تُجمع. مطابقة الاسم تتجاهل اختلاف الهمزات والياء والتاء المربوطة والمسافات، ولا تفحص محتوى المرفقات.`),h('input',{type:'search',value:query,placeholder:'ابحث باسم العميل أو الكود داخل النتائج','aria-label':'بحث في الملفات المتكررة',oninput:e=>{query=e.target.value;renderGroups()}}),result);renderGroups();
+  };
+  paint();dlg=uxModal('كشف الملفات المتكررة',body);dlg.style.width='min(1200px,96vw)';dlg.style.maxWidth='1200px';
+}
 
 /* ===== 27) موظفون إلكترونيون مخصّصين: تضيف موظف بتوجيه (قسم + شرط)، توقفه/تخفيه، وترجّعه ===== */
 const UXCB_OPS=[['empty','فاضي / ما انكتب'],['notempty','مكتوب'],['contains','يحتوي على'],['eq','يساوي'],['ne','لا يساوي'],['within','تاريخ خلال الأيام الجاية'],['past','تاريخ فات'],['older','أقدم من (يوم)'],['gt','أكبر من'],['lt','أصغر من']];
