@@ -23,7 +23,7 @@
   const cr=p=>({path:p,doc:id=>dr(p+'/'+(id||Math.random().toString(36).slice(2))),get:async()=>{await ready;return cs(p)},
     onSnapshot:(fn)=>{const l={k:'c',p,fn};L.push(l);ready.then(()=>fn(cs(p)));return()=>{const i=L.indexOf(l);if(i>=0)L.splice(i,1)}},
     orderBy:()=>cr(p),limit:()=>cr(p),where:()=>cr(p)});
-  const db={doc:dr,collection:cr};
+  const db={doc:dr,collection:cr,mergeSnapshot:async()=>{await ready;return [...await all('docs')].map(([path,data])=>({path,data:clone(data)}))}};
   const nm=()=>{try{return localStorage.getItem('tl_user_name')||'أحمد'}catch(e){return'أحمد'}};
   const user={me:async()=>({id:'local-user',name:nm(),avatarUrl:'',canEdit:true,isOwner:true}),can:async()=>true,profiles:async ids=>Object.fromEntries([].concat(ids).map(i=>[i,{id:i,name:nm(),isMe:i==='local-user'}]))};
   const rid=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -102,7 +102,7 @@
     collection:c=>cr(p+'/'+c)});
   const cr=p=>({path:p,doc:id=>dr(p+'/'+(id||Math.random().toString(36).slice(2))),get:async()=>cs(p),
     onSnapshot:fn=>{const l={k:'c',p,fn};L.push(l);setTimeout(()=>fn(cs(p)),0);return()=>{const i=L.indexOf(l);if(i>=0)L.splice(i,1)}},orderBy:()=>cr(p),limit:()=>cr(p),where:()=>cr(p)});
-  const db={doc:dr,collection:cr};
+  const db={doc:dr,collection:cr,mergeSnapshot:async()=>{const rows=[];for(let from=0;;from+=1000){const{data,error}=await sb.from('records').select('path,data').eq('owner',WS).order('path').range(from,from+999);if(error)throw error;rows.push(...data);if(data.length<1000)break}return rows}};
   const nm=()=>{try{return localStorage.getItem('tl_user_name')||(email.split('@')[0])||'مستخدم'}catch(e){return'مستخدم'}};
   const user={me:async()=>({id:uid,name:nm(),avatarUrl:'',canEdit:role!=='viewer',isOwner:role==='owner'}),can:async()=>role!=='viewer',profiles:async ids=>Object.fromEntries([].concat(ids).map(i=>[i,{id:i,name:nm(),isMe:i===uid}]))};
   const rid=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -6053,7 +6053,7 @@ function uxDupOpen(initialKind){
         return h('details',{class:'card',style:'margin:10px 0;padding:14px',open:filtered.length===1},h('summary',{style:'cursor:pointer;font-weight:700'},`${i+1}. ${g[0].trade_name||'بدون اسم'} — ${g.length} ملفات`),uxMergeQuickPanel(g),h('p',{class:'small muted'},'سبب المطابقة: '+labels[mode]+(conflicts.length?' · بيانات مختلفة: '+conflicts.join('، '):'')),h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,['الاسم التجاري','نوع الملف','كود العميل','السجل التجاري','مبلغ السند','تاريخ السند','نوع السند','الحالة','الملف'].map(t=>h('th',null,t)))),h('tbody',null,g.map(r=>h('tr',null,h('td',null,r.trade_name||'—'),h('td',null,uxCtKind(r)),h('td',{dir:'ltr'},r.customer_code||'—'),h('td',{dir:'ltr'},r.cr_no||'—'),h('td',null,r.bond_amount==null||r.bond_amount===''?'—':nf.format(r.bond_amount)),h('td',null,dateG(r.bond_date)?fmtG(dateG(r.bond_date)):'—'),h('td',null,r.bond_type||'غير محدد'),h('td',null,r.status||'—'),h('td',null,h('a',{class:'btn sm',href:'#contracts-'+r.id,onclick:()=>dlg.close()},'فتح الملف'))))))));
       }),filtered.length?null:h('div',{class:'banner'},query?'لا توجد نتائج لهذا البحث.':'لم تظهر مجموعات بهذا المعيار. جرّب الاسم التجاري أو كود العميل؛ هذه النتيجة لا تثبت خلو جميع الملفات من التكرار.'));
     };
-    body.replaceChildren(h('p',null,'مراجعة مباشرة للملفات المتشابهة، تشمل المفتوح والمغلق وتستبعد المحذوفات. افتح اسم العميل لمقارنة ملفاته.'),h('div',{class:'banner'},'النتائج اشتباه تكرار للمراجعة؛ اختلاف العقود أو الفروع قد يكون صحيحًا. زر «تعبئة البيانات الناقصة» يُكمل الملف الموضح مباشرة. القيم الموجودة لا تُستبدل والملفات الأخرى تبقى محفوظة.'),h('div',{class:'row',style:'margin:14px 0;flex-wrap:wrap'},h('select',{'aria-label':'نوع الملفات في فحص التكرار',onchange:e=>{kind=e.target.value;paint()}},[['','كل العقود'],['جملة','ملفات جملة'],['تركيب','ملفات تركيب']].map(([v,l])=>h('option',{value:v,selected:kind===v},l))),h('button',{class:'btn',onclick:paint},'إعادة الفحص')),
+    body.replaceChildren(h('p',null,'مراجعة مباشرة للملفات المتشابهة، تشمل المفتوح والمغلق وتستبعد المحذوفات. افتح اسم العميل لمقارنة ملفاته.'),h('div',{class:'banner'},'النتائج اشتباه تكرار للمراجعة؛ اختلاف العقود أو الفروع قد يكون صحيحًا. زر «دمج وحذف الزائد» يُكمل الملف الموضح ويربط مرفقاته ثم ينقل الملفات الأخرى إلى المحذوفات، مع إمكانية استعادتها.'),h('div',{class:'row',style:'margin:14px 0;flex-wrap:wrap'},h('select',{'aria-label':'نوع الملفات في فحص التكرار',onchange:e=>{kind=e.target.value;paint()}},[['','كل العقود'],['جملة','ملفات جملة'],['تركيب','ملفات تركيب']].map(([v,l])=>h('option',{value:v,selected:kind===v},l))),h('button',{class:'btn',onclick:paint},'إعادة الفحص')),
       h('div',{class:'row',style:'flex-wrap:wrap'},Object.keys(labels).map(k=>h('button',{class:'btn'+(mode===k?' primary':''),'aria-pressed':String(mode===k),onclick:()=>{mode=k;paint()}},labels[k]+' ('+data[k].length+')'))),h('p',{class:'small muted'},`فُحص ${data.rows.length} ملف. أعداد المعايير متداخلة ولا تُجمع. مطابقة الاسم تتجاهل اختلاف الهمزات والياء والتاء المربوطة والمسافات، ولا تفحص محتوى المرفقات.`),h('input',{type:'search',value:query,placeholder:'ابحث باسم العميل أو الكود داخل النتائج','aria-label':'بحث في الملفات المتكررة',oninput:e=>{query=e.target.value;renderGroups()}}),result);renderGroups();
   };
   paint();dlg=uxModal('كشف الملفات المتكررة',body);dlg.style.width='min(1200px,96vw)';dlg.style.maxWidth='1200px';
@@ -6065,12 +6065,12 @@ function uxMergeQuickPanel(group){
   const rows=group.map(r=>rec('contracts',r.id)).filter(r=>r&&!r.deleted);if(rows.length<2)return null;
   const target=uxMergePreferred(rows),sources=rows.filter(r=>r.id!==target.id),p=uxMergePlan(target,sources,MODS.contracts.fields),revisions=Object.fromEntries(rows.map(r=>[r.id,r.rev||0]));
   const box=h('div',{style:'padding:12px 0'}),msg=h('div',{role:'status'});let busy=false;
-  const btn=h('button',{class:'btn primary',disabled:!p.fills.length||rows.some(r=>r.legalHold),onclick:async()=>{
+  const btn=h('button',{class:'btn primary',disabled:rows.some(r=>r.legalHold),onclick:async()=>{
     if(busy)return;busy=true;btn.disabled=true;btn.textContent='جارٍ تعبئة البيانات…';const res=await uxMergeCommit(rows.map(r=>r.id),target.id,revisions);
-    if(!res.ok){msg.replaceChildren(h('div',{class:'banner bad'},res.error));busy=false;btn.disabled=false;btn.textContent='تعبئة البيانات الناقصة ('+p.fills.length+')';return}
-    box.replaceChildren(h('div',{class:'banner'},`تم حفظ ${res.count} خانة ناقصة في الملف ${target.customer_code||target.trade_name}. بقيت القيم السابقة والملفات الأخرى محفوظة.`),h('a',{class:'btn',href:'#contracts-'+target.id,onclick:()=>box.closest('dialog')?.close()},'فتح الملف المكتمل'));
-  }},'تعبئة البيانات الناقصة ('+p.fills.length+')');
-  box.append(h('p',{class:'small'},'الملف الذي سيُستكمل: '+(target.customer_code||'بدون كود')+' — '+(target.trade_name||'بدون اسم')),p.fills.length?h('p',{class:'small muted'},'ستُعبأ: '+p.fills.map(x=>x.field.l).join('، ')):h('p',{class:'small muted'},'لا توجد خانات ناقصة يمكن تعبئتها تلقائيًا في الملف المختار.'),p.conflicts.length?h('p',{class:'small muted'},'القيم المختلفة تبقى كما هي؛ لا تُستبدل تلقائيًا.'):null,rows.some(r=>r.legalHold)?h('p',{class:'small'},'الدمج متوقف لوجود حجز قانوني.'):null,btn,h('button',{class:'btn ghost',onclick:()=>{box.closest('dialog')?.close();uxMergeOpen(rows,()=>uxDupOpen(uxCtKind(target)))}},'تغيير الملف الأساسي'),msg);
+    if(!res.ok){msg.replaceChildren(h('div',{class:'banner bad'},res.error));busy=false;btn.disabled=false;btn.textContent='دمج وحذف الزائد ('+sources.length+')';return}
+    box.replaceChildren(h('div',{class:'banner'},`تم حفظ ${res.count} خانة ناقصة في الملف ${target.customer_code||target.trade_name}. نُقل ${res.removed} ملف زائد إلى المحذوفات ويمكن استعادته.`),h('a',{class:'btn',href:'#contracts-'+target.id,onclick:()=>box.closest('dialog')?.close()},'فتح الملف المكتمل'));
+  }},'دمج وحذف الزائد ('+sources.length+')');
+  box.append(h('p',{class:'small'},'الملف الذي سيُستكمل: '+(target.customer_code||'بدون كود')+' — '+(target.trade_name||'بدون اسم')),p.fills.length?h('p',{class:'small muted'},'ستُعبأ: '+p.fills.map(x=>x.field.l).join('، ')):h('p',{class:'small muted'},'الملف الأساسي مكتمل بالنسبة لهذه البيانات؛ يمكن دمج المرفقات ونقل النسخ الزائدة إلى المحذوفات.'),p.conflicts.length?h('p',{class:'small muted'},'القيم المختلفة في الملف الأساسي لا تُستبدل؛ تبقى قيم النسخ الأخرى محفوظة في المحذوفات.'):null,rows.some(r=>r.legalHold)?h('p',{class:'small'},'الدمج متوقف لوجود حجز قانوني.'):null,h('p',{class:'small'},'بعد نجاح الدمج ستُنقل '+sources.length+' نسخة زائدة إلى المحذوفات؛ لن تظهر في العقود ويمكن استعادتها.'),btn,h('button',{class:'btn ghost',onclick:()=>{box.closest('dialog')?.close();uxMergeOpen(rows,()=>uxDupOpen(uxCtKind(target)))}},'تغيير الملف الأساسي'),msg);
   return box;
 }
 
@@ -6089,20 +6089,31 @@ function uxMergePlan(target,sources,fields){
 }
 async function uxMergeCommit(ids,targetId,revisions){
   if(S.readOnly||!canSee('contracts'))return{error:'صلاحيتك لا تسمح بالتعديل.'};
+  let saved=false,removed=0;
   try{
-    const rows=[];for(const id of [...new Set(ids)]){const d=await db.collection('contracts').doc(id).get();if(!d.exists)return{error:'أحد الملفات لم يعد موجودًا. أعد الفحص.'};const r={...d.data(),id};if(r.deleted||r.legalHold)return{error:'أحد الملفات محذوف أو تحت حجز قانوني. لم يُنفذ الدمج.'};if((r.rev||0)!==(revisions[id]||0))return{error:'تغيرت بيانات أحد الملفات بعد المعاينة. أغلق النافذة وأعد فتح الدمج لمراجعة البيانات الجديدة.'};rows.push(r)}
+    const snapshot=await db.mergeSnapshot(),byPath=new Map(snapshot.map(x=>[x.path,x.data]));
+    const rows=[];for(const id of [...new Set(ids)]){const data=byPath.get('contracts/'+id);if(!data)return{error:'أحد الملفات لم يعد موجودًا. أعد الفحص.'};const r={...data,id};if(r.deleted||r.legalHold)return{error:'أحد الملفات محذوف أو تحت حجز قانوني. لم يُنفذ الدمج.'};if((r.rev||0)!==(revisions[id]||0))return{error:'تغيرت البيانات بعد عرض النتائج. أعد الفحص قبل الدمج.'};rows.push(r)}
     const target=rows.find(r=>r.id===targetId),sources=rows.filter(r=>r.id!==targetId);if(!target||!sources.length||sources.some(r=>uxCtKind(r)!==uxCtKind(target)))return{error:'اختر ملفات من النوع نفسه.'};
-    const plan=uxMergePlan(target,sources,MODS.contracts.fields);if(!plan.fills.length)return{error:'لا توجد خانات فارغة يمكن تعبئتها تلقائيًا.'};
-    const patch=Object.fromEntries(plan.fills.map(x=>[x.field.k,x.value]));
-    patch.links=[...new Set([...(target.links||[]),...sources.map(r=>'contracts:'+r.id)])];
-    patch.mergeFills=[...(target.mergeFills||[]),{at:new Date().toISOString(),by:S.me.id||null,sources:sources.map(r=>r.id),fields:plan.fills.map(x=>x.field.k)}];
-    const res=await writeDoc('contracts',target.id,patch,target.rev||0);
-    if(!res?.ok)return{error:res?.conflict?'تغير الملف أثناء الحفظ. أعد فتح الدمج.':'لم ينجح حفظ الدمج. لم يُحذف أي ملف.'};
-    if(S.data.contracts)S.data.contracts.set(target.id,{...res.data,id:target.id});
-    audit('تعبئة البيانات الناقصة بالدمج','contracts',target.id,`${plan.fills.length} حقل من ${sources.length} ملف`);
-    return{ok:true,count:plan.fills.length,id:target.id};
-  }catch(e){return{error:'تعذر الاتصال لحفظ الدمج. أعد المحاولة بعد استعادة الاتصال.'}}
+    const sourceRefs=new Set(sources.map(r=>'contracts:'+r.id)),targetRef='contracts:'+targetId;
+    const incoming=snapshot.filter(x=>!x.data.deleted&&Array.isArray(x.data.links)&&x.data.links.some(l=>sourceRefs.has(l))&&x.path!=='contracts/'+targetId&&!sources.some(r=>x.path==='contracts/'+r.id));
+    if(incoming.some(x=>x.data.legalHold))return{error:'يوجد مستند مرتبط تحت حجز قانوني. لم يُنفذ الدمج.'};
+    const plan=uxMergePlan(target,sources,MODS.contracts.fields),patch=Object.fromEntries(plan.fills.map(x=>[x.field.k,x.value]));
+    patch.links=[...new Set([...(target.links||[]),...sources.flatMap(r=>r.links||[])])].filter(l=>l!==targetRef&&!sourceRefs.has(l));
+    patch.mergeFills=[...(target.mergeFills||[]),{at:new Date().toISOString(),by:S.me.id||null,sources:sources.map(r=>r.id),fields:plan.fills.map(x=>x.field.k),archiveSources:true}];
+    const result=await writeDoc('contracts',targetId,patch,target.rev||0);if(!result?.ok)return{error:'لم ينجح حفظ الملف الأساسي أو تغير أثناء الحفظ. لم يُحذف أي ملف.'};saved=true;
+    if(S.data.contracts)S.data.contracts.set(targetId,{...result.data,id:targetId});
+    for(const x of incoming){if(x.data.links.includes(targetRef))continue;const parts=x.path.split('/');if(parts.length!==2)throw Error('unsupported link');const r=await writeDoc(parts[0],parts[1],{links:[...new Set([...x.data.links,targetRef])]},x.data.rev||0);if(!r?.ok)throw Error('link failed')}
+    // Re-read from storage before archiving: no cached-success fallback.
+    const fresh=await db.mergeSnapshot(),latest=new Map(fresh.map(x=>[x.path,x.data]));
+    const nowTarget=latest.get('contracts/'+targetId);if(!nowTarget||nowTarget.deleted||nowTarget.legalHold||(nowTarget.rev||0)!==result.rev)throw Error('target changed');
+    for(const r of sources){const now=latest.get('contracts/'+r.id);if(!now||now.deleted||now.legalHold||(now.rev||0)!==(r.rev||0))throw Error('source changed')}
+    if(fresh.some(x=>!x.data.deleted&&x.path!=='contracts/'+targetId&&!sources.some(r=>x.path==='contracts/'+r.id)&&Array.isArray(x.data.links)&&x.data.links.some(l=>sourceRefs.has(l))&&!x.data.links.includes(targetRef)))throw Error('unlinked attachment');
+    for(const r of sources){const res=await writeDoc('contracts',r.id,{deleted:true,deletedAt:new Date().toISOString(),deletedBy:S.me.id||null,mergedInto:targetId},r.rev||0);if(!res?.ok)throw Error('archive failed');removed++;if(S.data.contracts)S.data.contracts.set(r.id,{...res.data,id:r.id})}
+    audit('دمج البيانات ونقل الزائد للمحذوفات','contracts',targetId,`${plan.fills.length} حقل · ${removed} ملف`);
+    return{ok:true,count:plan.fills.length,removed,id:targetId};
+  }catch(e){return{error:saved?`حُفظت البيانات في الملف الأساسي. نُقل ${removed} ملف إلى المحذوفات؛ بقيت بقية الملفات بسبب تعذر الربط أو تغير البيانات. أعد الفحص لإكمال العملية.`:'تعذر التحقق من البيانات الحالية. لم يُحذف أي ملف. أعد المحاولة بعد استعادة الاتصال.'}}
 }
+
 function uxMergeOpen(group,onDone){
   if(S.readOnly){toast('صلاحيتك قراءة فقط');return}
   const ids=group.map(r=>r.id),rows=ids.map(id=>rec('contracts',id)).filter(Boolean);
@@ -6112,17 +6123,17 @@ function uxMergeOpen(group,onDone){
   const label=r=>`${r.trade_name||'بدون اسم'} — كود ${r.customer_code||'غير مسجل'} — ${r.id}`;
   const value=(v,f)=>uxMergeEmpty(v,f)?'فارغ':f.t==='date'?fmtG(dateG(v)):typeof v==='object'?JSON.stringify(v):String(v);
   const paint=()=>{const target=rows.find(r=>r.id===targetId),sources=rows.filter(r=>r.id!==targetId),p=uxMergePlan(target,sources,fields),revisions=Object.fromEntries(rows.map(r=>[r.id,r.rev||0]));
-    const message=h('div',{role:'status'}),go=h('button',{class:'btn primary',disabled:!p.fills.length||rows.some(r=>r.legalHold),onclick:async()=>{
+    const message=h('div',{role:'status'}),go=h('button',{class:'btn primary',disabled:rows.some(r=>r.legalHold),onclick:async()=>{
       if(busy)return;busy=true;go.disabled=true;pick.disabled=true;go.textContent='جارٍ حفظ البيانات…';
       const result=await uxMergeCommit(ids,targetId,revisions);busy=false;
-      if(!result.ok){message.replaceChildren(h('div',{class:'banner bad'},result.error));go.disabled=false;pick.disabled=false;go.textContent='اعتماد وتعبئة '+p.fills.length+' خانة';return}
-      body.replaceChildren(h('div',{class:'banner'},`تم حفظ ${result.count} خانة ناقصة في الملف الأساسي. لم تُستبدل أي قيمة موجودة، وبقيت الملفات الأخرى محفوظة ومرتبطة به.`),h('a',{class:'btn primary',href:'#contracts-'+result.id,onclick:()=>dlg.close()},'فتح الملف بعد الدمج'),h('button',{class:'btn',onclick:()=>{dlg.close();onDone?.()}},'العودة إلى نتائج التكرار'));toast('تمت تعبئة البيانات الناقصة');
-    }},'اعتماد وتعبئة '+p.fills.length+' خانة');
+      if(!result.ok){message.replaceChildren(h('div',{class:'banner bad'},result.error));go.disabled=false;pick.disabled=false;go.textContent='اعتماد الدمج ونقل الزائد للمحذوفات';return}
+      body.replaceChildren(h('div',{class:'banner'},`تم حفظ ${result.count} خانة ناقصة في الملف الأساسي. لم تُستبدل أي قيمة موجودة، ونُقل ${result.removed} ملف زائد إلى المحذوفات ويمكن استعادته.`),h('a',{class:'btn primary',href:'#contracts-'+result.id,onclick:()=>dlg.close()},'فتح الملف بعد الدمج'),h('button',{class:'btn',onclick:()=>{dlg.close();onDone?.()}},'العودة إلى نتائج التكرار'));toast('تمت تعبئة البيانات الناقصة');
+    }},'اعتماد الدمج ونقل الزائد للمحذوفات');
     const pick=h('select',{'aria-label':'الملف الأساسي للدمج',onchange:e=>{targetId=e.target.value;paint()}},rows.map(r=>h('option',{value:r.id,selected:r.id===targetId},label(r))));
     const table=(heads,data)=>h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,heads.map(x=>h('th',null,x)))),h('tbody',null,data.map(row=>h('tr',null,row.map(x=>h('td',null,x)))))));
     const fillTable=table(['البيان','القيمة المنقولة','من ملف'],p.fills.map(x=>[x.field.l,value(x.value,x.field),x.from.map(id=>label(rows.find(r=>r.id===id))).join(' / ')]));
     const conflictTable=table(['البيان','في الملف الأساسي','في الملفات الأخرى'],p.conflicts.map(x=>[x.field.l,value(x.current,x.field),x.options.map(o=>value(o.value,x.field)).join(' / ')]));
-    body.replaceChildren(h('p',null,'تأكد أن الملفات تخص العقد نفسه. اختر الملف الأساسي؛ ستُعبأ خاناته الفارغة تلقائيًا من بقية الملفات بعد اعتمادك.'),h('label',null,h('span',null,'الملف الأساسي — المقترح هو الأكثر اكتمالًا'),pick),h('p',{class:'small muted'},'تُنقل حقول البيانات فقط. تبقى المرفقات في ملفاتها الأصلية، وتُربط هذه الملفات بالملف الأساسي للوصول إليها. لا تُحذف أي نسخة ولا تتغير حالتها.'),rows.some(r=>r.legalHold)?h('div',{class:'banner bad'},'أحد الملفات تحت حجز قانوني؛ الدمج متوقف.'):null,
+    body.replaceChildren(h('p',null,'تأكد أن الملفات تخص العقد نفسه. اختر الملف الأساسي؛ ستُعبأ خاناته الفارغة تلقائيًا من بقية الملفات بعد اعتمادك.'),h('label',null,h('span',null,'الملف الأساسي — المقترح هو الأكثر اكتمالًا'),pick),h('p',{class:'small muted'},'تُعبأ الخانات الفارغة وتُربط المرفقات والسجلات بالملف الأساسي. بعد نجاح الحفظ تُنقل الملفات الأخرى إلى المحذوفات ويمكن استعادتها.'),rows.some(r=>r.legalHold)?h('div',{class:'banner bad'},'أحد الملفات تحت حجز قانوني؛ الدمج متوقف.'):null,
       h('h3',null,'الخانات التي ستُعبأ ('+p.fills.length+')'),p.fills.length?fillTable:h('p',null,'لا توجد بيانات ناقصة قابلة للتعبئة من هذه الملفات.'),
       p.conflicts.length?h('details',null,h('summary',{style:'cursor:pointer'},'قيم مختلفة لن تُستبدل تلقائيًا ('+p.conflicts.length+')'),conflictTable,h('p',{class:'small muted'},'إذا كانت الخانة الأساسية فارغة واختلفت القيم في المصادر، تبقى فارغة حتى تختار القيمة الصحيحة من شاشة الملف.')):null,message,go);
   };
