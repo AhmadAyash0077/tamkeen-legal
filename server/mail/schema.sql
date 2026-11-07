@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, uid TEXT NOT NULL, secret TEXT NOT NULL, last_sync TEXT, error TEXT);
+CREATE TABLE IF NOT EXISTS oauth_states (state TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS drafts (id TEXT PRIMARY KEY, uid TEXT NOT NULL, data TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS drafts_owner ON drafts(uid,status);
