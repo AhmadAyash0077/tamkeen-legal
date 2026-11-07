@@ -165,7 +165,7 @@ function loginVerificationInput(value,email,authOrigin){
     {const{data,error}=await sb.rpc('my_role');role=error?null:data}try{const{data:mm}=await sb.from('members').select('name').eq('email',email).maybeSingle();localStorage.setItem('tl_user_name',mm&&mm.name?mm.name:email.split('@')[0])}catch(e){}{let last=0;try{last=+localStorage.getItem('tl_acc_'+uid)||0}catch(e){}if(!role||Date.now()-last>8*3600e3){sb.rpc('log_access',{dev:devName(),ev:role?'فتح البرنامج':'محاولة دخول ببريد غير مضاف'}).then(()=>{try{if(role)localStorage.setItem('tl_acc_'+uid,String(Date.now()))}catch(e){}},()=>{})}}if(!role)await blocked();
     await loadAll();const moved=role==='owner'?await migrateLocal().catch(e=>{console.warn(e);return 0}):0;if(role==='owner')backfillBlobs();if(moved)setStatus(`رُفعت ${moved} سجلًا من هذا الجهاز`,'ok');
     window.fetch=cloudFetch;subscribe();startAutoRefresh();return'cloud'})();return ready}
-  window.__CLOUD={role:()=>role,accessLog:async(n)=>{const{data,error}=await sb.rpc('access_log_list',{lim:n||100});if(error)throw error;return data},
+  window.__CLOUD={mailSessionToken:async()=>{const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error("unauthorized");return session.access_token},role:()=>role,accessLog:async(n)=>{const{data,error}=await sb.rpc('access_log_list',{lim:n||100});if(error)throw error;return data},
   members:async()=>{const{data,error}=await sb.from('members').select('email,role,name').order('added_at');if(error)throw error;return data},
   addMember:async(e,r,n)=>{const{error}=await sb.from('members').upsert({email:e.trim().toLowerCase(),role:r,name:n||null});if(error)throw error},
   removeMember:async e=>{const{error}=await sb.from('members').delete().eq('email',e);if(error)throw error},
@@ -6232,4 +6232,5 @@ boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
 
 <script src="eissar.js?v=1"></script>
+<script src="mail-review.js?v=1"></script>
 </html>
