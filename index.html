@@ -3551,6 +3551,7 @@ function viewList(mod,mk){
   const M=MODS[mod];
   if(!canSee(mod))return{key:mod,el:h('div',{class:'panel'},ph('وصول مقيد','shield','#bf5af2'),h('p',null,'هذا القسم متاح لمحرري التطبيق ومالكه فقط، ويُطبق المنع من قاعدة البيانات نفسها.'))};
   const q=h('input',{type:'search',placeholder:'بحث في '+M.t,'aria-label':'بحث',value:mk?'':LS.get('q_'+mod,'')});
+  const codeFilter=mod==='contracts'?h('input',{type:'search',placeholder:'كود العميل (مع CW- أو بدونها)','aria-label':'فلترة كود العميل',value:LS.get('ctCodeFilter',''),oninput:()=>{LS.set('ctCodeFilter',codeFilter.value);refresh()}}):null;
   const st=h('select',{'aria-label':'الحالة'},h('option',{value:''},'كل الحالات'),h('option',{value:'_open'},'المفتوحة فقط'),M.st.map(s=>h('option',{value:s},s)));st.value=mk?'':LS.get('st_'+mod,'_open');
   const dateLabel=M.fields.find(f=>f.k===M.main)?.l||'التاريخ';
   const sort=h('select',{'aria-label':'الترتيب'},h('option',{value:'upd'},'الأحدث تعديلًا'),['cases','hearings'].includes(mod)?h('option',{value:'nearest'},'أقرب جلسة قادمة أولًا'):null,M.main?h('option',{value:'main'},dateLabel+' — الأقدم أولًا'):null,M.main?h('option',{value:'main_desc'},dateLabel+' — الأحدث أولًا'):null);{const def=['cases','hearings'].includes(mod)?'nearest':M.main?'main_desc':'upd';const sv=LS.get('sort2_'+mod,def);sort.value=[...sort.options].some(o=>o.value===sv)?sv:def}
@@ -3558,10 +3559,10 @@ function viewList(mod,mk){
   const FK=M.filters||[];const fval=(r,k)=>k==='_year'?(dateG(r[M.main])||'').slice(0,4):String((mod==='violations'?violationValue(r,k):r[k])??'').trim();
   const fsel=FK.map(k=>{const lab=k==='_year'?'السنة':(M.fields.find(f=>f.k===k)?.l||k);const sel=h('select',{'aria-label':lab,class:'fsel'});sel.dataset.k=k;sel.dataset.l=lab;sel._v=mk?'':LS.get('f_'+mod+'_'+k,'');sel.onchange=()=>{sel._v=sel.value;LS.set('f_'+mod+'_'+k,sel.value);refresh()};return sel});
   const fillF=()=>{for(const sel of fsel){const k=sel.dataset.k;const m={};const all=(mk?mrecs(mk):recs(mod)).filter(r=>matches(r,sel));for(const r of all){const v=fval(r,k);m[v]=(m[v]||0)+1}if(sel._v){const key=sel._v==='_none'?'':sel._v;if(!(key in m))m[key]=0}const keys=Object.keys(m).sort((a,b)=>k==='_year'?b.localeCompare(a):(m[b]-m[a])||a.localeCompare(b,'ar'));sel.replaceChildren(h('option',{value:''},(FALL[k]||['كل '+sel.dataset.l])[0]),...keys.map(v=>h('option',{value:v||'_none'},(v||(FALL[k]||[0,'بدون '+sel.dataset.l])[1])+' ('+m[v]+')')));sel.value=sel._v;if(sel.value!==sel._v)sel.value=''}};
-  const bfSel=mod==='contracts'&&typeof uxBondFilter==='function'?uxBondFilter(()=>refresh()):null;const clrF=h('button',{class:'btn sm ghost',onclick:()=>{if(bfSel){bfSel._v='';try{localStorage.setItem('uxBf','')}catch(e){}}mk=mod==='violations'?'v_all':null;st.value='';from.value='';to.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod+(mk?'~'+mk:''));refresh()}},'مسح الفلاتر');
+  const bfSel=mod==='contracts'&&typeof uxBondFilter==='function'?uxBondFilter(()=>refresh()):null;const clrF=h('button',{class:'btn sm ghost',onclick:()=>{if(codeFilter){codeFilter.value='';LS.set('ctCodeFilter','')}if(bfSel){bfSel._v='';try{localStorage.setItem('uxBf','')}catch(e){}}mk=mod==='violations'?'v_all':null;st.value='';from.value='';to.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod+(mk?'~'+mk:''));refresh()}},'مسح الفلاتر');
   const from=h('input',{type:'date','aria-label':'من تاريخ المخالفة'}),to=h('input',{type:'date','aria-label':'إلى تاريخ المخالفة'});from.onchange=()=>refresh();to.onchange=()=>refresh();
   const vTabs=h('div',{class:'tabs',role:'tablist'});const sumBox=h('div');let lastRows=[];
-  const descF=()=>{const d=[];if(mk&&METRICS[mk])d.push(METRICS[mk].l);if(from.value)d.push('من تاريخ: '+from.value);if(to.value)d.push('إلى تاريخ: '+to.value);if(st.value==='_open')d.push('المفتوحة فقط');else if(st.value)d.push('الحالة: '+st.value);for(const x of fsel)if(x._v)d.push(x.dataset.l+': '+(x._v==='_none'?'غير محدد':x._v));if(bfSel&&bfSel._v)d.push('السند: '+(UX_BF_OPTS.find(o=>o[0]===bfSel._v)||[0,''])[1]);if(q.value.trim())d.push('بحث: '+q.value.trim());return d};
+  const descF=()=>{const d=[];if(codeFilter&&codeFilter.value.trim())d.push('كود العميل: '+codeFilter.value.trim());if(mk&&METRICS[mk])d.push(METRICS[mk].l);if(from.value)d.push('من تاريخ: '+from.value);if(to.value)d.push('إلى تاريخ: '+to.value);if(st.value==='_open')d.push('المفتوحة فقط');else if(st.value)d.push('الحالة: '+st.value);for(const x of fsel)if(x._v)d.push(x.dataset.l+': '+(x._v==='_none'?'غير محدد':x._v));if(bfSel&&bfSel._v)d.push('السند: '+(UX_BF_OPTS.find(o=>o[0]===bfSel._v)||[0,''])[1]);if(q.value.trim())d.push('بحث: '+q.value.trim());return d};
   const wrap=h('div');
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},
@@ -3571,13 +3572,14 @@ function viewList(mod,mk){
     mod==='violations'?vTabs:null,
     mod==='violations'?h('div',{class:'toolbar'},h('label',null,'من تاريخ المخالفة ',from),h('label',null,'إلى تاريخ المخالفة ',to)):null,
     mod==='hearings'?h('div',{class:'tabs',role:'tablist'},[['h_up','القادمة'],['h_result','تحتاج نتيجة'],['h_past','الماضية'],['h_all','الكل']].map(([k,l])=>h('a',{class:'tab',role:'tab','aria-selected':String(mk===k),href:k?mlink(k):'#hearings'},l,k?h('span',{class:'count'},String(mcount(k))):null))):null,
-    h('div',{class:'toolbar'},q,st,sort,bfSel,clrF),FK.length?h('div',{class:'toolbar filters'},...fsel):null,sumBox,wrap);
+    h('div',{class:'toolbar'},q,codeFilter,st,sort,bfSel,clrF),FK.length?h('div',{class:'toolbar filters'},...fsel):null,sumBox,wrap);
   function matches(r,except=null){
     if(mod==='violations'&&(from.value||to.value)){const d=dateG(r.date);if(!d||(from.value&&d<from.value)||(to.value&&d>to.value))return false}
     if((!mk||mod==='violations')&&st.value==='_open'&&M.closed.includes(r.status))return false;
     if((!mk||mod==='violations')&&st.value&&st.value!=='_open'&&r.status!==st.value)return false;
     for(const x of fsel){if(x===except||!x._v)continue;const v=fval(r,x.dataset.k);if(x._v==='_none'?v!=='':v!==x._v)return false}
     if(bfSel&&bfSel._v&&!uxBfMatch(r,bfSel._v))return false;
+    if(codeFilter&&codeFilter.value.trim()&&uxDupCode(r.customer_code)!==uxDupCode(codeFilter.value))return false;
     return matchesRecordSearch(mod,r,q.value);
   }
   function refresh(){
@@ -6027,7 +6029,7 @@ async function uxInstText(d){if(d.text&&d.text.length>800&&/مدة\s*العقد|
 {const _bm=uxBfMatch;uxBfMatch=function(r,v){if(v&&uxIsInstC(r))return false;return _bm(r,v)}}
 if(typeof uxBdTargets==='function'){const _t=uxBdTargets;uxBdTargets=function(){return _t().filter(c=>!uxIsInstC(c))};const _m=uxBdMissing;uxBdMissing=function(){return _m().filter(c=>!uxIsInstC(c))}}
 
-/* Read-only duplicate review: never changes records. */
+/* Duplicate review with explicit fill-missing preview. */
 function uxDupName(v){return normDigits(v||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670ـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase()}
 function uxDupCode(v){return normDigits(v||'').trim().toUpperCase().replace(/^CW[-\s]*/,'').replace(/\s/g,'')}
 function uxDupScan(records){
@@ -6047,13 +6049,68 @@ function uxDupOpen(initialKind){
       result.replaceChildren(h('p',{class:'small muted',role:'status'},`${filtered.length} مجموعة · ${new Set(filtered.flatMap(g=>g.map(r=>r.id))).size} ملف ضمن النتائج`),...filtered.map((g,i)=>{
         const facts=[['رقم السجل التجاري',r=>String(r.cr_no||'').trim()],['مبلغ السند',r=>r.bond_amount==null||r.bond_amount===''?'':String(r.bond_amount)],['تاريخ السند',r=>dateG(r.bond_date)||'']];
         const conflicts=facts.filter(([,f])=>new Set(g.map(f).filter(Boolean)).size>1).map(([l])=>l);
-        return h('details',{class:'card',style:'margin:10px 0;padding:14px',open:filtered.length===1},h('summary',{style:'cursor:pointer;font-weight:700'},`${i+1}. ${g[0].trade_name||'بدون اسم'} — ${g.length} ملفات`),h('p',{class:'small muted'},'سبب المطابقة: '+labels[mode]+(conflicts.length?' · بيانات مختلفة: '+conflicts.join('، '):'')),h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,['الاسم التجاري','نوع الملف','كود العميل','السجل التجاري','مبلغ السند','تاريخ السند','نوع السند','الحالة','الملف'].map(t=>h('th',null,t)))),h('tbody',null,g.map(r=>h('tr',null,h('td',null,r.trade_name||'—'),h('td',null,uxCtKind(r)),h('td',{dir:'ltr'},r.customer_code||'—'),h('td',{dir:'ltr'},r.cr_no||'—'),h('td',null,r.bond_amount==null||r.bond_amount===''?'—':nf.format(r.bond_amount)),h('td',null,dateG(r.bond_date)?fmtG(dateG(r.bond_date)):'—'),h('td',null,r.bond_type||'غير محدد'),h('td',null,r.status||'—'),h('td',null,h('a',{class:'btn sm',href:'#contracts-'+r.id,onclick:()=>dlg.close()},'فتح الملف'))))))));
+        return h('details',{class:'card',style:'margin:10px 0;padding:14px',open:filtered.length===1},h('summary',{style:'cursor:pointer;font-weight:700'},`${i+1}. ${g[0].trade_name||'بدون اسم'} — ${g.length} ملفات`),!S.readOnly?h('button',{class:'btn primary',style:'margin:10px 0',onclick:()=>{dlg.close();uxMergeOpen(g,()=>uxDupOpen(kind))}},'دمج البيانات الناقصة'):null,h('p',{class:'small muted'},'سبب المطابقة: '+labels[mode]+(conflicts.length?' · بيانات مختلفة: '+conflicts.join('، '):'')),h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,['الاسم التجاري','نوع الملف','كود العميل','السجل التجاري','مبلغ السند','تاريخ السند','نوع السند','الحالة','الملف'].map(t=>h('th',null,t)))),h('tbody',null,g.map(r=>h('tr',null,h('td',null,r.trade_name||'—'),h('td',null,uxCtKind(r)),h('td',{dir:'ltr'},r.customer_code||'—'),h('td',{dir:'ltr'},r.cr_no||'—'),h('td',null,r.bond_amount==null||r.bond_amount===''?'—':nf.format(r.bond_amount)),h('td',null,dateG(r.bond_date)?fmtG(dateG(r.bond_date)):'—'),h('td',null,r.bond_type||'غير محدد'),h('td',null,r.status||'—'),h('td',null,h('a',{class:'btn sm',href:'#contracts-'+r.id,onclick:()=>dlg.close()},'فتح الملف'))))))));
       }),filtered.length?null:h('div',{class:'banner'},query?'لا توجد نتائج لهذا البحث.':'لم تظهر مجموعات بهذا المعيار. جرّب الاسم التجاري أو كود العميل؛ هذه النتيجة لا تثبت خلو جميع الملفات من التكرار.'));
     };
-    body.replaceChildren(h('p',null,'مراجعة مباشرة للملفات المتشابهة، تشمل المفتوح والمغلق وتستبعد المحذوفات. افتح اسم العميل لمقارنة ملفاته.'),h('div',{class:'banner'},'النتائج اشتباه تكرار للمراجعة؛ اختلاف العقود أو الفروع قد يكون صحيحًا. لا يُحذف أو يُدمج أي ملف هنا.'),h('div',{class:'row',style:'margin:14px 0;flex-wrap:wrap'},h('select',{'aria-label':'نوع الملفات في فحص التكرار',onchange:e=>{kind=e.target.value;paint()}},[['','كل العقود'],['جملة','ملفات جملة'],['تركيب','ملفات تركيب']].map(([v,l])=>h('option',{value:v,selected:kind===v},l))),h('button',{class:'btn',onclick:paint},'إعادة الفحص')),
+    body.replaceChildren(h('p',null,'مراجعة مباشرة للملفات المتشابهة، تشمل المفتوح والمغلق وتستبعد المحذوفات. افتح اسم العميل لمقارنة ملفاته.'),h('div',{class:'banner'},'النتائج اشتباه تكرار للمراجعة؛ اختلاف العقود أو الفروع قد يكون صحيحًا. افتح «دمج البيانات الناقصة» لمعاينة التعبئة قبل اعتمادها. لا يُحذف أي ملف.'),h('div',{class:'row',style:'margin:14px 0;flex-wrap:wrap'},h('select',{'aria-label':'نوع الملفات في فحص التكرار',onchange:e=>{kind=e.target.value;paint()}},[['','كل العقود'],['جملة','ملفات جملة'],['تركيب','ملفات تركيب']].map(([v,l])=>h('option',{value:v,selected:kind===v},l))),h('button',{class:'btn',onclick:paint},'إعادة الفحص')),
       h('div',{class:'row',style:'flex-wrap:wrap'},Object.keys(labels).map(k=>h('button',{class:'btn'+(mode===k?' primary':''),'aria-pressed':String(mode===k),onclick:()=>{mode=k;paint()}},labels[k]+' ('+data[k].length+')'))),h('p',{class:'small muted'},`فُحص ${data.rows.length} ملف. أعداد المعايير متداخلة ولا تُجمع. مطابقة الاسم تتجاهل اختلاف الهمزات والياء والتاء المربوطة والمسافات، ولا تفحص محتوى المرفقات.`),h('input',{type:'search',value:query,placeholder:'ابحث باسم العميل أو الكود داخل النتائج','aria-label':'بحث في الملفات المتكررة',oninput:e=>{query=e.target.value;renderGroups()}}),result);renderGroups();
   };
   paint();dlg=uxModal('كشف الملفات المتكررة',body);dlg.style.width='min(1200px,96vw)';dlg.style.maxWidth='1200px';
+}
+
+/* Fill missing contract fields only; source records remain intact. */
+function uxMergeEmpty(v,f){return v==null||(typeof v==='string'&&!v.trim())||(f.t==='date'&&!dateG(v))||(Array.isArray(v)&&!v.length)}
+function uxMergeValueKey(v,f){if(f.t==='date')return dateG(v)||'';if(['money','int','number'].includes(f.t)){const n=Number(normDigits(v));if(Number.isFinite(n))return String(n)}return typeof v==='object'?JSON.stringify(v):String(v).trim()}
+function uxMergePlan(target,sources,fields){
+  const fills=[],conflicts=[];
+  for(const f of fields){if(['file','files'].includes(f.t)||['fileKind'].includes(f.k))continue;
+    const values=new Map();for(const r of sources){const v=r[f.k];if(uxMergeEmpty(v,f))continue;const k=uxMergeValueKey(v,f);if(!values.has(k))values.set(k,{value:v,from:[]});values.get(k).from.push(r.id)}
+    if(!values.size)continue;const options=[...values.values()];
+    if(uxMergeEmpty(target[f.k],f)){if(options.length===1)fills.push({field:f,...options[0]});else conflicts.push({field:f,current:target[f.k],options,empty:true})}
+    else if(options.some(o=>uxMergeValueKey(o.value,f)!==uxMergeValueKey(target[f.k],f)))conflicts.push({field:f,current:target[f.k],options,empty:false});
+  }
+  return{fills,conflicts};
+}
+async function uxMergeCommit(ids,targetId,revisions){
+  if(S.readOnly||!canSee('contracts'))return{error:'صلاحيتك لا تسمح بالتعديل.'};
+  try{
+    const rows=[];for(const id of [...new Set(ids)]){const d=await db.collection('contracts').doc(id).get();if(!d.exists)return{error:'أحد الملفات لم يعد موجودًا. أعد الفحص.'};const r={...d.data(),id};if(r.deleted||r.legalHold)return{error:'أحد الملفات محذوف أو تحت حجز قانوني. لم يُنفذ الدمج.'};if((r.rev||0)!==(revisions[id]||0))return{error:'تغيرت بيانات أحد الملفات بعد المعاينة. أغلق النافذة وأعد فتح الدمج لمراجعة البيانات الجديدة.'};rows.push(r)}
+    const target=rows.find(r=>r.id===targetId),sources=rows.filter(r=>r.id!==targetId);if(!target||!sources.length||sources.some(r=>uxCtKind(r)!==uxCtKind(target)))return{error:'اختر ملفات من النوع نفسه.'};
+    const plan=uxMergePlan(target,sources,MODS.contracts.fields);if(!plan.fills.length)return{error:'لا توجد خانات فارغة يمكن تعبئتها تلقائيًا.'};
+    const patch=Object.fromEntries(plan.fills.map(x=>[x.field.k,x.value]));
+    patch.links=[...new Set([...(target.links||[]),...sources.map(r=>'contracts:'+r.id)])];
+    patch.mergeFills=[...(target.mergeFills||[]),{at:new Date().toISOString(),by:S.me.id||null,sources:sources.map(r=>r.id),fields:plan.fills.map(x=>x.field.k)}];
+    const res=await writeDoc('contracts',target.id,patch,target.rev||0);
+    if(!res?.ok)return{error:res?.conflict?'تغير الملف أثناء الحفظ. أعد فتح الدمج.':'لم ينجح حفظ الدمج. لم يُحذف أي ملف.'};
+    if(S.data.contracts)S.data.contracts.set(target.id,{...res.data,id:target.id});
+    audit('تعبئة البيانات الناقصة بالدمج','contracts',target.id,`${plan.fills.length} حقل من ${sources.length} ملف`);
+    return{ok:true,count:plan.fills.length,id:target.id};
+  }catch(e){return{error:'تعذر الاتصال لحفظ الدمج. أعد المحاولة بعد استعادة الاتصال.'}}
+}
+function uxMergeOpen(group,onDone){
+  if(S.readOnly){toast('صلاحيتك قراءة فقط');return}
+  const ids=group.map(r=>r.id),rows=ids.map(id=>rec('contracts',id)).filter(Boolean);
+  if(rows.length!==ids.length||rows.some(r=>r.deleted)){toast('تغيرت الملفات. أعد الفحص.');return}
+  const fields=MODS.contracts.fields,score=r=>fields.filter(f=>!uxMergeEmpty(r[f.k],f)).length;
+  let targetId=[...rows].sort((a,b)=>score(b)-score(a))[0].id,dlg,busy=false;const body=h('div');
+  const label=r=>`${r.trade_name||'بدون اسم'} — كود ${r.customer_code||'غير مسجل'} — ${r.id}`;
+  const value=(v,f)=>uxMergeEmpty(v,f)?'فارغ':f.t==='date'?fmtG(dateG(v)):typeof v==='object'?JSON.stringify(v):String(v);
+  const paint=()=>{const target=rows.find(r=>r.id===targetId),sources=rows.filter(r=>r.id!==targetId),p=uxMergePlan(target,sources,fields),revisions=Object.fromEntries(rows.map(r=>[r.id,r.rev||0]));
+    const message=h('div',{role:'status'}),go=h('button',{class:'btn primary',disabled:!p.fills.length||rows.some(r=>r.legalHold),onclick:async()=>{
+      if(busy)return;busy=true;go.disabled=true;pick.disabled=true;go.textContent='جارٍ حفظ البيانات…';
+      const result=await uxMergeCommit(ids,targetId,revisions);busy=false;
+      if(!result.ok){message.replaceChildren(h('div',{class:'banner bad'},result.error));go.disabled=false;pick.disabled=false;go.textContent='اعتماد وتعبئة '+p.fills.length+' خانة';return}
+      body.replaceChildren(h('div',{class:'banner'},`تم حفظ ${result.count} خانة ناقصة في الملف الأساسي. لم تُستبدل أي قيمة موجودة، وبقيت الملفات الأخرى محفوظة ومرتبطة به.`),h('a',{class:'btn primary',href:'#contracts-'+result.id,onclick:()=>dlg.close()},'فتح الملف بعد الدمج'),h('button',{class:'btn',onclick:()=>{dlg.close();onDone?.()}},'العودة إلى نتائج التكرار'));toast('تمت تعبئة البيانات الناقصة');
+    }},'اعتماد وتعبئة '+p.fills.length+' خانة');
+    const pick=h('select',{'aria-label':'الملف الأساسي للدمج',onchange:e=>{targetId=e.target.value;paint()}},rows.map(r=>h('option',{value:r.id,selected:r.id===targetId},label(r))));
+    const table=(heads,data)=>h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,heads.map(x=>h('th',null,x)))),h('tbody',null,data.map(row=>h('tr',null,row.map(x=>h('td',null,x)))))));
+    const fillTable=table(['البيان','القيمة المنقولة','من ملف'],p.fills.map(x=>[x.field.l,value(x.value,x.field),x.from.map(id=>label(rows.find(r=>r.id===id))).join(' / ')]));
+    const conflictTable=table(['البيان','في الملف الأساسي','في الملفات الأخرى'],p.conflicts.map(x=>[x.field.l,value(x.current,x.field),x.options.map(o=>value(o.value,x.field)).join(' / ')]));
+    body.replaceChildren(h('p',null,'تأكد أن الملفات تخص العقد نفسه. اختر الملف الأساسي؛ ستُعبأ خاناته الفارغة تلقائيًا من بقية الملفات بعد اعتمادك.'),h('label',null,h('span',null,'الملف الأساسي — المقترح هو الأكثر اكتمالًا'),pick),h('p',{class:'small muted'},'تُنقل حقول البيانات فقط. تبقى المرفقات في ملفاتها الأصلية، وتُربط هذه الملفات بالملف الأساسي للوصول إليها. لا تُحذف أي نسخة ولا تتغير حالتها.'),rows.some(r=>r.legalHold)?h('div',{class:'banner bad'},'أحد الملفات تحت حجز قانوني؛ الدمج متوقف.'):null,
+      h('h3',null,'الخانات التي ستُعبأ ('+p.fills.length+')'),p.fills.length?fillTable:h('p',null,'لا توجد بيانات ناقصة قابلة للتعبئة من هذه الملفات.'),
+      p.conflicts.length?h('details',null,h('summary',{style:'cursor:pointer'},'قيم مختلفة لن تُستبدل تلقائيًا ('+p.conflicts.length+')'),conflictTable,h('p',{class:'small muted'},'إذا كانت الخانة الأساسية فارغة واختلفت القيم في المصادر، تبقى فارغة حتى تختار القيمة الصحيحة من شاشة الملف.')):null,message,go);
+  };
+  paint();dlg=uxModal('دمج البيانات الناقصة',body);dlg.style.width='min(1050px,96vw)';dlg.style.maxWidth='1050px';
 }
 
 /* ===== 27) موظفون إلكترونيون مخصّصين: تضيف موظف بتوجيه (قسم + شرط)، توقفه/تخفيه، وترجّعه ===== */
