@@ -3551,7 +3551,7 @@ function viewList(mod,mk){
   const M=MODS[mod];
   if(!canSee(mod))return{key:mod,el:h('div',{class:'panel'},ph('وصول مقيد','shield','#bf5af2'),h('p',null,'هذا القسم متاح لمحرري التطبيق ومالكه فقط، ويُطبق المنع من قاعدة البيانات نفسها.'))};
   const q=h('input',{type:'search',placeholder:'بحث في '+M.t,'aria-label':'بحث',value:mk?'':LS.get('q_'+mod,'')});
-  const codeFilter=mod==='contracts'?h('input',{type:'search',placeholder:'كود العميل (مع CW- أو بدونها)','aria-label':'فلترة كود العميل',value:LS.get('ctCodeFilter',''),oninput:()=>{LS.set('ctCodeFilter',codeFilter.value);refresh()}}):null;
+  const codeFilter=mod==='contracts'?h('select',{'aria-label':'حالة كود العميل',value:LS.get('ctCodeValidity',''),onchange:()=>{LS.set('ctCodeValidity',codeFilter.value);refresh()}},[['','كل أكواد العملاء'],['valid','كود صحيح — CW-000000'],['invalid','كود غير صحيح'],['missing','بدون كود']].map(([v,l])=>h('option',{value:v},l))):null;
   const st=h('select',{'aria-label':'الحالة'},h('option',{value:''},'كل الحالات'),h('option',{value:'_open'},'المفتوحة فقط'),M.st.map(s=>h('option',{value:s},s)));st.value=mk?'':LS.get('st_'+mod,'_open');
   const dateLabel=M.fields.find(f=>f.k===M.main)?.l||'التاريخ';
   const sort=h('select',{'aria-label':'الترتيب'},h('option',{value:'upd'},'الأحدث تعديلًا'),['cases','hearings'].includes(mod)?h('option',{value:'nearest'},'أقرب جلسة قادمة أولًا'):null,M.main?h('option',{value:'main'},dateLabel+' — الأقدم أولًا'):null,M.main?h('option',{value:'main_desc'},dateLabel+' — الأحدث أولًا'):null);{const def=['cases','hearings'].includes(mod)?'nearest':M.main?'main_desc':'upd';const sv=LS.get('sort2_'+mod,def);sort.value=[...sort.options].some(o=>o.value===sv)?sv:def}
@@ -3559,10 +3559,10 @@ function viewList(mod,mk){
   const FK=M.filters||[];const fval=(r,k)=>k==='_year'?(dateG(r[M.main])||'').slice(0,4):String((mod==='violations'?violationValue(r,k):r[k])??'').trim();
   const fsel=FK.map(k=>{const lab=k==='_year'?'السنة':(M.fields.find(f=>f.k===k)?.l||k);const sel=h('select',{'aria-label':lab,class:'fsel'});sel.dataset.k=k;sel.dataset.l=lab;sel._v=mk?'':LS.get('f_'+mod+'_'+k,'');sel.onchange=()=>{sel._v=sel.value;LS.set('f_'+mod+'_'+k,sel.value);refresh()};return sel});
   const fillF=()=>{for(const sel of fsel){const k=sel.dataset.k;const m={};const all=(mk?mrecs(mk):recs(mod)).filter(r=>matches(r,sel));for(const r of all){const v=fval(r,k);m[v]=(m[v]||0)+1}if(sel._v){const key=sel._v==='_none'?'':sel._v;if(!(key in m))m[key]=0}const keys=Object.keys(m).sort((a,b)=>k==='_year'?b.localeCompare(a):(m[b]-m[a])||a.localeCompare(b,'ar'));sel.replaceChildren(h('option',{value:''},(FALL[k]||['كل '+sel.dataset.l])[0]),...keys.map(v=>h('option',{value:v||'_none'},(v||(FALL[k]||[0,'بدون '+sel.dataset.l])[1])+' ('+m[v]+')')));sel.value=sel._v;if(sel.value!==sel._v)sel.value=''}};
-  const bfSel=mod==='contracts'&&typeof uxBondFilter==='function'?uxBondFilter(()=>refresh()):null;const clrF=h('button',{class:'btn sm ghost',onclick:()=>{if(codeFilter){codeFilter.value='';LS.set('ctCodeFilter','')}if(bfSel){bfSel._v='';try{localStorage.setItem('uxBf','')}catch(e){}}mk=mod==='violations'?'v_all':null;st.value='';from.value='';to.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod+(mk?'~'+mk:''));refresh()}},'مسح الفلاتر');
+  const bfSel=mod==='contracts'&&typeof uxBondFilter==='function'?uxBondFilter(()=>refresh()):null;const clrF=h('button',{class:'btn sm ghost',onclick:()=>{if(codeFilter){codeFilter.value='';LS.set('ctCodeValidity','')}if(bfSel){bfSel._v='';try{localStorage.setItem('uxBf','')}catch(e){}}mk=mod==='violations'?'v_all':null;st.value='';from.value='';to.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod+(mk?'~'+mk:''));refresh()}},'مسح الفلاتر');
   const from=h('input',{type:'date','aria-label':'من تاريخ المخالفة'}),to=h('input',{type:'date','aria-label':'إلى تاريخ المخالفة'});from.onchange=()=>refresh();to.onchange=()=>refresh();
   const vTabs=h('div',{class:'tabs',role:'tablist'});const sumBox=h('div');let lastRows=[];
-  const descF=()=>{const d=[];if(codeFilter&&codeFilter.value.trim())d.push('كود العميل: '+codeFilter.value.trim());if(mk&&METRICS[mk])d.push(METRICS[mk].l);if(from.value)d.push('من تاريخ: '+from.value);if(to.value)d.push('إلى تاريخ: '+to.value);if(st.value==='_open')d.push('المفتوحة فقط');else if(st.value)d.push('الحالة: '+st.value);for(const x of fsel)if(x._v)d.push(x.dataset.l+': '+(x._v==='_none'?'غير محدد':x._v));if(bfSel&&bfSel._v)d.push('السند: '+(UX_BF_OPTS.find(o=>o[0]===bfSel._v)||[0,''])[1]);if(q.value.trim())d.push('بحث: '+q.value.trim());return d};
+  const descF=()=>{const d=[];if(codeFilter&&codeFilter.value.trim())d.push('حالة كود العميل: '+({valid:'كود صحيح — CW-000000',invalid:'كود غير صحيح',missing:'بدون كود'}[codeFilter.value]||''));if(mk&&METRICS[mk])d.push(METRICS[mk].l);if(from.value)d.push('من تاريخ: '+from.value);if(to.value)d.push('إلى تاريخ: '+to.value);if(st.value==='_open')d.push('المفتوحة فقط');else if(st.value)d.push('الحالة: '+st.value);for(const x of fsel)if(x._v)d.push(x.dataset.l+': '+(x._v==='_none'?'غير محدد':x._v));if(bfSel&&bfSel._v)d.push('السند: '+(UX_BF_OPTS.find(o=>o[0]===bfSel._v)||[0,''])[1]);if(q.value.trim())d.push('بحث: '+q.value.trim());return d};
   const wrap=h('div');
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},
@@ -3579,7 +3579,7 @@ function viewList(mod,mk){
     if((!mk||mod==='violations')&&st.value&&st.value!=='_open'&&r.status!==st.value)return false;
     for(const x of fsel){if(x===except||!x._v)continue;const v=fval(r,x.dataset.k);if(x._v==='_none'?v!=='':v!==x._v)return false}
     if(bfSel&&bfSel._v&&!uxBfMatch(r,bfSel._v))return false;
-    if(codeFilter&&codeFilter.value.trim()&&uxDupCode(r.customer_code)!==uxDupCode(codeFilter.value))return false;
+    if(codeFilter&&codeFilter.value&&!uxCodeValidityMatch(r.customer_code,codeFilter.value))return false;
     return matchesRecordSearch(mod,r,q.value);
   }
   function refresh(){
@@ -6030,6 +6030,7 @@ async function uxInstText(d){if(d.text&&d.text.length>800&&/مدة\s*العقد|
 if(typeof uxBdTargets==='function'){const _t=uxBdTargets;uxBdTargets=function(){return _t().filter(c=>!uxIsInstC(c))};const _m=uxBdMissing;uxBdMissing=function(){return _m().filter(c=>!uxIsInstC(c))}}
 
 /* Duplicate review with explicit fill-missing preview. */
+function uxCodeValidityMatch(value,mode){const code=String(value??'').trim();if(!mode)return true;if(mode==='missing')return !code;if(mode==='valid')return /^CW-\d{6}$/.test(code);if(mode==='invalid')return !!code&&!/^CW-\d{6}$/.test(code);return true}
 function uxDupName(v){return normDigits(v||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670ـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase()}
 function uxDupCode(v){return normDigits(v||'').trim().toUpperCase().replace(/^CW[-\s]*/,'').replace(/\s/g,'')}
 function uxDupScan(records){
