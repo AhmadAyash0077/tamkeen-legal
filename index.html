@@ -2064,7 +2064,7 @@ pages:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8
 list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
 pin:'<path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/>',
 };
-const META={bankrupt:['alert','#ff453a'],devreqs:['gear','#bf5af2'],attest:['stamp','#64d2ff'],team:['sparkles','#ffd60a'],assistants:['sparkles','#af52de'],home:['home','#5e5ce6'],requests:['inbox','#0a84ff'],consults:['message','#bf5af2'],cases:['gavel','#ff375f'],hearings:['calendar','#ff9f0a'],executions:['list','#ff6b35'],contracts:['contract','#30d158'],bonds:['banknote','#e6a800'],claims:['wallet','#ff9500'],violations:['alert','#ff453a'],poa:['stamp','#32ade6'],lawyers:['briefcase','#32ade6'],forms:['pages','#ff375f'],investigations:['shield','#bf5af2'],library:['book','#ff9500'],docs:['folder','#0a84ff'],reports:['chart','#af52de'],trash:['trash','#8e8e93'],prefs:['gear','#5e5ce6'],search:['search','#5e5ce6'],sources:['book','#ff9500'],articles:['book','#ff9500']};
+const META={taradi:['calendar','#30b0a0'],bankrupt:['alert','#ff453a'],devreqs:['gear','#bf5af2'],attest:['stamp','#64d2ff'],team:['sparkles','#ffd60a'],assistants:['sparkles','#af52de'],home:['home','#5e5ce6'],requests:['inbox','#0a84ff'],consults:['message','#bf5af2'],cases:['gavel','#ff375f'],hearings:['calendar','#ff9f0a'],executions:['list','#ff6b35'],contracts:['contract','#30d158'],bonds:['banknote','#e6a800'],claims:['wallet','#ff9500'],violations:['alert','#ff453a'],poa:['stamp','#32ade6'],lawyers:['briefcase','#32ade6'],forms:['pages','#ff375f'],investigations:['shield','#bf5af2'],library:['book','#ff9500'],docs:['folder','#0a84ff'],reports:['chart','#af52de'],trash:['trash','#8e8e93'],prefs:['gear','#5e5ce6'],search:['search','#5e5ce6'],sources:['book','#ff9500'],articles:['book','#ff9500']};
 function icon(n){const sp=document.createElement('span');sp.className='ico';sp.setAttribute('aria-hidden','true');sp.innerHTML=`<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${IC[n]||IC.list}</svg>`;return sp}
 {const IOS={home:'#0a84ff',requests:'#5e5ce6',consults:'#bf5af2',cases:'#ff375f',hearings:'#ff9f0a',contracts:'#30d158',bonds:'#e6a800',violations:'#ff453a',poa:'#32ade6',lawyers:'#a2845e',investigations:'#8e8e93',library:'#ff9500',docs:'#0a84ff',reports:'#af52de',trash:'#8e8e93',prefs:'#8e8e93',search:'#0a84ff',sources:'#ff9500',articles:'#ff9500'};for(const[k,c]of Object.entries(IOS))if(META[k])META[k][1]=c}
 function chip(nameOrMod,size,color){const m=META[nameOrMod];const n=m?m[0]:nameOrMod;const c=color||(m?m[1]:'#5e5ce6');return h('span',{class:'chip'+(size?' '+size:''),style:`--c:${c}`},icon(n))}
@@ -2143,6 +2143,14 @@ const MODS={
     {k:'filed',l:'تاريخ التقديم',t:'date'},{k:'startDate',l:'تاريخ بداية التعامل',t:'date'},{k:'payDate',l:'تاريخ السداد',t:'date'},
     {k:'rep',l:'المندوب',t:'text'},{k:'branch',l:'الفرع',t:'text'},{k:'decision',l:'القرار الحالي',t:'text'},{k:'notes',l:'ملاحظات',t:'area',w:1}],
     st:['قيد التنفيذ','تم الإمهال','منتهي','ملغى'],closed:['منتهي','ملغى'],filters:['branch','applicant','rep','decision','_year'],sums:[['claimAmount','المطالبات'],['paid','المسدد'],['remaining','المتبقي']],cols:['respondent','reqNo','claimAmount','paid','remaining','filed']},
+  taradi:{t:'جلسات تراضي',one:'جلسة تراضي',grp:'التقاضي',main:'date',fields:[
+    {k:'reqNo',l:'رقم طلب الصلح',t:'ltr'},{k:'plaintiff',l:'طالب الصلح (المدعي)',t:'text',req:1},{k:'defendant',l:'الطرف الآخر (المدعى عليه)',t:'text',req:1},
+    {k:'subject',l:'موضوع النزاع',t:'text',req:1,w:1},{k:'date',l:'تاريخ الجلسة',t:'date',req:1},{k:'time',l:'الوقت (بتوقيت الرياض)',t:'time',req:1},
+    {k:'attendee',l:'من سيحضر الجلسة',t:'text'},{k:'place',l:'المكان',t:'text'},{k:'link',l:'رابط الجلسة',t:'ltr'},
+    {k:'claims',l:'المطالبات',t:'area',w:1},{k:'claimAmount',l:'قيمة المطالبة',t:'money'},{k:'currency',l:'العملة',t:'select',o:CUR},
+    {k:'side',l:'صفة الشركة',t:'select',o:['مدعية','مدعى عليها','متدخلة','أخرى']},{k:'owner',l:'المسؤول',t:'text'},
+    {k:'result',l:'نتيجة جلسة الصلح',t:'area',w:1},{k:'notes',l:'ملاحظات',t:'area',w:1}],
+    st:['مجدولة','منعقدة','مؤجلة','تم الصلح','تعذر الصلح','ملغاة'],closed:['تم الصلح','تعذر الصلح','ملغاة','محولة إلى قضية'],cols:['plaintiff','defendant','reqNo','date','time']},
   hearings:{t:'الجلسات',one:'جلسة',grp:'التقاضي',main:'date',fields:[
     {k:'caseId',l:'القضية',t:'ref',ref:'cases',req:1},{k:'date',l:'تاريخ الجلسة',t:'date',req:1},{k:'time',l:'الوقت (بتوقيت الرياض)',t:'time',req:1},
     {k:'place',l:'المكان أو القاعة',t:'text'},{k:'link',l:'رابط الجلسة المرئية',t:'ltr'},{k:'attendee',l:'من سيحضر الجلسة',t:'text',hint:'اسم الشخص المكلف بالحضور عن الشركة في هذه الجلسة'},
@@ -2199,7 +2207,7 @@ const MODS={
 const NAV=[
   {grp:null,items:[['home','الرئيسية']]},
   {grp:'العمل اليومي',items:[['team','الموظفون الإلكترونيون'],['requests'],['consults']]},
-  {grp:'التقاضي',items:[['cases'],['hearings'],['executions']]},
+  {grp:'التقاضي',items:[['cases'],['hearings'],['taradi'],['executions']]},
   {grp:'العقود والسندات',items:[['contracts'],['attest'],['bonds']]},
   {grp:'الامتثال',items:[['violations'],['poa'],['lawyers'],['investigations']]},
   {grp:'المعرفة',items:[['library','المكتبة القانونية'],['docs','المستندات']]},
@@ -2211,6 +2219,7 @@ function rec(mod,id){return S.data[mod]?.get(id)}
 function caseHearing(c){const hs=recs('hearings').filter(x=>x.caseId===c.id&&x.status==='مجدولة'&&dateG(x.date));const now=Date.now();const up=hs.filter(x=>(hearingTs(x)||0)>=now).sort((a,b)=>hearingTs(a)-hearingTs(b))[0];if(up)return{r:up,past:false};const pa=hs.sort((a,b)=>(hearingTs(b)||0)-(hearingTs(a)||0))[0];return pa?{r:pa,past:true}:null}
 function partyOf(r,role){const l=String(r.parties||'').split('\n').find(x=>x.includes('— '+role));return l?l.split(' — ')[0].trim():''}
 function titleOf(mod,r){if(!r)return'(غير متاح)';switch(mod){
+  case'taradi':return `تراضي — ${r.plaintiff||''} / ${r.defendant||''}`;
   case'cases':{const pl=r.plaintiff||partyOf(r,'مدعٍ');return pl?`${pl}${r.subject?' — '+r.subject:''}`:`قضية ${r.caseNo||''}${r.subject?' — '+r.subject:''}`}
   case'hearings':{const c=rec('cases',r.caseId);return`جلسة ${fmtDate(r.date,false)}${c?' — '+(c.plaintiff||partyOf(c,'مدعٍ')||'قضية '+(c.caseNo||'')):''}`}
   case'executions':return`${r.respondent||'طلب تنفيذ'}${r.reqNo?' — '+r.reqNo:''}`;
@@ -2493,8 +2502,8 @@ function overview(){
       h('span',{class:'ov-n'},`${r.open} / ${r.all}`)))));
 }
 
-const DESC={requests:'تقديم ← إسناد ← معالجة ← مراجعة ← اعتماد ← إغلاق، مع الرفض والإعادة بأسباب ومدد إنجاز.',cases:'ملف كل قضية: الأطراف والمطالبات والمواعيد النظامية والخط الزمني.',hearings:'مواعيد الجلسات ومكانها ونتائجها والمهام المترتبة عليها.',contracts:'عقود فتح حساب توريد البضاعة الآجل: عبّئ بيانات العميل والمفوضين، ثم افتح العقد معبأً.',bonds:'السندات والضمانات بقيمها المؤكدة والمقروءة آليًا، والاستحقاق، مع منع تسجيل السند مرتين.',violations:'المخالفات الواردة من الجهات، مع فصل مهلة الاعتراض عن مهلة السداد ومصدر كل منهما.',consults:'الآراء القانونية، مع فصل المسودة عن الرأي المعتمد.',investigations:'التحقيقات الداخلية ومحاضرها، ولا يطلع عليها إلا محررو التطبيق.',poa:'الوكالات والتفويضات والتراخيص وتواريخ انتهائها.',lawyers:'المحامون والمكاتب الخارجية، والقضايا المسندة لكل منهم تلقائيًا من ملف القضية.'};
-const TIP={requests:'بعد الحفظ يبدأ الطلب «مقدمًا»، ثم يُسند ويُعالج ويُراجع ويُعتمد من صفحة الطلب. إن لم تحدد موعدًا تُطبق مدة الإنجاز حسب الأولوية.',cases:'بعد الحفظ أضف مواعيد الاعتراض والاستئناف من صفحة القضية مع مصدر كل موعد، ثم اربطها بالعقد والسند.',hearings:'التاريخ والوقت إلزاميان لأن التنبيهات وملف التقويم تُبنى عليهما.',contracts:'عبّئ بيانات العميل والمفوض ثم احفظ؛ في صفحة العقد اضغط «فتح العقد» لعرضه معبأً. القيمة والمدة والتجديد في «تفاصيل العقد الإضافية».',bonds:'إذا تعذرت قراءة المبلغ اتركه فارغًا؛ سيُعلَّم «غير مقروء» ولا يدخل في الإجماليات.',violations:'وثّق مصدر المهلة من نص الإشعار نفسه؛ النظام لا يحتسب المهل.',consults:'تبدأ الاستشارة مسودة، والاعتماد إجراء مستقل يُسجل باسم المعتمد.',investigations:'محتوى التحقيق مقيد؛ لا يراه المساهمون ولا المطلعون.',poa:'تاريخ الانتهاء يفعّل التنبيه قبل انقضاء الوكالة أو الترخيص.',lawyers:'اختر المحامي من خانة «المحامي» في صفحة القضية؛ تظهر القضية في ملفه تلقائيًا.'};
+const DESC={taradi:'جلسات الصلح ونتائجها، مع تحويلها إلى قضايا داخل المساعد عند الحاجة.',requests:'تقديم ← إسناد ← معالجة ← مراجعة ← اعتماد ← إغلاق، مع الرفض والإعادة بأسباب ومدد إنجاز.',cases:'ملف كل قضية: الأطراف والمطالبات والمواعيد النظامية والخط الزمني.',hearings:'مواعيد الجلسات ومكانها ونتائجها والمهام المترتبة عليها.',contracts:'عقود فتح حساب توريد البضاعة الآجل: عبّئ بيانات العميل والمفوضين، ثم افتح العقد معبأً.',bonds:'السندات والضمانات بقيمها المؤكدة والمقروءة آليًا، والاستحقاق، مع منع تسجيل السند مرتين.',violations:'المخالفات الواردة من الجهات، مع فصل مهلة الاعتراض عن مهلة السداد ومصدر كل منهما.',consults:'الآراء القانونية، مع فصل المسودة عن الرأي المعتمد.',investigations:'التحقيقات الداخلية ومحاضرها، ولا يطلع عليها إلا محررو التطبيق.',poa:'الوكالات والتفويضات والتراخيص وتواريخ انتهائها.',lawyers:'المحامون والمكاتب الخارجية، والقضايا المسندة لكل منهم تلقائيًا من ملف القضية.'};
+const TIP={taradi:'سجّل الجلسة ثم افتحها لإرفاق المستندات أو تحويلها إلى قضية. التحويل هنا للتنظيم الداخلي ولا يقدم دعوى في ناجز.',requests:'بعد الحفظ يبدأ الطلب «مقدمًا»، ثم يُسند ويُعالج ويُراجع ويُعتمد من صفحة الطلب. إن لم تحدد موعدًا تُطبق مدة الإنجاز حسب الأولوية.',cases:'بعد الحفظ أضف مواعيد الاعتراض والاستئناف من صفحة القضية مع مصدر كل موعد، ثم اربطها بالعقد والسند.',hearings:'التاريخ والوقت إلزاميان لأن التنبيهات وملف التقويم تُبنى عليهما.',contracts:'عبّئ بيانات العميل والمفوض ثم احفظ؛ في صفحة العقد اضغط «فتح العقد» لعرضه معبأً. القيمة والمدة والتجديد في «تفاصيل العقد الإضافية».',bonds:'إذا تعذرت قراءة المبلغ اتركه فارغًا؛ سيُعلَّم «غير مقروء» ولا يدخل في الإجماليات.',violations:'وثّق مصدر المهلة من نص الإشعار نفسه؛ النظام لا يحتسب المهل.',consults:'تبدأ الاستشارة مسودة، والاعتماد إجراء مستقل يُسجل باسم المعتمد.',investigations:'محتوى التحقيق مقيد؛ لا يراه المساهمون ولا المطلعون.',poa:'تاريخ الانتهاء يفعّل التنبيه قبل انقضاء الوكالة أو الترخيص.',lawyers:'اختر المحامي من خانة «المحامي» في صفحة القضية؛ تظهر القضية في ملفه تلقائيًا.'};
 const cnt=(a,f)=>a.filter(f).length;
 function byCur(list,val){const t={};for(const r of list){const v=val(r);if(v==null||isNaN(v))continue;const k=r.currency||'غير محدد';t[k]=(t[k]||0)+v}const e=Object.entries(t);return e.length?e.map(([k,v])=>nf.format(v)+' '+k).join(' · '):'—'}
 const ageDays=r=>r.createdAt?Math.floor((Date.now()-Date.parse(r.createdAt))/864e5):null;
@@ -3698,6 +3707,7 @@ function viewDetail(mod,id){
     if(mod==='contracts')panels.push(stepper(r),contractAlerts(r),versionsPanel(r));
     if(mod==='bonds')panels.push(bondAmountEditor(draft,(confirmNow)=>{onField()},ro));
     if(mod==='cases')panels.push(deadlinesPanel(r),timelinePanel(r));
+    if(mod==='taradi')panels.push(taradiPanel(r));
     if(mod==='hearings')panels.push(hearingPanel(r),hearingTasksPanel(r));
     if((mod==='contracts'||mod==='bonds'||mod==='violations'||mod==='poa'))panels.push(extractPanel(mod,r,draft,()=>refresh(true)));
     panels.push(attachPanel(mod,r),linksPanel(mod,r),advisorPanel(mod,r));
@@ -3715,6 +3725,40 @@ function viewDetail(mod,id){
     fillNames(el);
   }
   refresh(true);return{key:mod+'-'+id,el,refresh};
+}
+function taradiCaseData(r,caseNo,court){
+  const data={status:'قيد الإعداد',caseNo:caseNo.trim(),court:court.trim(),source:'تحويل من جلسة تراضي',taradiId:r.id,links:[...new Set([...(r.links||[]),'taradi:'+r.id])],taradiSnapshot:JSON.parse(JSON.stringify(r))};
+  for(const k of ['plaintiff','defendant','subject','claims','claimAmount','currency','side','owner'])if(r[k]!=null)data[k]=r[k];
+  return data;
+}
+async function convertTaradi(id,caseNo,court){
+  if(S.readOnly)throw Error('صلاحيتك قراءة فقط');
+  if(S.dirty)throw Error('انتظر حفظ تعديلات الجلسة ثم أعد المحاولة');
+  const snap=await db.collection('taradi').doc(id).get();
+  if(!snap.exists||snap.data().deleted)throw Error('الجلسة غير متاحة');
+  const r={...snap.data(),id};
+  const cid=r.caseId||('taradi_'+id);
+  const existing=await db.collection('cases').doc(cid).get();
+  if(existing.exists){if(existing.data().deleted)throw Error('القضية المرتبطة في المحذوفات؛ استعدها أولًا');if(existing.data().taradiId!==id)throw Error('تعارض في رابط القضية');}
+  else{const made=await writeDoc('cases',cid,taradiCaseData(r,caseNo,court),null,{create:true});if(!made.ok)throw Error('تعذر إنشاء القضية؛ أعد المحاولة');}
+  // Stable case ID permits retry after a partial failure without creating another case.
+  for(const d of recs('docs').filter(d=>(d.links||[]).includes('taradi:'+id))){
+    if((d.links||[]).includes('cases:'+cid))continue;
+    const result=await writeDoc('docs',d.id,{links:[...new Set([...(d.links||[]),'cases:'+cid])]},d.rev);
+    if(!result.ok)throw Error('أُنشئت القضية، وتعذر ربط بعض المرفقات. أعد التحويل لاستكمال الربط دون تكرار القضية');
+  }
+  const done=await writeDoc('taradi',id,{caseId:cid,status:'محولة إلى قضية',convertedAt:r.convertedAt||new Date().toISOString(),links:[...new Set([...(r.links||[]),'cases:'+cid])]},r.rev);
+  if(!done.ok)throw Error('القضية محفوظة؛ أعد التحويل لإكمال الربط دون تكرارها');
+  audit('تحويل جلسة تراضي إلى قضية','taradi',id,cid);return cid;
+}
+function taradiPanel(r){
+  const box=h('div',{class:'panel'},ph('تحويل إلى قضية','gavel','#30b0a0'));
+  if(r.caseId){box.append(h('p',null,'تم تحويل هذه الجلسة إلى قضية مع الاحتفاظ بسجل الصلح.'),h('a',{class:'btn primary',href:'#cases-'+r.caseId},'فتح القضية'));return box;}
+  box.append(h('p',{class:'small muted'},'تُنقل الأطراف والمطالبات والمرفقات إلى قضية قيد الإعداد، ويُحفظ سجل جلسة تراضي. هذا الإجراء داخل المساعد ولا يقدم دعوى في ناجز.'));
+  if(S.readOnly||r.deleted)return box;
+  const no=h('input',{type:'text',placeholder:'اختياري إن لم يصدر بعد',dir:'ltr'}),court=h('input',{type:'text'}),out=h('div');
+  const btn=h('button',{class:'btn primary',onclick:async()=>{btn.disabled=true;out.textContent='';try{const cid=await convertTaradi(r.id,no.value,court.value);toast('تم التحويل إلى قضية');location.hash='cases-'+cid}catch(e){out.textContent=e.message||'تعذر التحويل'}finally{btn.disabled=false}}},'تأكيد التحويل إلى قضية');
+  box.append(h('div',{class:'form'},h('label',{class:'f'},'رقم القضية',no),h('label',{class:'f'},'المحكمة',court)),h('div',{class:'row'},btn),out);return box;
 }
 function metaPanel(mod,r){return h('div',{class:'panel'},ph('سجل التعديل','history','#5e5ce6'),h('dl',{class:'kv'},
   h('dt',null,'أُنشئ'),h('dd',null,fmtTs(r.createdAt),' ',h('span',{'data-uid':r.createdBy||''})),
