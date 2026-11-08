@@ -3652,16 +3652,29 @@ async function hearingNoticeSave(d){
   if(!res.ok)throw new Error('تعذر حفظ الجلسة؛ بياناتك ما زالت هنا لإعادة المحاولة.');
   audit('إضافة من إشعار','hearings',id,d.date+' '+d.time);return id;
 }
+function taradiImageFields(raw){
+  const lines=String(raw||'').replace(/[\u200e\u200f\u202a-\u202e]/g,'').split(/\r?\n/).map(l=>l.replace(/^[^\u0600-\u06ffA-Za-z0-9]+/,'').trim()).filter(Boolean);
+  const normal=v=>v.replace(/[أإآ]/g,'ا').replace(/[ً-ْـ]/g,'').replace(/الطرق/g,'الطرف');
+  function after(labels){for(const label of labels){for(let i=0;i<lines.length;i++){const n=normal(lines[i]),pos=n.indexOf(label);if(pos<0||pos>20||n.length>90)continue;let tail=lines[i].slice(pos+label.length).replace(/^[\s:：©®]+/,'').trim();const candidates=tail?[tail]:lines.slice(i+1,i+4);for(const v of candidates){if(/هوية|هويه|جنسية|جنسيه|الرقم|رقم|الإسم|الاسم|تصنيف|تصنيق|تصتيق|الطلبات|المرفقات|الجلسات|المدين/.test(v)||/\d/.test(v))break;if((v.match(/[\u0621-\u064a]/g)||[]).length>=5&&v.split(/\s+/).length>=2)return v.replace(/[©®]/g,'').trim()}}}return ''}
+  const plaintiff=after(['مقدم الطلب','طالب الصلح','المدعي','الطرف الاول']);
+  const defendant=after(['الطرف الثاني','المطلوب ضده الصلح','المدعى عليه']);
+  const classification=lines.find(l=>/التصنيف الفرعي|التصنيق القرمي|التصنيف الفرعى/.test(l));
+  const subject=classification&&classification.includes(':')?classification.split(':').slice(1).join(':').trim():'';
+  return {plaintiff,defendant,subject};
+}
+async function taradiNoticeImageText(worker,file){
+  const bitmap=await createImageBitmap(file);try{const scale=Math.min(2,4000/Math.max(bitmap.width,bitmap.height));const canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);return (await worker.recognize(canvas)).data.text||''}finally{bitmap.close()}
+}
 function taradiNoticeNumber(v){return normDigits(String(v||'')).replace(/[\s\-–—]/g,'')}
 function taradiNoticeParse(raw){
   const text=normDigits(String(raw||'')).replace(/[\u200e\u200f\u202a-\u202e]/g,''),p=hearingNoticeParse(text);
   const numbers=[...text.matchAll(/(?:الطلب|طلب\s*(?:الصلح|صلح|المصالحة)?)\s*(?:رقم)?\s*[:：#(]?\s*(\d[\d\-–—]*\d)/g)].map(m=>m[1]).filter(n=>taradiNoticeNumber(n).length>=5);
   const ns=[...new Map(numbers.map(n=>[taradiNoticeNumber(n),n])).values()];
   const field=labels=>{const values=text.split(/\r?\n/).map(line=>{const m=line.trim().match(new RegExp('^(?:'+labels+')\\s*[:：]\\s*(.+)$'));return m?m[1].trim():''}).filter(Boolean);return [...new Set(values)].length===1?values[0]:''};
-  const reqNo=ns.length===1?ns[0]:'';
+  const reqNo=ns.length===1?ns[0]:'',imageFields=taradiImageFields(text);
   const previous=reqNo?recs('taradi').filter(r=>taradiNoticeNumber(r.reqNo)===taradiNoticeNumber(reqNo)):[];
   const known=k=>{const v=[...new Set(previous.map(r=>String(r[k]||'').trim()).filter(Boolean))];return v.length===1?v[0]:''};
-  return {...p,reqNo,plaintiff:field('طالب الصلح|المدعي')||known('plaintiff'),defendant:field('الطرف الآخر|المدعى عليه|المطلوب ضده الصلح')||known('defendant'),subject:field('موضوع النزاع|موضوع الطلب|الموضوع')||known('subject'),ambiguous:p.ambiguous||ns.length>1};
+  return {...p,reqNo,plaintiff:field('طالب الصلح|المدعي')||imageFields.plaintiff||known('plaintiff'),defendant:field('الطرف الآخر|المدعى عليه|المطلوب ضده الصلح')||imageFields.defendant||known('defendant'),subject:field('موضوع النزاع|موضوع الطلب|الموضوع')||imageFields.subject||known('subject'),ambiguous:p.ambiguous||ns.length>1};
 }
 async function taradiNoticeSave(d){
   if(S.readOnly)throw new Error('حسابك للاطلاع فقط.');
@@ -3703,7 +3716,7 @@ function hearingNoticePanel(mod='hearings'){
     lock(true);
     try{
       let extracted='';
-      if(images.length){report('جارٍ قراءة الصور داخل جهازك… قد يستغرق التحميل الأول دقيقة.');const worker=await uxLangWorker();for(const file of images){const r=await worker.recognize(file);extracted+='\n'+r.data.text}}
+      if(images.length){report('جارٍ قراءة الصور داخل جهازك… قد يستغرق التحميل الأول دقيقة.');const worker=await uxLangWorker();for(const file of images){extracted+='\n'+(isTaradi?await taradiNoticeImageText(worker,file):(await worker.recognize(file)).data.text)}}
       const parse=isTaradi?taradiNoticeParse:hearingNoticeParse;const typed=parse(text.value),ocr=parse(extracted);const p=text.value.trim()?{...ocr,...typed}:ocr;if(text.value.trim())for(const k of ['reqNo','caseNo','date','time','link','plaintiff','defendant','subject'])if(!p[k]&&!typed.ambiguous)p[k]=ocr[k]||'';const matches=hearingNoticeMatch(p.caseNo);
       const d={reqNo:p.reqNo||'',plaintiff:p.plaintiff||'',defendant:p.defendant||'',subject:p.subject||'',caseId:matches.length===1?matches[0].id:'',date:p.date,time:p.time,link:p.link,place:'',message:text.value,extracted};
       if(!images.length&&!p.ambiguous&&(isTaradi?d.reqNo:d.caseId)&&d.date&&d.time){await persist(d);return}
