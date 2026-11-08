@@ -1,21 +1,17 @@
 name = "tamkeen-contract-mail"
 main = "worker.mjs"
-compatibility_date = "2026-10-01"
+compatibility_date = "2026-11-07"
 [triggers]
 crons = ["*/10 * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "tamkeen-contract-mail"
-database_id = "REPLACE_WITH_CREATED_DATABASE_ID"
+database_id = "5ab0a80f-fc24-4cda-bb4e-16fc8e2fb048"
 [vars]
 APP_ORIGIN = "https://ahmadayash0077.github.io"
 APP_RETURN = "https://ahmadayash0077.github.io/tamkeen-legal/#team~mail"
 SUPABASE_URL = "https://qimtlfvgpvpualtqimam.supabase.co"
-# Set these after confirming the mailbox, data centre, folder and reviewer IDs.
-# ZOHO_REGION = "com"
-# ZOHO_ACCOUNT_ID = "..."
-# ZOHO_FOLDER_ID = "..."
-# ALLOWED_USER_IDS = "supabase-user-uuid"
-# CALLBACK_URL = "https://YOUR-WORKER.workers.dev/oauth/callback"
-# Secrets via Cloudflare secret manager ONLY: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET,
-# TOKEN_KEY (32 random bytes, base64), SUPABASE_PUBLISHABLE_KEY
+ZOHO_REGION = "sa"
+CALLBACK_URL = "https://tamkeen-contract-mail.7mody20091414.workers.dev/oauth/callback"
+# Set MAILBOX_EMAIL, REVIEWER_EMAIL and SUPABASE_PUBLISHABLE_KEY in deployment configuration.
+# Store ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and TOKEN_KEY in Cloudflare secrets only.

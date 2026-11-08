@@ -1,35 +1,15 @@
-# ربط بريد العقود — تفعيل ومراجعة
+# Zoho contract review integration
 
-الحالة: تنفيذ مجهز للمراجعة؛ لا يعتبر الربط فعالًا حتى نشر الخادم، ضبط عنوانه في الواجهة، ومنح موافقة Zoho واختبار رسالة حقيقية. لا توجد أسرار أو بيانات بريد حقيقية في الملفات.
+The GitHub Pages frontend uses the authenticated Supabase session only. Zoho credentials, OAuth refresh tokens, and encryption keys must never be placed in browser code or public repository files.
 
-## البنية
+Backend: Cloudflare Worker with D1. Set `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET` and a random 32-byte Base64 `TOKEN_KEY` through Cloudflare secrets. Set `MAILBOX_EMAIL`, `REVIEWER_EMAIL`, `ZOHO_REGION`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_URL`, `APP_ORIGIN`, `APP_RETURN` and `CALLBACK_URL` as runtime configuration. Reviewer email must match a confirmed Supabase user; `ALLOWED_USER_IDS` can be used instead.
 
-- GitHub Pages يعرض قائمة الرسائل ونموذج المراجعة فقط. يستخدم جلسة Supabase الحالية للتحقق من هوية المراجع؛ لا يستقبل أي رمز OAuth من Zoho.
-- Cloudflare Worker يستقبل OAuth على عنوانه الخاص، ويتحقق من state أحادي الاستخدام ومن Cookie آمنة HttpOnly وSecure وصلاحيتها عشر دقائق. التبادل وتجديد الرموز في الخادم فقط.
-- رمز Refresh مشفر AES-GCM بمفتاح محفوظ في Cloudflare Secrets. رموز Access مؤقتة في الذاكرة فقط. لا تسجل رموزًا أو محتوى بريد في السجلات.
-- D1 يحتفظ بمسودات منفصلة حسب المستخدم، ومعرف ثابت لكل رسالة لمنع إعادة استيرادها. المرفقات تبقى في Zoho إلى أن يجلبها المراجع أو يعتمد الحفظ.
-- القراءة الآلية في المتصفح قبل الحفظ: PDF وWord والنص، وOCR للصور وPDF الممسوح باستخدام قارئ التطبيق. حد OCR 14 صفحة لكل مرفق مع إظهار تنبيه. لا تُرسل المستندات إلى نموذج خارجي.
-- اعتماد الحقول المحددة إجراء صريح. التجديد يتطلب اختيار عقد قائم ويعرض القيم الحالية. الواجهة تستخدم مسار حفظ التطبيق المعتاد وصلاحياته وسجل التدقيق. لا يعتمد الخادم العقود تلقائيًا.
-- عند فشل المرفقات يبقى البريد في المراجعة مع توضيح أن العقد حفظ جزئيًا. يعاد استخدام معرّف العقد نفسه؛ مسار المرفقات الحالي يمنع تكرار الملف ببصمته.
+Apply schema.sql and bind the database as DB. The OAuth grant requests only ZohoMail.messages.READ, ZohoMail.accounts.READ and ZohoMail.folders.READ. It discovers the configured mailbox and Inbox, validates message access, and encrypts refresh tokens with AES-GCM. Interrupted discovery retains an encrypted pending grant that the authenticated reviewer can resume through /connect. OAuth state is single-use, expires after ten minutes, and is bound to an HttpOnly Secure cookie.
 
-## التفعيل في حساب المستخدم
+The frontend entry is #team~mail, also linked from the OCR panel. Drafts are separate from production contracts. All fields begin unapproved. A renewal requires selecting its existing contract. Attachments are downloaded through an authenticated ownership check; PDF/Word/OCR extraction runs in the browser. Approval saves only checked fields and attaches original files. Failed attachment uploads keep the review item available for retry.
 
-1. اختر/أنشئ مجلد Zoho خاصًا بالعقود، وانقل/وجّه رسائل العقود الجديدة والتجديدات إليه. لا يحصر نطاق OAuth القراءة في المجلد تقنيًا؛ الخادم يحصر طلباته فيه. الصلاحية المطلوبة `ZohoMail.messages.READ` فقط، دون إرسال أو تعديل أو حذف. يلزم أن تسمح خطة Zoho باستخدام API.
-2. مركز البيانات الذي ظهر خلال الإعداد: `sa`. تحقق من المجلد ورقم الحساب قبل التفعيل. معرّفات الحساب والمجلد من Zoho Mail API/الإعدادات؛ لا تفترضها من عنوان البريد.
-3. في Cloudflare أنشئ D1 باسم `tamkeen-contract-mail`، ضع معرفها في wrangler.toml وطبّق schema.sql. هذه قاعدة خاصة بالخدمة، لا تغيّر جداول Supabase الإنتاجية.
-4. سجّل تطبيق **Server-based Application** في Zoho API Console بعنوان الموقع الحالي، وRedirect URI دقيق `https://<worker>/oauth/callback`.
-5. أضف الأسرار في Cloudflare Secrets فقط: `ZOHO_CLIENT_ID`، `ZOHO_CLIENT_SECRET`، `TOKEN_KEY` (32 بايت عشوائية Base64)، `SUPABASE_PUBLISHABLE_KEY`. لا تستخدم Service Role أو APP_TOKEN مشتركًا للمراجعين.
-6. اضبط المتغيرات العامة المذكورة في wrangler.toml، وخاصة `ALLOWED_USER_IDS` لمعرف حساب المراجع المسموح من Supabase. العنوان/المعرف لا يعوضان موافقة مالك البريد.
-7. انشر Worker، ضع عنوان HTTPS الثابت في `ENDPOINT` في mail-review.js، ثم انشر الواجهة. لا تجعل المستخدم يكتب عنوان خادم عشوائيًا حتى لا تُرسل جلسة التطبيق إلى جهة أخرى.
-8. من الموظفين الإلكترونيين ← بريد العقود، اضغط ربط Zoho، ثم يمنح المستخدم القراءة في شاشة Zoho بنفسه. راجع الصلاحية والحساب قبل الموافقة.
-9. اختبر برسالة اصطناعية جديدة ورسالة تجديد ومرفق PDF، وتأكد من ظهورها مرة واحدة، ومن بقاء جداول العقود دون تغيير قبل الاعتماد. بعدها اختبر الاعتماد والمرفق والفصل وإبطال الرمز من Zoho.
+Limitations: Inbox filtering uses Arabic/English contract and renewal keywords in subject/summary. Messages without these keywords may be missed. Each scan covers up to 1,000 messages and reports incomplete coverage above that limit. The list displays up to 200 pending drafts. Attachments are limited to 20 MiB; OCR reads up to 14 pages. Extraction is heuristic and requires human review. No messages are sent, deleted, moved, or marked read.
 
-## التشغيل والحدود
+Configure a ten-minute cron after live verification. Do not log OAuth callback URLs or tokens. Operational errors should expose only fixed error codes, never provider response bodies or credentials. Cloudflare fetch supports manual redirects; reject non-success responses rather than forwarding Authorization to redirect targets.
 
-الاستقبال المجدول كل عشر دقائق، مع زر استقبال الآن. الخدمة تعيد مسح المجلد وتمنع تكرار الرسالة بمعرفها. حد التشغيل الحالي 1000 رسالة في المجلد: تجاوزه يترك خطأ واضحًا ولا يعلن اكتمال المزامنة؛ خصص مجلدًا أصغر. القائمة تعرض أول 200 رسالة معلقة. نقل رسالة خارج المجلد أو حذف مرفق من Zoho قد يمنع تنزيلها؛ يظهر الخطأ وتبقى للمراجعة. الحد الأقصى للمرفق 20 ميجابايت، والحد الحالي للتطبيق لـWord وExcel هو 14 ميجابايت.
-
-الاستبعاد يخفي الرسالة من قائمة العمل فقط. فصل الربط يحاول إبطال الرمز عند Zoho أولًا، ثم يحذف الاتصال؛ لا يحذف مسودات المراجعة أو العقود المعتمدة. يجب تحديد سياسة الاحتفاظ ومسؤول المراجعة قبل تشغيل إنتاجي طويل. تحقق من النسخ الاحتياطية وحقوق D1 في حساب الاستضافة.
-
-الاختبارات المحلية: `node --test server/mail/mail.test.mjs`. تغطي حماية المستخدم، state والـCookie وإعادة الاستخدام، تشفير الرموز، منع تكرار الرسالة، عزل المرفقات، وحالة واجهة الربط غير المفعّل. لا تستبدل اختبار Zoho/Cloudflare الفعلي.
-
-المراجع الرسمية: https://www.zoho.com/mail/help/api/using-oauth-2.html ، https://www.zoho.com/mail/help/api/get-emails-list.html ، https://www.zoho.com/mail/help/api/get-email-content.html ، https://www.zoho.com/mail/help/api/get-attach-info.html ، https://www.zoho.com/mail/help/api/get-attachment-content.html
+Validation: `node --test server/mail/mail.test.mjs` (Node 24+). Mocked tests verify encryption, reviewer authorization, OAuth state/cookies, mailbox discovery, resumable grants, deduplication, attachment ownership, and manual approval gating. These tests do not replace live Zoho and application checks.
