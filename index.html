@@ -3576,6 +3576,7 @@ function viewList(mod,mk){
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},
     pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='contracts'&&!S.readOnly?h('a',{class:'btn',href:'#import~wholesale'},ibtn('upload','استيراد Excel — ملفات جملة')):null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'?h('button',{class:'btn',onclick:()=>uxDupOpen(mk==='ct_inst'?'تركيب':mk==='ct_whole'?'جملة':'')},'كشف الملفات المتكررة'):null,mod==='contracts'&&typeof uxBondDatesBtn==='function'?uxBondDatesBtn():null,mod==='contracts'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='contracts'&&typeof uxBondConvertBtn==='function'?uxBondConvertBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
+    mod==='hearings'&&!S.readOnly?hearingNoticePanel():null,
     mod==='hearings'?h('div',{class:'small muted'},'الأوقات بتوقيت الرياض. للتنبيه على جوالك استخدم «تصدير إلى التقويم».'):null,
     extra,insBox,mfBox,
     mod==='violations'?vTabs:null,
@@ -3615,6 +3616,80 @@ function viewList(mod,mk){
   refresh();return{key:mod,el,refresh};
 }
 function bondAmountNode(b){if(b.amount==null||b.readStatus==='غير مقروء — يحتاج مراجعة')return h('span',{class:'pill warn'},'غير مقروء — يحتاج مراجعة');if(b.readStatus==='تعارض — يحتاج مراجعة')return h('span',null,h('span',{class:'num'},money(b.amount,b.currency)),' ',h('span',{class:'pill bad'},'تعارض'));return h('span',{class:'num'},money(b.amount,b.currency))}
+
+/* Hearing notice import: local parsing and local image OCR. */
+function hearingNoticeParse(raw){
+  const text=normDigits(String(raw||'')).replace(/[\u200e\u200f\u202a-\u202e]/g,'');
+  const nums=[...text.matchAll(/(?:القضية|القضيه|الدعوى)\s*(?:رقم)?\s*[:：#(]?\s*(\d{5,})/g)].map(m=>m[1]);
+  const dates=[];
+  for(const m of text.matchAll(/\b(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})\b|\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/g)){
+    const y=+(m[1]||m[6]),mo=+(m[2]||m[5]),d=+(m[3]||m[4]);
+    const iso=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const g=y>=1350&&y<1600?h2g(iso):y>=1950&&y<2100?iso:null;
+    if(g&&!isNaN(Date.parse(g))&&new Date(g+'T12:00:00Z').toISOString().slice(0,10)===g)dates.push(g);
+  }
+  const times=[];
+  for(const m of text.matchAll(/(?:الساعة|الساعه|الوقت|تمام الساعة)\s*[:：]?\s*(\d{1,2})(?:\s*[:：]\s*(\d{2}))?\s*(صباح[اًا]*|مساء[ًا]*|ص|م|AM|PM)?/gi)){
+    let hr=+m[1];const min=+(m[2]||0),period=m[3]||'';
+    if(hr>23||min>59||(period&&(hr<1||hr>12)))continue;
+    if(/^(م|PM)/i.test(period))hr=hr%12+12;else if(/^(ص|AM)/i.test(period))hr%=12;
+    times.push(String(hr).padStart(2,'0')+':'+String(min).padStart(2,'0'));
+  }
+  const unique=a=>[...new Set(a)];const ns=unique(nums),ds=unique(dates),ts=unique(times);
+  const link=(text.match(/https:\/\/[^\s<>"،]+/)||[])[0]||'';
+  return {caseNo:ns.length===1?ns[0]:'',date:ds.length===1?ds[0]:'',time:ts.length===1?ts[0]:'',link,ambiguous:ns.length>1||ds.length>1||ts.length>1};
+}
+function hearingNoticeMatch(number){const n=normDigits(number||'').replace(/\s/g,'');return n?recs('cases').filter(c=>normDigits(c.caseNo||'').replace(/\s/g,'')===n):[]}
+async function hearingNoticeSave(d){
+  if(S.readOnly)throw new Error('حسابك للاطلاع فقط.');
+  if(!rec('cases',d.caseId)||!d.date||!/^([01]\d|2[0-3]):[0-5]\d$/.test(d.time||''))throw new Error('اختر القضية وأكمل تاريخ الجلسة ووقتها.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d.date)||isNaN(Date.parse(d.date))||new Date(d.date+'T12:00:00Z').toISOString().slice(0,10)!==d.date)throw new Error('تاريخ الجلسة غير صالح.');
+  const dup=recs('hearings',true).find(r=>r.caseId===d.caseId&&dateG(r.date)===d.date&&r.time===d.time);
+  if(dup)throw new Error(dup.deleted?'هذا الموعد موجود في المحذوفات؛ استعده بدل تكراره.':'الجلسة موجودة مسبقًا بنفس القضية والتاريخ والوقت.');
+  const id='notice_'+hex(d.caseId+'|'+d.date+'|'+d.time);
+  const res=await writeDoc('hearings',id,{caseId:d.caseId,date:{orig:'g',g:d.date,h:g2h(d.date),verified:true},time:d.time,place:d.place||'',link:d.link||'',status:'مجدولة',source:'إشعار جلسة',noticeMessage:d.message||'',noticeExtractedText:d.extracted||''},null,{create:true});
+  if(res.exists)throw new Error('هذا الموعد أُضيف مسبقًا.');
+  if(!res.ok)throw new Error('تعذر حفظ الجلسة؛ بياناتك ما زالت هنا لإعادة المحاولة.');
+  audit('إضافة من إشعار','hearings',id,d.date+' '+d.time);return id;
+}
+function hearingNoticePanel(){
+  const text=h('textarea',{id:'hearing-notice-message',rows:4,placeholder:'الصق رسالة موعد الجلسة هنا… مثال: القضية رقم 123456789 بتاريخ 2026/11/20 الساعة 10:30 صباحًا',style:'width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink)'});
+  const files=h('input',{id:'hearing-notice-images',type:'file',accept:'image/png,image/jpeg,image/webp',multiple:true});
+  const selected=h('div',{class:'small muted'}),log=h('div',{'aria-live':'polite'}),review=h('div');let images=[],busy=false,savedId=null;
+  const report=(m,c='info')=>log.append(h('div',{class:'banner '+c},m));
+  files.onchange=()=>{images=[...files.files];selected.textContent=images.map(f=>f.name).join('، ');review.replaceChildren();savedId=null};
+  text.oninput=()=>{review.replaceChildren();savedId=null};
+  const button=h('button',{class:'btn primary',onclick:run},'استخراج وإضافة الجلسة');
+  function lock(v){busy=v;button.disabled=v;files.disabled=v;text.disabled=v}
+  async function persist(d){
+    lock(true);try{
+      savedId=await hearingNoticeSave(d);review.replaceChildren();button.disabled=true;
+      report(h('span',null,'تم حفظ الجلسة. ',h('a',{href:'#hearings-'+savedId},'فتح الجلسة')),'ok');
+      if(images.length)await uploadFiles(images,['hearings:'+savedId],report,'إشعار جلسة');
+      text.value='';files.value='';images=[];selected.textContent='';
+    }catch(e){report(e.message,'bad')}finally{lock(false)}
+  }
+  async function run(){
+    if(busy)return;log.replaceChildren();review.replaceChildren();savedId=null;
+    if(!text.value.trim()&&!images.length){report('أضف رسالة أو صورة إشعار الجلسة أولًا.','warn');return}
+    if(images.length>4||images.some(f=>!/^image\/(png|jpeg|webp)$/.test(f.type)||f.size>5*1024*1024||!f.size)){report('أرفق حتى 4 صور بصيغة PNG أو JPG أو WebP، بحد أقصى 5 ميجابايت للصورة.','warn');return}
+    if(text.value.length>30000){report('الرسالة طويلة؛ أضف إشعار جلسة واحدة فقط.','warn');return}
+    lock(true);
+    try{
+      let extracted='';
+      if(images.length){report('جارٍ قراءة الصور داخل جهازك… قد يستغرق التحميل الأول دقيقة.');const worker=await uxLangWorker();for(const file of images){const r=await worker.recognize(file);extracted+='\n'+r.data.text}}
+      const p=hearingNoticeParse(text.value+'\n'+extracted),matches=hearingNoticeMatch(p.caseNo);
+      const d={caseId:matches.length===1?matches[0].id:'',date:p.date,time:p.time,link:p.link,place:'',message:text.value,extracted};
+      if(!images.length&&!p.ambiguous&&d.caseId&&d.date&&d.time){await persist(d);return}
+      report(images.length?'تمت قراءة الصور. راجع البيانات المستخرجة ثم اضغط «حفظ الجلسة»؛ قراءة الصور قد تخطئ.':p.ambiguous?'ظهر أكثر من موعد أو رقم قضية؛ حدد بيانات جلسة واحدة.':'أكمل البيانات التي لم تظهر بوضوح في الرسالة.','warn');
+      const cs=h('select',{'aria-label':'القضية'},h('option',{value:''},'اختر القضية'),recs('cases').map(c=>h('option',{value:c.id},(c.caseNo||'بلا رقم')+' — '+titleOf('cases',c))));cs.value=d.caseId;
+      const dt=h('input',{type:'date',value:d.date,'aria-label':'تاريخ الجلسة بالميلادي'}),tm=h('input',{type:'time',value:d.time,'aria-label':'وقت الجلسة بتوقيت الرياض'}),pl=h('input',{value:d.place,'aria-label':'المكان أو القاعة'}),ln=h('input',{type:'url',value:d.link,'aria-label':'رابط الجلسة',dir:'ltr'});
+      const save=h('button',{class:'btn primary',onclick:async()=>{if(busy||savedId)return;if(!dt.checkValidity()||!tm.checkValidity()||!ln.checkValidity()){report('صحح التاريخ أو الوقت أو الرابط.','warn');return}save.disabled=true;await persist({...d,caseId:cs.value,date:dt.value,time:tm.value,place:pl.value,link:ln.value});save.disabled=false}},'حفظ الجلسة');
+      review.append(...[h('div',{class:'form'},[['القضية',cs],['تاريخ الجلسة (ميلادي)',dt],['الوقت (بتوقيت الرياض)',tm],['المكان أو القاعة',pl],['رابط الجلسة',ln]].map(([label,input])=>h('label',{class:'f'},h('span',null,label),input))),p.caseNo&&!matches.length?h('p',{class:'small muted'},'القضية رقم '+p.caseNo+' غير موجودة؛ اختر القضية الصحيحة أو أضفها أولًا.'):null,save].filter(Boolean));
+    }catch(e){report('تعذرت قراءة الإشعار. يمكنك لصق نص الرسالة والمحاولة مجددًا. '+(e.message||''),'bad')}finally{lock(false)}
+  }
+  return h('details',{class:'panel',open:true},h('summary',{style:'font-weight:700;cursor:pointer'},'إضافة جلسة من صورة أو رسالة'),h('p',{class:'small muted'},'إشعار واحد في كل مرة. تُضاف الرسالة المكتملة تلقائيًا وتُربط بالقضية الموجودة، وتظهر بيانات الصور للمراجعة. تُحفظ الرسالة والصور مع الجلسة.'),h('label',{for:'hearing-notice-message'},'رسالة موعد الجلسة'),text,h('label',{for:'hearing-notice-images',style:'display:block;margin-top:12px'},'صور الإشعار (حتى 4 صور)'),files,selected,h('div',{class:'row',style:'margin-top:12px'},button),log,review);
+}
 
 /* ============ إنشاء سجل ============ */
 function viewNew(mod){
@@ -3708,7 +3783,7 @@ function viewDetail(mod,id){
     if(mod==='bonds')panels.push(bondAmountEditor(draft,(confirmNow)=>{onField()},ro));
     if(mod==='cases')panels.push(deadlinesPanel(r),timelinePanel(r));
     if(mod==='taradi')panels.push(taradiPanel(r));
-    if(mod==='hearings')panels.push(hearingPanel(r),hearingTasksPanel(r));
+    if(mod==='hearings'){panels.push(hearingPanel(r),hearingTasksPanel(r));if(r.noticeMessage||r.noticeExtractedText)panels.push(h('div',{class:'panel'},h('h3',null,'إشعار الجلسة الأصلي'),h('p',{style:'white-space:pre-wrap'},r.noticeMessage||''),r.noticeExtractedText?h('details',null,h('summary',null,'النص المقروء من الصور'),h('p',{style:'white-space:pre-wrap'},r.noticeExtractedText)):null))}
     if((mod==='contracts'||mod==='bonds'||mod==='violations'||mod==='poa'))panels.push(extractPanel(mod,r,draft,()=>refresh(true)));
     panels.push(attachPanel(mod,r),linksPanel(mod,r),advisorPanel(mod,r));
     el.replaceChildren(
