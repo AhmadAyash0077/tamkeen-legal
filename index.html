@@ -6197,6 +6197,43 @@ function uxDupScan(records){
   const nk=r=>{const n=uxDupName(r.trade_name);return n?uxCtKind(r)+'|'+n:''};
   return{rows,name:group(nk),code:group(r=>{const c=uxDupCode(r.customer_code);return c&&c!=='—'&&c!=='-'?uxCtKind(r)+'|'+c:''}),strong:group(r=>{const n=nk(r),d=dateG(r.bond_date);return n&&d&&uxCtKind(r)==='جملة'?n+'|'+d:''})};
 }
+function uxDupReviewData(group,allRows){
+  const ids=new Set(group.map(r=>r.id)),plan=uxMergeBulkPlan(allRows||group);
+  const excluded=plan.review.find(g=>g.rows.some(r=>ids.has(r.id)));
+  const ready=plan.ready.find(g=>g.rows.some(r=>ids.has(r.id)));
+  const connected=excluded?.rows||ready?.rows||group;
+  const target=uxMergePreferred(group),sources=group.filter(r=>r.id!==target.id);
+  const merge=uxMergePlan(target,sources,MODS.contracts.fields);
+  const issues=[];const distinct=fn=>new Set(group.map(fn).filter(v=>v!==''&&v!=null)).size;
+  if(group.some(r=>r.legalHold))issues.push('يوجد ملف عليه حجز قانوني.');
+  if(distinct(r=>uxDupName(r.trade_name))>1||group.some(r=>!uxDupName(r.trade_name)))issues.push('الأسماء مختلفة أو ناقصة.');
+  if(distinct(r=>uxCodeValidityMatch(r.customer_code,'valid')?String(r.customer_code).trim():'')>1)issues.push('أكواد العميل الصحيحة مختلفة.');
+  for(const[k,label]of [['cr_no','رقم السجل التجاري'],['bond_no','رقم السند']])if(distinct(r=>normDigits(r[k]||'').replace(/\s/g,''))>1)issues.push(label+' مختلف.');
+  if(distinct(r=>dateG(r.bond_date)||'')>1)issues.push('تواريخ السندات مختلفة.');
+  if(distinct(r=>r.bond_amount==null||r.bond_amount===''?'':String(Number(normDigits(r.bond_amount))))>1)issues.push('مبالغ السندات مختلفة.');
+  const code=r=>/^\d+$/.test(uxDupCode(r.customer_code))?uxDupCode(r.customer_code):'';
+  const codeEvidence=distinct(code)===1&&group.every(code),dateEvidence=uxCtKind(group[0])==='جملة'&&distinct(r=>dateG(r.bond_date)||'')===1&&group.every(r=>dateG(r.bond_date));
+  if(!codeEvidence&&!dateEvidence)issues.push('تشابه الاسم وحده لا يكفي: لا يوجد كود موحد مكتمل أو تاريخ سند مطابق في جميع الملفات.');
+  if(excluded&&!issues.length)issues.push('المنع بسبب مجموعة مرتبطة أوسع: '+excluded.reason+'.');
+  const counts=group.map(r=>({id:r.id,count:recs('docs').filter(d=>(d.links||[]).includes('contracts:'+r.id)).length}));
+  return {target,sources,merge,issues,ready:!!ready&&!excluded,reason:excluded?.reason||(!ready?'تحتاج مراجعة':'مؤهلة حسب قواعد الفحص الحالية'),connected:connected.length,counts};
+}
+function uxDupReviewPanel(group,allRows){
+  const d=uxDupReviewData(group,allRows),label=r=>(r.customer_code||'بدون كود')+' — '+(r.trade_name||'بدون اسم');
+  const value=(v,f)=>uxMergeEmpty(v,f)?'غير موجود':f.t==='date'?fmtG(dateG(v)):typeof v==='object'?JSON.stringify(v):String(v);
+  const fields=MODS.contracts.fields.filter(f=>d.merge.fills.some(x=>x.field.k===f.k)||d.merge.conflicts.some(x=>x.field.k===f.k));
+  return h('section',{class:'panel',style:'margin:12px 0;padding:16px;border:1px solid var(--line)'},
+    h('h3',null,d.ready?'نتيجة الفحص: مؤهلة وفق القواعد الحالية':'لماذا لم تُدمج هذه المجموعة؟'),
+    h('p',{class:'banner '+(d.ready?'info':'warn')},d.ready?'استوفت قواعد المطابقة الحالية. راجع المقارنة قبل أي دمج؛ المطابقة لا تثبت أن المستندين عقد واحد.':d.reason),
+    d.issues.length?h('ul',null,d.issues.map(t=>h('li',null,t))):null,
+    d.connected>group.length?h('p',{class:'small'},'هذه الملفات مرتبطة بمجموعة أكبر من '+d.connected+' ملفات عبر الاسم أو الكود؛ الملخص العام يحسب المجموعة الأوسع مرة واحدة.'):null,
+    h('p',null,'الملف المقترح للاحتفاظ به: ',h('strong',null,label(d.target))),
+    h('p',{class:'small muted'},'سبب الترشيح: أولوية للكود المصنف صحيحًا، ثم لعدد الحقول المعبأة. هذا ترشيح من قواعد البرنامج، وليس إثباتًا لصحة المستند.'),
+    h('p',null,'ستُستكمل '+d.merge.fills.length+' خانة فارغة · '+d.merge.conflicts.length+' خانة بها اختلاف يحتاج مراجعة.'),
+    h('p',{class:'small'},'المرفقات المرتبطة بكل ملف: '+d.counts.map(x=>label(group.find(r=>r.id===x.id))+' ('+x.count+')').join('؛ ')+'. هذه أعداد الروابط، وليست مقارنة لمحتوى المرفقات.'),
+    fields.length?h('div',{class:'table-wrap',style:'overflow:auto'},h('table',null,h('thead',null,h('tr',null,h('th',null,'الخانة'),group.map(r=>h('th',null,label(r)+(r.id===d.target.id?' — الملف المقترح':''))),h('th',null,'ما سيحدث'))),h('tbody',null,fields.map(f=>h('tr',null,h('th',null,f.l),group.map(r=>h('td',{style:'white-space:pre-wrap;min-width:140px'},value(r[f.k],f))),h('td',null,d.merge.fills.some(x=>x.field.k===f.k)?'تعبئة الفراغ من القيمة الوحيدة المتاحة':'اختلاف: لن تُستبدل قيمة الملف المقترح تلقائيًا')))))):h('p',null,'لا توجد خانات مختلفة أو قابلة للاستكمال ضمن الحقول المفحوصة.'),
+    h('p',{class:'small'},'عند اعتماد دمج فعلي: تُربط المرفقات بالملف الأساسي وتُنقل '+d.sources.length+' نسخة أخرى للمحذوفات. هذه المقارنة وحدها لا تنفذ أي تغيير.'));
+}
 function uxDupOpen(initialKind){
   if(!canSee('contracts'))return;
   let kind=initialKind||'',mode='strong',query='',dlg;const body=h('div');
@@ -6207,9 +6244,10 @@ function uxDupOpen(initialKind){
     const result=h('div');const renderGroups=()=>{
       const search=uxDupName(query),filtered=search?groups.filter(g=>g.some(r=>uxDupName((r.trade_name||'')+' '+(r.customer_code||'')).includes(search))):groups;
       result.replaceChildren(h('p',{class:'small muted',role:'status'},`${filtered.length} مجموعة · ${new Set(filtered.flatMap(g=>g.map(r=>r.id))).size} ملف ضمن النتائج`),...filtered.map((g,i)=>{
+        const reviewInfo=uxDupReviewData(g,source);
         const facts=[['رقم السجل التجاري',r=>String(r.cr_no||'').trim()],['مبلغ السند',r=>r.bond_amount==null||r.bond_amount===''?'':String(r.bond_amount)],['تاريخ السند',r=>dateG(r.bond_date)||'']];
         const conflicts=facts.filter(([,f])=>new Set(g.map(f).filter(Boolean)).size>1).map(([l])=>l);
-        return h('details',{class:'card',style:'margin:10px 0;padding:14px',open:filtered.length===1},h('summary',{style:'cursor:pointer;font-weight:700'},`${i+1}. ${g[0].trade_name||'بدون اسم'} — ${g.length} ملفات`),uxMergeQuickPanel(g),h('p',{class:'small muted'},'سبب المطابقة: '+labels[mode]+(conflicts.length?' · بيانات مختلفة: '+conflicts.join('، '):'')),h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,['الاسم التجاري','نوع الملف','كود العميل','السجل التجاري','مبلغ السند','تاريخ السند','نوع السند','الحالة','الملف'].map(t=>h('th',null,t)))),h('tbody',null,g.map(r=>h('tr',null,h('td',null,r.trade_name||'—'),h('td',null,uxCtKind(r)),h('td',{dir:'ltr'},r.customer_code||'—'),h('td',{dir:'ltr'},r.cr_no||'—'),h('td',null,r.bond_amount==null||r.bond_amount===''?'—':nf.format(r.bond_amount)),h('td',null,dateG(r.bond_date)?fmtG(dateG(r.bond_date)):'—'),h('td',null,r.bond_type||'غير محدد'),h('td',null,r.status||'—'),h('td',null,h('a',{class:'btn sm',href:'#contracts-'+r.id,onclick:()=>dlg.close()},'فتح الملف'))))))));
+        return h('details',{class:'card',style:'margin:10px 0;padding:14px',open:filtered.length===1},h('summary',{style:'cursor:pointer;font-weight:700'},`${i+1}. ${g[0].trade_name||'بدون اسم'} — ${g.length} ملفات · ${reviewInfo.reason}`),uxDupReviewPanel(g,source),uxMergeQuickPanel(g),h('p',{class:'small muted'},'سبب المطابقة: '+labels[mode]+(conflicts.length?' · بيانات مختلفة: '+conflicts.join('، '):'')),h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,['الاسم التجاري','نوع الملف','كود العميل','السجل التجاري','مبلغ السند','تاريخ السند','نوع السند','الحالة','الملف'].map(t=>h('th',null,t)))),h('tbody',null,g.map(r=>h('tr',null,h('td',null,r.trade_name||'—'),h('td',null,uxCtKind(r)),h('td',{dir:'ltr'},r.customer_code||'—'),h('td',{dir:'ltr'},r.cr_no||'—'),h('td',null,r.bond_amount==null||r.bond_amount===''?'—':nf.format(r.bond_amount)),h('td',null,dateG(r.bond_date)?fmtG(dateG(r.bond_date)):'—'),h('td',null,r.bond_type||'غير محدد'),h('td',null,r.status||'—'),h('td',null,h('a',{class:'btn sm',href:'#contracts-'+r.id,onclick:()=>dlg.close()},'فتح الملف'))))))));
       }),filtered.length?null:h('div',{class:'banner'},query?'لا توجد نتائج لهذا البحث.':'لم تظهر مجموعات بهذا المعيار. جرّب الاسم التجاري أو كود العميل؛ هذه النتيجة لا تثبت خلو جميع الملفات من التكرار.'));
     };
     body.replaceChildren(h('p',null,'مراجعة مباشرة للملفات المتشابهة، تشمل المفتوح والمغلق وتستبعد المحذوفات. افتح اسم العميل لمقارنة ملفاته.'),h('div',{class:'banner'},'النتائج اشتباه تكرار للمراجعة؛ اختلاف العقود أو الفروع قد يكون صحيحًا. زر «دمج وحذف الزائد» يُكمل الملف الموضح ويربط مرفقاته ثم ينقل الملفات الأخرى إلى المحذوفات، مع إمكانية استعادتها.'),h('div',{class:'row',style:'margin:14px 0;flex-wrap:wrap'},h('select',{'aria-label':'نوع الملفات في فحص التكرار',onchange:e=>{kind=e.target.value;paint()}},[['','كل العقود'],['جملة','ملفات جملة'],['تركيب','ملفات تركيب']].map(([v,l])=>h('option',{value:v,selected:kind===v},l))),h('button',{class:'btn',onclick:paint},'إعادة الفحص')),
