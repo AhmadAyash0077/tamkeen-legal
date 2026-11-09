@@ -1,0 +1,40 @@
+.wf{--wf-line:rgba(128,145,175,.27);max-width:1250px;margin:auto}
+.wf-header{padding:12px 0 20px}
+.wf-header h1{margin:8px 0;font-size:clamp(25px,4vw,38px)}
+.wf h2{margin:0 0 8px;font-size:19px}
+.wf p{margin:5px 0 10px;overflow-wrap:anywhere}
+.wf-body,.wf-grid{display:grid;gap:14px}
+.wf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wf-panel{min-width:0;margin:0}
+.wf-panel>.wf-grid,.wf-panel>.btn,.wf-panel>.row,.wf-panel>.f{margin:8px 0}
+.wf .f{display:grid;gap:5px;min-width:0}
+.wf :is(input,select,textarea){max-width:100%;min-width:0;font-size:16px}
+.wf textarea{resize:vertical}
+.wf .btn{min-height:40px;white-space:normal}
+.wf-notice,.wf-result:not(:empty){padding:10px 14px;border:1px solid var(--wf-line);border-radius:10px;margin:10px 0}
+.wf-notice[hidden]{display:none}
+.wf-check,.wf-row,.wf-docs li{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wf-check{padding:8px 0}
+.wf-row,.wf-docs li{justify-content:space-between;border-bottom:1px solid var(--wf-line);padding:8px 0}
+.wf-row>div{flex:1 1 150px}
+.wf-row p{margin:2px 0}
+.wf-docs,.wf-signers{margin:8px 0}
+.wf-docs{list-style:none;padding:0}
+.wf-signers li{padding:5px 0;overflow-wrap:anywhere}
+.wf-badge{border:1px solid var(--wf-line);border-radius:20px;padding:4px 10px;font-size:13px}
+.wf-badge[data-state=active]{border-color:#40a479}
+.wf-evidence{border-top:1px solid var(--wf-line);padding:9px 0}
+.wf summary{cursor:pointer;padding:6px 0}
+.wf-message{white-space:pre-wrap}
+@media(max-width:680px){.wf-grid{grid-template-columns:minmax(0,1fr)}.wf .row{flex-wrap:wrap}}
+.tc-counts,.tc-cards,.tc-filters{display:grid;gap:10px;margin:12px 0}
+.tc-counts{grid-template-columns:repeat(4,minmax(0,1fr))}
+.tc-cards,.tc-filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tc-count,.tc-role,.tc-create{min-width:0;margin:0}
+.tc-count{display:grid;gap:4px}
+.tc-count strong{font-size:23px}
+.tc-role h3{margin:0;font-size:16px}
+.tc-role .row,.tc-create .row{margin-top:10px;flex-wrap:wrap}
+.tc-section,.tc-create{margin-top:15px}
+@media(max-width:820px){.tc-counts,.tc-cards,.tc-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.tc-cards,.tc-filters{grid-template-columns:minmax(0,1fr)}}

@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32-v3.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon-v3.png"><link rel="manifest" href="manifest-v3.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="القانونية"><meta name="application-name" content="القانونية">
+<link rel="stylesheet" href="wholesale-files.css?v=1">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>/* تشغيل محلي: قاعدة بيانات وملفات في متصفح هذا الجهاز (IndexedDB) */
 (function(){
@@ -165,7 +166,10 @@ function loginVerificationInput(value,email,authOrigin){
     {const{data,error}=await sb.rpc('my_role');role=error?null:data}try{const{data:mm}=await sb.from('members').select('name').eq('email',email).maybeSingle();localStorage.setItem('tl_user_name',mm&&mm.name?mm.name:email.split('@')[0])}catch(e){}{let last=0;try{last=+localStorage.getItem('tl_acc_'+uid)||0}catch(e){}if(!role||Date.now()-last>8*3600e3){sb.rpc('log_access',{dev:devName(),ev:role?'فتح البرنامج':'محاولة دخول ببريد غير مضاف'}).then(()=>{try{if(role)localStorage.setItem('tl_acc_'+uid,String(Date.now()))}catch(e){}},()=>{})}}if(!role)await blocked();
     await loadAll();const moved=role==='owner'?await migrateLocal().catch(e=>{console.warn(e);return 0}):0;if(role==='owner')backfillBlobs();if(moved)setStatus(`رُفعت ${moved} سجلًا من هذا الجهاز`,'ok');
     window.fetch=cloudFetch;subscribe();startAutoRefresh();return'cloud'})();return ready}
-  window.__CLOUD={mailSessionToken:async()=>{const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error("unauthorized");return session.access_token},role:()=>role,accessLog:async(n)=>{const{data,error}=await sb.rpc('access_log_list',{lim:n||100});if(error)throw error;return data},
+  window.__CLOUD={
+    wholesale:async(action,payload)=>{const{data,error}=await sb.rpc('tl_wholesale',{action,payload});if(error)throw Error(error.code==='PGRST202'?'setup_required':error.message);return data},
+    wholesaleSign:async(payload)=>{const{data:{session}}=await sb.auth.getSession();if(!session)throw Error('wholesale_forbidden');const res=await fetch(SB_URL+'/functions/v1/wholesale-sign',{method:'POST',headers:{authorization:'Bearer '+session.access_token,apikey:SB_KEY,'content-type':'application/json'},body:JSON.stringify(payload)});const result=await res.json().catch(()=>({}));if(!res.ok)throw Error(result.error||(res.status===404?'setup_required':'sign_unavailable'));return result},
+    mailSessionToken:async()=>{const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error("unauthorized");return session.access_token},role:()=>role,accessLog:async(n)=>{const{data,error}=await sb.rpc('access_log_list',{lim:n||100});if(error)throw error;return data},
   members:async()=>{const{data,error}=await sb.from('members').select('email,role,name').order('added_at');if(error)throw error;return data},
   addMember:async(e,r,n)=>{const{error}=await sb.from('members').upsert({email:e.trim().toLowerCase(),role:r,name:n||null});if(error)throw error},
   removeMember:async e=>{const{error}=await sb.from('members').delete().eq('email',e);if(error)throw error},
@@ -2206,7 +2210,7 @@ const MODS={
 };
 const NAV=[
   {grp:null,items:[['home','الرئيسية']]},
-  {grp:'العمل اليومي',items:[['team','الموظفون الإلكترونيون'],['requests'],['consults']]},
+  {grp:'العمل اليومي',items:[['team','فريق تمكين'],['requests'],['consults']]},
   {grp:'التقاضي',items:[['cases'],['hearings'],['taradi'],['executions']]},
   {grp:'العقود والسندات',items:[['contracts'],['attest'],['bonds']]},
   {grp:'الامتثال',items:[['violations'],['poa'],['lawyers'],['investigations']]},
@@ -2252,7 +2256,7 @@ async function boot(){
   renderWho();
   const shareButton=document.getElementById('shareProgramBtn');shareButton.hidden=!window.__CLOUD?.active();shareButton.onclick=showProgramShare;const syncBadge=document.getElementById('syncPill');syncBadge.hidden=!window.__CLOUD?.active();if(window.__SYNC){syncBadge.textContent=window.__SYNC.t;syncBadge.dataset.s=window.__SYNC.cls||''}
   for(const c of COLS){S.data[c]=new Map();
-    db.collection(COLL_PATH(c)).onSnapshot(snap=>{const m=new Map();for(const d of snap.docs){const row={id:d.id,...d.data()};if(c==='violations'&&row.status==='مستلمة')row.status='غير مسدد';if(c==='cases'&&row.status==='منظورة')row.status='قيد النظر';if(c==='contracts'&&!row.fileKind)row.fileKind='جملة';if(c==='contracts'&&row.fileKind==='تركيب'&&(!row.ctype||row.ctype==='توريد بضاعة آجل'))row.ctype='تركيب';m.set(d.id,row);}S.data[c]=m;S.loaded[c]=true;scheduleRender()},e=>{S.loaded[c]=true;console.warn(c,e.code);scheduleRender()})}
+    db.collection(COLL_PATH(c)).onSnapshot(snap=>{const m=new Map();for(const d of snap.docs){const row={id:d.id,...d.data()};if(c==='violations'&&row.status==='مستلمة')row.status='غير مسدد';if(c==='cases'&&row.status==='منظورة')row.status='قيد النظر';if(c==='contracts'&&!row.fileKind)row.fileKind=row.ctype==='تركيب'?'تركيب':'جملة';if(c==='contracts'&&row.fileKind==='تركيب'&&(!row.ctype||row.ctype==='توريد بضاعة آجل'))row.ctype='تركيب';m.set(d.id,row);}S.data[c]=m;S.loaded[c]=true;scheduleRender()},e=>{S.loaded[c]=true;console.warn(c,e.code);scheduleRender()})}
   db.doc('meta/settings').onSnapshot(s=>{S.settings=s.exists?s.data():{};scheduleRender()},()=>{});
   db.doc('meta/integrations').onSnapshot(s=>{S.integ=s.exists?s.data():{};scheduleRender()},()=>{});
   window.addEventListener('hashchange',route);
@@ -2331,7 +2335,18 @@ function renderNav(){
   const cur=(location.hash.slice(1)||'home').split('-')[0].split('~')[0];const c=counts();
   const nav=h('nav',{class:'nav'});
   for(const g of NAV){if(g.grp)nav.append(h('div',{class:'nav-group'},g.grp));
-    for(const[k,l]of g.items){if(MODS[k]&&!canSee(k))continue;const label=l||MODS[k].t;const n=c[k];
+    for(const[k,l]of g.items){if(MODS[k]&&!canSee(k))continue;
+      if(k==='contracts'){
+        const hash=location.hash;
+        for(const [metric,label] of [['ct_whole','عقود الجملة'],['ct_inst','عقود التركيب']]){
+          const href='#contracts~'+metric;
+          const current=hash===href||(metric==='ct_whole'&&(hash==='#contracts'||hash==='#team~wholesale'));
+          const n=mcount(metric);
+          nav.append(h('a',{href,'aria-current':current?'page':null,onclick:()=>toggleRail(false)},h('span',{class:'nav-l'},chip(k,'sm'),h('span',null,label)),n?h('span',{class:'count'},String(n)):null));
+        }
+        continue;
+      }
+      const label=l||MODS[k].t;const n=c[k];
       nav.append(h('a',{href:'#'+k,'aria-current':cur===k?'page':null,onclick:()=>toggleRail(false)},h('span',{class:'nav-l'},chip(k,'sm'),h('span',null,label)),n?h('span',{class:'count'+(ALERT_NAV.has(k)?' alert':''),title:METRICS[NAV_METRIC[k]].l+' — '+METRICS[NAV_METRIC[k]].p},String(n)):null))}}
   $('#rail').replaceChildren(
     h('div',{class:'brand-sub rail-title'},'المساعد القانوني — الشؤون القانونية'),
@@ -2350,7 +2365,7 @@ function route(){
   let v;
   if(a==='home')v=viewHome(mk);
   else if(a==='new'&&MODS[b])v=viewNew(b);
-  else if(MODS[a]&&!b)v=viewList(a,METRICS[mk]?.mod===a?mk:null);
+  else if(MODS[a]&&!b)v=viewList(a,METRICS[mk]?.mod===a?mk:a==='contracts'?'ct_whole':null);
   else if(MODS[a]&&b)v=viewDetail(a,b);
   else if(a==='docs'&&!b)v=viewDocs();
   else if(a==='docs'&&b)v=viewDoc(b);
@@ -2858,13 +2873,13 @@ function importTop(r,d,repaint){
   return h('div',{class:'panel imp-top'},ph('قراءة العقد الجاهز','sparkles','#af52de'),
     h('div',{class:'small muted'},'يقرأ البرنامج صفحات الملف، ويعبّي بيانات العقد، ويوزّع الأوراق، ويحفظ السند تلقائيًا. إذا طلب claude.ai السماح باستخدام Claude اضغط «سماح».'),
     clientPdfPanel(r,d,repaint,full,{auto:true}))}
-function importContractBtn(){const inp=h('input',{type:'file',hidden:true,accept:'.pdf'});
+function importContractBtn(kind='جملة'){const inp=h('input',{type:'file',hidden:true,accept:'.pdf'});
   const msg=h('div',{class:'imp-msg'});const say=(m,c)=>{msg.replaceChildren(h('div',{class:'banner '+(c||'info')},m));};
   inp.onchange=async()=>{const f=inp.files[0];inp.value='';if(!f){say('لم يُختر ملف.','warn');return}
     if(extOf(f.name)!=='pdf'&&f.type!=='application/pdf'){say(`الملف «${f.name}» ليس PDF. اختر ملف العقد بصيغة PDF.`,'bad');return}
     say(`جارٍ إنشاء العقد من «${f.name}»…`);
     try{const id=uid();const t=todayISO();
-      const res=await writeDoc('contracts',id,{title:'عقد جاهز — '+f.name.replace(/\.pdf$/i,''),date:{orig:'g',g:t,h:g2h(t),verified:true},activity:'',status:'إعداد',importMode:true,source:'عقد جاهز من ملف'},null,{create:true});
+      const res=await writeDoc('contracts',id,{fileKind:kind,...(kind==='تركيب'?{ctype:'تركيب'}:{}),title:'عقد جاهز — '+f.name.replace(/\.pdf$/i,''),date:{orig:'g',g:t,h:g2h(t),verified:true},activity:'',status:'إعداد',importMode:true,source:'عقد جاهز من ملف'},null,{create:true});
       if(!res.ok){say('تعذر إنشاء العقد: '+(res.e?errMsg(res.e):'لم يؤكد الخادم الحفظ')+'. أعد المحاولة.','bad');return}
       audit('إضافة عقد جاهز من ملف','contracts',id,f.name);
       if(assets){say('جارٍ حفظ الملف…');await uploadFiles([f],['contracts:'+id],(m,c)=>{if(c==='bad')say(m,c)},FULL_CAT)}
@@ -3558,9 +3573,10 @@ function sortListRows(rows,mod,order,now=Date.now()){
 function viewList(mod,mk){
   if(mod==='violations'&&!mk)mk='v_unpaid';
   const M=MODS[mod];
+  const contractKind=mod==='contracts'&&['ct_inst','ct_whole'].includes(mk)?mk:null;
   if(!canSee(mod))return{key:mod,el:h('div',{class:'panel'},ph('وصول مقيد','shield','#bf5af2'),h('p',null,'هذا القسم متاح لمحرري التطبيق ومالكه فقط، ويُطبق المنع من قاعدة البيانات نفسها.'))};
   const q=h('input',{type:'search',placeholder:'بحث في '+M.t,'aria-label':'بحث',value:mk?'':LS.get('q_'+mod,'')});
-  const codeFilter=mod==='contracts'?h('select',{'aria-label':'حالة كود العميل',value:LS.get('ctCodeValidity',''),onchange:()=>{LS.set('ctCodeValidity',codeFilter.value);refresh()}},[['','كل أكواد العملاء'],['valid','كود صحيح — CW-000000'],['invalid','كود غير صحيح'],['missing','بدون كود']].map(([v,l])=>h('option',{value:v},l))):null;
+  const codeFilter=mod==='contracts'&&contractKind!=='ct_inst'?h('select',{'aria-label':'حالة كود العميل',value:LS.get('ctCodeValidity',''),onchange:()=>{LS.set('ctCodeValidity',codeFilter.value);refresh()}},[['','كل أكواد العملاء'],['valid','كود صحيح — CW-000000'],['invalid','كود غير صحيح'],['missing','بدون كود']].map(([v,l])=>h('option',{value:v},l))):null;
   const st=h('select',{'aria-label':'الحالة'},h('option',{value:''},'كل الحالات'),h('option',{value:'_open'},'المفتوحة فقط'),M.st.map(s=>h('option',{value:s},s)));st.value=mk?'':LS.get('st_'+mod,'_open');
   const dateLabel=M.fields.find(f=>f.k===M.main)?.l||'التاريخ';
   const sort=h('select',{'aria-label':'الترتيب'},h('option',{value:'upd'},'الأحدث تعديلًا'),['cases','hearings'].includes(mod)?h('option',{value:'nearest'},'أقرب جلسة قادمة أولًا'):null,M.main?h('option',{value:'main'},dateLabel+' — الأقدم أولًا'):null,M.main?h('option',{value:'main_desc'},dateLabel+' — الأحدث أولًا'):null);{const def=['cases','hearings'].includes(mod)?'nearest':M.main?'main_desc':'upd';const sv=LS.get('sort2_'+mod,def);sort.value=[...sort.options].some(o=>o.value===sv)?sv:def}
@@ -3568,14 +3584,14 @@ function viewList(mod,mk){
   const FK=M.filters||[];const fval=(r,k)=>k==='_year'?(dateG(r[M.main])||'').slice(0,4):String((mod==='violations'?violationValue(r,k):r[k])??'').trim();
   const fsel=FK.map(k=>{const lab=k==='_year'?'السنة':(M.fields.find(f=>f.k===k)?.l||k);const sel=h('select',{'aria-label':lab,class:'fsel'});sel.dataset.k=k;sel.dataset.l=lab;sel._v=mk?'':LS.get('f_'+mod+'_'+k,'');sel.onchange=()=>{sel._v=sel.value;LS.set('f_'+mod+'_'+k,sel.value);refresh()};return sel});
   const fillF=()=>{for(const sel of fsel){const k=sel.dataset.k;const m={};const all=(mk?mrecs(mk):recs(mod)).filter(r=>matches(r,sel));for(const r of all){const v=fval(r,k);m[v]=(m[v]||0)+1}if(sel._v){const key=sel._v==='_none'?'':sel._v;if(!(key in m))m[key]=0}const keys=Object.keys(m).sort((a,b)=>k==='_year'?b.localeCompare(a):(m[b]-m[a])||a.localeCompare(b,'ar'));sel.replaceChildren(h('option',{value:''},(FALL[k]||['كل '+sel.dataset.l])[0]),...keys.map(v=>h('option',{value:v||'_none'},(v||(FALL[k]||[0,'بدون '+sel.dataset.l])[1])+' ('+m[v]+')')));sel.value=sel._v;if(sel.value!==sel._v)sel.value=''}};
-  const bfSel=mod==='contracts'&&typeof uxBondFilter==='function'?uxBondFilter(()=>refresh()):null;const clrF=h('button',{class:'btn sm ghost',onclick:()=>{if(codeFilter){codeFilter.value='';LS.set('ctCodeValidity','')}if(bfSel){bfSel._v='';try{localStorage.setItem('uxBf','')}catch(e){}}mk=mod==='violations'?'v_all':null;st.value='';from.value='';to.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod+(mk?'~'+mk:''));refresh()}},'مسح الفلاتر');
+  const bfSel=mod==='contracts'&&contractKind!=='ct_inst'&&typeof uxBondFilter==='function'?uxBondFilter(()=>refresh()):null;const clrF=h('button',{class:'btn sm ghost',onclick:()=>{if(codeFilter){codeFilter.value='';LS.set('ctCodeValidity','')}if(bfSel){bfSel._v='';try{localStorage.setItem('uxBf','')}catch(e){}}mk=contractKind||(mod==='violations'?'v_all':null);st.value='';from.value='';to.value='';for(const sel of fsel){sel._v='';LS.set('f_'+mod+'_'+sel.dataset.k,'')}q.value='';history.replaceState(null,'','#'+mod+(mk?'~'+mk:''));refresh()}},'مسح الفلاتر');
   const from=h('input',{type:'date','aria-label':'من تاريخ المخالفة'}),to=h('input',{type:'date','aria-label':'إلى تاريخ المخالفة'});from.onchange=()=>refresh();to.onchange=()=>refresh();
   const vTabs=h('div',{class:'tabs',role:'tablist'});const sumBox=h('div');let lastRows=[];
   const descF=()=>{const d=[];if(codeFilter&&codeFilter.value.trim())d.push('حالة كود العميل: '+({valid:'كود صحيح — CW-000000',invalid:'كود غير صحيح',missing:'بدون كود'}[codeFilter.value]||''));if(mk&&METRICS[mk])d.push(METRICS[mk].l);if(from.value)d.push('من تاريخ: '+from.value);if(to.value)d.push('إلى تاريخ: '+to.value);if(st.value==='_open')d.push('المفتوحة فقط');else if(st.value)d.push('الحالة: '+st.value);for(const x of fsel)if(x._v)d.push(x.dataset.l+': '+(x._v==='_none'?'غير محدد':x._v));if(bfSel&&bfSel._v)d.push('السند: '+(UX_BF_OPTS.find(o=>o[0]===bfSel._v)||[0,''])[1]);if(q.value.trim())d.push('بحث: '+q.value.trim());return d};
   const wrap=h('div');
   const extra=mod==='bonds'?h('div'):null;const insBox=h('div');const mfBox=h('div');
   const el=h('div',{style:'display:flex;flex-direction:column;gap:14px'},
-    pageHead(M.t,DESC[mod],mod==='contracts'&&!S.readOnly?importContractBtn():null,mod==='contracts'&&!S.readOnly?h('a',{class:'btn',href:'#import~wholesale'},ibtn('upload','استيراد Excel — ملفات جملة')):null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'?h('button',{class:'btn',onclick:()=>uxDupOpen(mk==='ct_inst'?'تركيب':mk==='ct_whole'?'جملة':'')},'كشف الملفات المتكررة'):null,mod==='contracts'&&typeof uxBondDatesBtn==='function'?uxBondDatesBtn():null,mod==='contracts'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='contracts'&&typeof uxBondConvertBtn==='function'?uxBondConvertBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
+    pageHead(contractKind?(mk==='ct_inst'?'عقود التركيب':'عقود الجملة'):M.t,DESC[mod],mod==='contracts'&&mk==='ct_whole'?window.wholesaleWorkspaceLink?.():null,mod==='contracts'&&!S.readOnly?importContractBtn(mk==='ct_inst'?'تركيب':'جملة'):null,mod==='contracts'&&mk==='ct_whole'&&!S.readOnly?h('a',{class:'btn',href:'#import~wholesale'},ibtn('upload','استيراد Excel — ملفات جملة')):null,mod==='executions'||mod==='violations'||mod==='contracts'||mod==='attest'?h('button',{class:'btn',onclick:()=>mod==='violations'?violationsReport(lastRows,descF()):mod==='contracts'?contractsReport(lastRows,descF()):mod==='attest'?attestReport(lastRows,descF()):execReport(lastRows,descF())},ibtn('chart','تقرير')):null,mod==='contracts'?h('button',{class:'btn',onclick:()=>uxDupOpen(mk==='ct_inst'?'تركيب':mk==='ct_whole'?'جملة':'')},'كشف الملفات المتكررة'):null,mod==='contracts'&&mk!=='ct_inst'&&typeof uxBondDatesBtn==='function'?uxBondDatesBtn():null,mod==='contracts'&&mk!=='ct_inst'&&typeof uxBondNoticeBtn==='function'?uxBondNoticeBtn():null,mod==='contracts'&&mk!=='ct_inst'&&typeof uxBondConvertBtn==='function'?uxBondConvertBtn():null,mod==='executions'&&!S.readOnly?h('button',{class:'btn',onclick:()=>uxPayImport()},ibtn('upload','استيراد دفعات')):null,h('a',{class:'btn primary',href:'#new-'+mod},ibtn('plus',M.one)),mod==='hearings'?h('button',{class:'btn',onclick:()=>exportICS(lastRows.filter(r=>METRICS.h_up.f(r)))},ibtn('calendar','تصدير القادمة من النتائج إلى التقويم')):null),
     ['hearings','taradi'].includes(mod)&&!S.readOnly?hearingNoticePanel(mod):null,
     mod==='hearings'?h('div',{class:'small muted'},'الأوقات بتوقيت الرياض. للتنبيه على جوالك استخدم «تصدير إلى التقويم».'):null,
     extra,insBox,mfBox,
@@ -3585,8 +3601,8 @@ function viewList(mod,mk){
     h('div',{class:'toolbar'},q,codeFilter,st,sort,bfSel,clrF),FK.length?h('div',{class:'toolbar filters'},...fsel):null,sumBox,wrap);
   function matches(r,except=null){
     if(mod==='violations'&&(from.value||to.value)){const d=dateG(r.date);if(!d||(from.value&&d<from.value)||(to.value&&d>to.value))return false}
-    if((!mk||mod==='violations')&&st.value==='_open'&&M.closed.includes(r.status))return false;
-    if((!mk||mod==='violations')&&st.value&&st.value!=='_open'&&r.status!==st.value)return false;
+    if((!mk||contractKind||mod==='violations')&&st.value==='_open'&&M.closed.includes(r.status))return false;
+    if((!mk||contractKind||mod==='violations')&&st.value&&st.value!=='_open'&&r.status!==st.value)return false;
     for(const x of fsel){if(x===except||!x._v)continue;const v=fval(r,x.dataset.k);if(x._v==='_none'?v!=='':v!==x._v)return false}
     if(bfSel&&bfSel._v&&!uxBfMatch(r,bfSel._v))return false;
     if(codeFilter&&codeFilter.value&&!uxCodeValidityMatch(r.customer_code,codeFilter.value))return false;
@@ -3596,14 +3612,14 @@ function viewList(mod,mk){
     LS.set('q_'+mod,q.value);LS.set('st_'+mod,st.value);
     const term=normDigits(q.value.trim().toLowerCase());
     if(FK.length)fillF();const act=fsel.filter(x=>x._v);
-    const MF=mk?METRICS[mk]:null;if(MF){st.disabled=mod!=='violations';mfBox.replaceChildren(h('div',{class:'banner info'},h('span',null,h('b',null,'مرشح: '+MF.l),' — '+MF.p+(hideSyn()?' · دون البيانات الاختبارية':'')),h('a',{class:'btn sm',href:'#'+mod},'إزالة المرشح')))}else{st.disabled=false;mfBox.replaceChildren()}
+    const MF=mk?METRICS[mk]:null;if(MF&&!contractKind){st.disabled=mod!=='violations';mfBox.replaceChildren(h('div',{class:'banner info'},h('span',null,h('b',null,'مرشح: '+MF.l),' — '+MF.p+(hideSyn()?' · دون البيانات الاختبارية':'')),h('a',{class:'btn sm',href:'#'+mod},'إزالة المرشح')))}else{st.disabled=false;mfBox.replaceChildren()}
     if(bfSel){const _v=bfSel._v;bfSel._v='';bfSel.fill((MF?mrecs(mk):recs(mod)).filter(r=>matches(r)));bfSel._v=_v;bfSel.value=_v}
     let rows=(MF?mrecs(mk):recs(mod)).filter(r=>matches(r));
     lastRows=rows;if(mod==='violations'){sumBox.replaceChildren(violationSummaryNode(rows));vTabs.replaceChildren(...VIOLATION_GROUPS.map(([k,l])=>h('a',{class:'tab',role:'tab','aria-selected':String(mk===k),href:mlink(k)},l,h('span',{class:'count'},String(mcount(k))))));}if(M.sums){const S2=M.sums.map(([k,l])=>[l,rows.reduce((a,r)=>a+(Number(r[k])||0),0)]);sumBox.replaceChildren(h('div',{class:'fsum'},h('span',null,h('b',null,String(rows.length)),' طلب'),...S2.map(([l,v])=>h('span',null,l+': ',h('b',{class:'num'},nf.format(Math.round(v*100)/100))))))}
     sortListRows(rows,mod,sort.value);
     if(extra){const T=bondTotals(statRecs('bonds'));
       extra.replaceChildren(h('div',{class:'stats'},Object.entries(T.conf).map(([k,v])=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'v num'},nf.format(v)),h('span',{class:'l'},'إجمالي مؤكد — '+k),h('span',{class:'p'},'مبالغ طابقها مستخدم مع الأصل')))),Object.entries(T.pend).map(([k,v])=>h('div',{class:'stat'},h('span',{class:'txt'},h('span',{class:'v num muted'},nf.format(v)),h('span',{class:'l'},'مقروء آليًا بانتظار التأكيد — '+k),h('span',{class:'p'},'غير معتمد؛ خارج الإجمالي المؤكد')))),T.unread?h('div',{class:'stat alert'},h('span',{class:'txt'},h('span',{class:'v'},String(T.unread)),h('span',{class:'l'},'غير مقروء أو متعارض'),h('span',{class:'p'},'خارج كل الإجماليات'))):null,!Object.keys(T.conf).length&&!Object.keys(T.pend).length&&!T.unread?h('div',{class:'small muted'},'لا سندات قائمة ضمن العدّ.'):null))}
-    {const ins=mod==='violations'?null:insights(mod);const was=insBox.querySelector('details')?.open;insBox.replaceChildren(ins?h('details',{class:'ins-wrap',open:was||null},h('summary',null,'نظرة سريعة على '+M.t),h('div',{style:'margin-top:10px'},ins)):'')}
+    {const ins=mod==='violations'||contractKind?null:insights(mod);const was=insBox.querySelector('details')?.open;insBox.replaceChildren(ins?h('details',{class:'ins-wrap',open:was||null},h('summary',null,'نظرة سريعة على '+M.t),h('div',{style:'margin-top:10px'},ins)):'')}
     if(!S.loaded[mod]){wrap.replaceChildren(h('div',{class:'empty'},'جارٍ التحميل…'));return}
     if(!rows.length){wrap.replaceChildren(h('div',{class:'panel'},h('div',{class:'empty'},MF?'لا سجلات تطابق هذا المرشح.':recs(mod).length?'لا نتائج مطابقة للبحث أو الفلتر.':`لا توجد ${M.t} بعد. أضف أول ${M.one} من الزر أعلاه.`)));return}
     const cols=M.cols.map(k=>k==='hattendee'?{k,l:'من سيحضر الجلسة',t:'hattendee'}:k==='hdate'?{k,l:'موعد الجلسة',t:'hdate'}:k==='vnext'?{k,l:'أقرب مهلة',t:'vnext'}:k==='validity'?{k,l:'الصلاحية الزمنية',t:'validity'}:k==='dueDate'&&mod==='bonds'?{k,l:'الاستحقاق',t:'bdue'}:k==='amount'&&mod==='bonds'?{k:'amount',l:'القيمة',t:'bondamt'}:k==='stage'?{k:'stage',l:'المرحلة',t:'stage'}:k==='bond'?{k:'bond',l:'السند',t:'cbond'}:M.fields.find(f=>f.k===k));
@@ -5007,13 +5023,13 @@ function uxPaymentsPanel(r){const ro=S.readOnly||!!r.deleted;const t=uxPayTotals
 {const _vd=viewDetail;viewDetail=function(mod,id){const v=_vd(mod,id);if(mod!=='executions')return v;const inject=()=>{const r=rec('executions',id);if(!r)return;const main=v.el.querySelector('.mainc');if(!main)return;v.el.querySelector('#uxPayPanel')?.remove();main.prepend(uxPaymentsPanel(r));if(r.payments?.some(p=>!p.deleted))for(const k of['paid','remaining','payDate']){const i=v.el.querySelector('#f_'+k);if(i){i.readOnly=true;i.title='يُحسب تلقائيًا من الدفعات'}}};const r0=v.refresh;v.refresh=f=>{const was=v.el.querySelector('#uxPayPanel');const ae=document.activeElement;const focus=was&&was.contains(ae)&&ae.matches('input,select')&&ae.value&&ae.type!=='date';if(focus&&!f)return;r0(f);inject()};inject();return v}}
 
 /* ========== 6) العقود: ملفات جملة وملفات تركيب ========== */
-const uxCtKind=r=>r.fileKind==='تركيب'?'تركيب':'جملة';
+const uxCtKind=r=>r.fileKind==='تركيب'||r.ctype==='تركيب'?'تركيب':'جملة';
 METRICS.ct_whole={mod:'contracts',l:'ملفات جملة',p:'عقود حسابات الجملة (توريد بضاعة). السجلات القديمة بلا نوع تُحسب جملة.',f:r=>uxCtKind(r)==='جملة'};
 METRICS.ct_inst={mod:'contracts',l:'ملفات تركيب',p:'عقود وملفات التركيب',f:r=>uxCtKind(r)==='تركيب'};
-function uxCtTabs(){const v=$('#view');if(!v||v.querySelector('.ux-cttabs'))return;const hd=v.querySelector('.page-head');if(!hd)return;const mk=(location.hash.split('~')[1]||'');const all=statRecs('contracts');
+function uxCtTabs(){const v=$('#view');if(!v||v.querySelector('.ux-cttabs'))return;const hd=v.querySelector('.page-head');if(!hd)return;const mk=(location.hash.split('~')[1]||'ct_whole');const all=statRecs('contracts');
   const tab=(k,l,ic,n)=>h('a',{href:k?'#contracts~'+k:'#contracts',class:'ux-cttab'+(mk===k?' on':''),onclick:()=>LS.set('ctKind',k==='ct_inst'?'تركيب':k==='ct_whole'?'جملة':'')},icon(ic),h('span',null,l),h('b',null,uxN(n)));
-  hd.after(h('div',{class:'ux-cttabs',role:'tablist','aria-label':'نوع ملفات العقود'},tab('ct_whole','ملفات جملة','coins',all.filter(r=>uxCtKind(r)==='جملة').length),tab('ct_inst','ملفات تركيب','building',all.filter(r=>uxCtKind(r)==='تركيب').length),tab('','كل العقود','grid',all.length)))}
-{const _r3=route;route=function(){_r3();const a=(location.hash.slice(1)||'home').split('-');if(a.length===1&&a[0].split('~')[0]==='contracts'){const mk=a[0].split('~')[1]||'';LS.set('ctKind',mk==='ct_inst'?'تركيب':mk==='ct_whole'?'جملة':'');uxCtTabs()}}}
+  hd.after(h('div',{class:'ux-cttabs',role:'tablist','aria-label':'نوع ملفات العقود'},tab('ct_whole','ملفات جملة','coins',all.filter(r=>uxCtKind(r)==='جملة').length),tab('ct_inst','ملفات تركيب','building',all.filter(r=>uxCtKind(r)==='تركيب').length)))}
+{const _r3=route;route=function(){_r3();const a=(location.hash.slice(1)||'home').split('-');if(a.length===1&&a[0].split('~')[0]==='contracts'){const mk=a[0].split('~')[1]||'ct_whole';LS.set('ctKind',mk==='ct_inst'?'تركيب':mk==='ct_whole'?'جملة':'');uxCtTabs()}}}
 
 /* ========== 7) عقد اتفاقية تركيبات تكييف (ملفات التركيب) ========== */
 const UX_INST_SECS=['المفوض الأول','المفوض الثاني'];
@@ -6497,5 +6513,7 @@ boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
 
 <script src="eissar.js?v=1"></script>
-<script src="mail-review.js?v=1"></script>
+<script src="mail-review.js?v=2"></script>
+<script src="wholesale-files.js?v=1"></script>
+<script src="team-coordination.js?v=1"></script>
 </html>

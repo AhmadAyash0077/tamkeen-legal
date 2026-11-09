@@ -12,6 +12,7 @@
     if(!r.ok){const j=await r.json().catch(()=>({}));throw Error(errors[j.error]||'تعذر تنفيذ الطلب؛ لم يتم اعتماد الرسالة.');}return raw?r:r.json();
   }
   async function attachment(d,a){const r=await api('/attachment?draft='+encodeURIComponent(d.id)+'&id='+encodeURIComponent(a.id),null,true);return new File([await r.blob()],a.name.replace(/[\\/\x00-\x1f]/g,'_'),{type:OK_EXT[extOf(a.name)]||'application/octet-stream'});}
+  window.__WHOLESALE_MAIL = {drafts:async()=>(await api('/drafts')).drafts,attachment};
   function parse(text){const r={};const m=String(text).replace(/[٠-٩]/g,x=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(x)));for(const[k,re]of Object.entries({ref_no:/(?:رقم العقد|contract\s*(?:no|number))\s*[:#：-]?\s*([\w/-]+)/i,cr_no:/(?:السجل التجاري|الرقم الموحد)\s*[:：]?\s*(7\d{9})/,value:/(?:قيمة العقد|contract value)\s*[:：]?\s*([\d,]+(?:\.\d{1,2})?)/i,start:/(?:بداية العقد|تاريخ البداية)\s*[:：]?\s*(\d{4}-\d{2}-\d{2})/,end:/(?:نهاية العقد|تاريخ الانتهاء)\s*[:：]?\s*(\d{4}-\d{2}-\d{2})/})){const v=m.match(re)?.[1];if(v)r[k]=v;}return r;}
   async function review(d,reload){
     let files=new Map(),evidence=d.text||'',busy=false,approvedId=null;
