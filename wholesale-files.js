@@ -21,6 +21,9 @@
     invalid_document:'تحقق من نوع المرفق وحجمه. الحد 5 ميجابايت للملف.',
     invalid_nafith:'أدخل اسم محرر السند والمبلغ بالريال وتاريخ الاستحقاق.',
     nafith_already_verified:'وثّق السند بناء على البيانات المحفوظة. تعديلها بعد التوثيق يتطلب مراجعة مسؤول النظام.',
+    invalid_profile:'راجع خانات بيانات العميل والرقم الموحّد قبل الحفظ.',
+    profile_changed:'تغيرت بيانات الملف منذ فتحه. أعد فتح الملف وقارن القيم قبل الحفظ.',
+    intake_size_limit:'مجموع المرفقات يتجاوز 16 ميجابايت. احفظ جزءًا منها ثم أضف البقية إلى الملف نفسه.',
     invalid_documents_review:'حدد النسخ الحالية من المستندات المطلوبة واكتب ما تحققت من صلاحيته.',
     invalid_proof:'اختر مستند الإثبات واكتب المرجع وأكّد مراجعته.',
     invalid_signature:'تحقق من رقم طلب Zoho والتاريخ وشهادة الإتمام.',
@@ -32,6 +35,7 @@
     sign_mismatch:'بيانات طلب Zoho لا تطابق هذا الملف وتسلسل الموقّعين المعتمد.',
     sign_unavailable:'تعذرت قراءة طلب Zoho Sign. تحقّق من الرقم والربط.'
   };
+  const attachmentLimit=12, attachmentBytes=5*1024*1024, batchBytes=16*1024*1024;
   const btn = (label, callback, cls='btn') => h('button',{class:cls,type:'button',onclick:callback},label);
   const field=(label,control)=>{
     control.setAttribute('aria-label',label);
@@ -55,13 +59,21 @@
     return h('input',{type:'file',multiple,accept:'.pdf,.png,.jpg,.jpeg,.webp,.docx,.xlsx'});
   }
   function encode(file) {
-    if (!file || !file.size || file.size>5*1024*1024) throw Error('invalid_document');
+    if (!file || !file.size || file.size>attachmentBytes) throw Error('invalid_document');
     return new Promise((resolve,reject)=>{
       const reader = new FileReader();
       reader.onload=()=>resolve({name:file.name,content:reader.result.split(',')[1]});
       reader.onerror=()=>reject(Error('invalid_document'));
       reader.readAsDataURL(file);
     });
+  }
+  function profileRows(profile={}){
+    const labels=window.tamkeenWholesaleReader?.labels||{};
+    return Object.entries(labels).filter(([key])=>profile[key]).map(([key,label])=>({key,label,value:profile[key]}));
+  }
+  function profileFields(profile){
+    return grid(...profileRows(profile).map(({label,value})=>h('div',{class:'wf-result'},
+      h('strong',null,label),h('p',{dir:'auto'},value))));
   }
   function download(doc) {
     const bytes=Uint8Array.from(atob(doc.content),c=>c.charCodeAt(0));
@@ -129,12 +141,13 @@
       const result=h('div');
       const back=btn('العودة إلى القائمة',run(list),'btn ghost');
       file.addEventListener('change',async()=>{
-        if(!file.files.length)return;
+        const originals=[...file.files];
+        if(!originals.length)return;
         file.disabled=true;
         result.replaceChildren();
         progress.textContent='تجري قراءة المستندات داخل المتصفح…';
         try{
-          const report=await window.tamkeenWholesaleReader.scan([...file.files],value=>progress.textContent=value);
+          const report=await window.tamkeenWholesaleReader.scan(originals,value=>progress.textContent=value);
           const filled=report.rows.filter(row=>row.candidates.length===1).length;
           const conflicts=report.rows.filter(row=>row.candidates.length>1).length;
           progress.textContent='انتهت القراءة · '+filled+' خانة لها قراءة واحدة · '+conflicts+' تحتاج مقارنة.'
@@ -152,29 +165,52 @@
             ['المفوّض الأول',report.rows.filter(row=>row.key.startsWith('e1_'))],
             ['المفوّض الثاني',report.rows.filter(row=>row.key.startsWith('e2_'))]];
           result.replaceChildren(...groups.map(([title,rows])=>section(title,rows)),
-            btn('استخدام الاسم والرقم في طلب واتساب',()=>{
+            btn('متابعة إلى حفظ ملف العميل وأوراقه',()=>{
               const name=controls.trade_name.value.trim();
-              const registration=controls.unified.value.trim()||controls.old_registration.value.trim();
+              const registration=digit(controls.unified.value)||digit(controls.old_registration.value);
               if(!name||!/^\d{10}$/.test(registration)){progress.textContent='راجع الاسم ورقم السجل أو الرقم الموحّد أولًا.';return;}
-              creation(intakeFields(),{name,registration});
+              const profile=Object.fromEntries(Object.entries(controls).filter(([key,control])=>key!=='trade_name'&&control.value.trim())
+                .map(([key,control])=>[key,control.value.trim()]));
+              if(profile.unified)profile.unified=digit(profile.unified);
+              creation(intakeFields(originals,profile),{name,registration});
             },'btn primary'));
         }catch(error){progress.textContent=error?.message||'تعذرت قراءة المستندات.';}
         finally{file.disabled=false;}
       });
       body.replaceChildren(panel('تجربة قراءة مستندات العميل',back,
-        h('p',null,'اختر PDF أو صورًا. ستظهر قراءات نموذج البيانات والتفويض للمراجعة. القراءة داخل المتصفح ولا تُحفظ هذه المسودة.'),
-        h('p',{class:'muted'},'الحد ثلاثة مستندات للقراءة. يبدأ الفحص بأول عشر صفحات من كل PDF، ويقرأ ضوئيًا حتى ثلاث صفحات ممسوحة.'),
+        h('p',null,'اختر أوراق العميل بصيغة PDF أو صور. راجع الخانات المقروءة، ثم تابع لحفظ البيانات مع الأوراق الأصلية في ملف العميل.'),
+        h('p',{class:'muted'},'يُقرأ حتى 12 مستندًا. يفحص القارئ أول عشر صفحات من كل PDF، وتبقى جميع صفحات المستند الأصلي ضمن الملف عند الحفظ.'),
         field('مستندات العميل للقراءة',file),progress,result));
     }
-    function intakeFields(){
+    function intakeFields(originals=[],profile={}){
       let receipt=crypto.randomUUID();
+      const attachments=[...originals];
       const text=h('textarea',{rows:4,maxlength:32000,placeholder:'الصق نص الطلب كما ورد في واتساب'});
       const files=fileInput(true);
-      for(const control of [text,files])control.addEventListener('input',()=>{receipt=crypto.randomUUID();});
-      return {heading:'استقبال طلب واتساب',node:grid(field('رسالة واتساب',text),field('مرفقات الطلب · حتى 3 ملفات، 5 ميجابايت لكل ملف',files)),
-        data:async()=>{
-          if(files.files.length>3||(!text.value.trim()&&!files.files.length))throw Error('invalid_intake');
-          return {receipt,channel:'whatsapp',message:text.value,files:await Promise.all([...files.files].map(encode))};
+      const selected=h('ul',{class:'wf-docs','aria-label':'الأوراق التي ستحفظ في الملف'});
+      const renew=()=>{receipt=crypto.randomUUID();};
+      const renderAttachments=()=>{
+        selected.replaceChildren(...attachments.map((file,index)=>h('li',null,h('bdi',null,file.name),
+          btn('إزالة المرفق',()=>{attachments.splice(index,1);renew();renderAttachments();},'btn sm ghost'))));
+        if(!attachments.length)selected.append(h('li',{class:'muted'},'لم تختر أوراقًا بعد.'));
+      };
+      files.addEventListener('change',()=>{
+        attachments.push(...files.files);files.value='';renew();renderAttachments();
+      });
+      text.addEventListener('input',renew);
+      renderAttachments();
+      const hasProfile=Object.keys(profile).length>0;
+      return {heading:hasProfile?'حفظ ملف العميل وأوراقه':'استقبال طلب واتساب',profile,
+        node:h('div',null,grid(field('رسالة واتساب',text),field('مرفقات الطلب · حتى 12 ورقة، 5 ميجابايت لكل ملف',files)),
+          selected,h('p',{class:'muted'},'يمكن حفظ حتى 16 ميجابايت في الدفعة الواحدة، وإضافة دفعات أخرى إلى الملف نفسه.')),
+        data:async(base)=>{
+          const batch=[...attachments];
+          const message=text.value;
+          const requestId=receipt;
+          if(batch.length>attachmentLimit||(!message.trim()&&!batch.length))throw Error('invalid_intake');
+          if(batch.reduce((total,file)=>total+file.size,0)>batchBytes)throw Error('intake_size_limit');
+          return {receipt:requestId,channel:'whatsapp',message,files:await Promise.all(batch.map(encode)),
+            ...(hasProfile?{profile,profile_reviewed:true,...(base?{profile_base:base}:{})}:{})};
         }};
     }
     function mailIntake(){
@@ -211,7 +247,7 @@
     }
     function creation(intake=intakeFields(),draft={}){
       feedback('');
-      const name=input(draft.name||'',{maxlength:160}), number=input(draft.registration||'',{dir:'ltr',inputmode:'numeric'});
+      const name=input(draft.name||'',{maxlength:160}), number=input(draft.registration||'',{dir:'ltr',inputmode:'numeric',readonly:!!draft.registration});
       const result=h('div',{class:'wf-result'});
       const identity=()=>({name:name.value.trim(),registration:digit(number.value)});
       for(const field of [name,number])field.addEventListener('input',()=>result.replaceChildren());
@@ -220,7 +256,7 @@
         const checkResult=await api('check',snapshot);
         if(name.value.trim()!==snapshot.name||digit(number.value)!==snapshot.registration)return;
         if(checkResult.existing){
-          result.replaceChildren(h('p',null,'يوجد ملف بالرقم نفسه. افتحه لإضافة الرسالة إلى الملف القائم.'),
+          result.replaceChildren(h('p',null,'يوجد ملف بالرقم نفسه. افتحه لإضافة الأوراق والبيانات إلى الملف القائم.'),
             btn('فتح الملف القائم',run(()=>detail(checkResult.existing,intake)),'btn primary'));
           return;
         }
@@ -241,11 +277,12 @@
             if(JSON.stringify(snapshot)!==JSON.stringify(identity()))throw Error('legacy_review_required');
             const result=await api('create',{...snapshot,...await intake.data(),legacy_path:legacy.value,reviewed:review.box.checked});
             await detail(result.id);
-            feedback('حُفظ الملف والرسالة ومرفقاتها.');
+            feedback('حُفظ ملف العميل والبيانات والأوراق المرفقة.');
           }),'btn primary'));
       });
       body.replaceChildren(panel(intake.heading,btn('العودة إلى القائمة',run(list),'btn ghost'),
         intake.node,grid(field('الاسم التجاري',name),field('رقم السجل التجاري أو الرقم الموحد',number)),
+        profileRows(intake.profile).length?h('details',null,h('summary',null,'الخانات التي ستُحفظ مع الملف'),profileFields(intake.profile)):null,
         btn('التحقق من التكرار',verify,'btn primary'),result));
       name.focus();
     }
@@ -256,6 +293,7 @@
         await api(action,{id,...await data()});await detail(id);feedback(success);
       });
       const legal=role==='legal';
+      const savedProfile=c.profile||{};
       const missing=['nafith','chamber','customer'].filter(kind=>!c.proofs.some(p=>p.kind===kind)).map(kind=>kinds[kind]);
       if(!c.documents_review)missing.push('مراجعة المستندات المطلوبة');
       const nextStep={
@@ -343,16 +381,26 @@
         role==='accountant'&&c.signatures.length===3&&!c.customer_code?[field('كود العميل',code),
           btn('حفظ كود العميل',save('code',()=>({code:code.value})),'btn primary')]:null);
       const intake=retainedIntake||intakeFields();
+      const incomingRows=profileRows(retainedIntake?.profile);
+      const differences=incomingRows.filter(({key,value})=>savedProfile[key]&&savedProfile[key]!==value);
+      const updateReview=check('راجعت الفروق وأوافق على تحديث الخانات المعروضة.');
       const receipts=panel('سجل الاستقبال',
         c.intake.map(r=>h('details',{class:'wf-evidence'},h('summary',null,(r.channel==='whatsapp'?'واتساب':r.channel==='zoho'?'Zoho Mail':'إدخال يدوي')+' · '+date(r.created_at)),
           h('p',{class:'wf-message',dir:'auto'},r.message||'مرفقات فقط'),
-          h('ul',null,...c.documents.filter(d=>d.intake_id===r.id).map(d=>h('li',null,d.filename))))),
+          h('ul',null,...c.documents.filter(d=>d.intake_id===r.id).map(d=>h('li',null,d.filename))),
+          profileRows(r.profile).length?h('details',null,h('summary',null,'الخانات المحفوظة مع هذه الدفعة'),profileFields(r.profile)):null)),
         legal?h('details',{open:!!retainedIntake,class:'wf-evidence'},h('summary',null,retainedIntake?.heading||'إضافة طلب واتساب إلى الملف'),intake.node,
-          btn('حفظ الرسالة ومرفقاتها',save('intake',intake.data))):null);
+          incomingRows.length?h('div',null,h('h3',null,'بيانات هذه الدفعة'),profileFields(retainedIntake.profile),
+            differences.length?h('ul',null,...differences.map(({key,label,value})=>h('li',null,label+' · الحالي: '+savedProfile[key]+' · المقترح: '+value))):null,
+            updateReview.label):null,
+          btn(incomingRows.length?'حفظ البيانات والأوراق في الملف القائم':'حفظ الرسالة ومرفقاتها',save('intake',()=>{
+            if(incomingRows.length&&!updateReview.box.checked)throw Error('invalid_profile');
+            return intake.data(savedProfile);
+          }))):null);
       const audit=panel('سجل العمل',h('details',null,h('summary',null,'آخر الإجراءات'),
         h('ol',null,...c.audit.map(a=>h('li',null,(actions[a.action]||a.action)+' · '+date(a.created_at))))));
-      body.replaceChildren(nav,grid(approvals,accounting),grid(nafith,panel('الإثباتات',...['nafith','chamber','customer'].map(evidence))),
-        documents,receipts,audit);
+      body.replaceChildren(nav,panel('بيانات العميل المحفوظة',profileRows(savedProfile).length?profileFields(savedProfile):h('p',{class:'muted'},'لم تُحفظ خانات قراءة في هذا الملف بعد.')),documents,grid(approvals,accounting),grid(nafith,panel('الإثباتات',...['nafith','chamber','customer'].map(evidence))),
+        receipts,audit);
       nav.querySelector('button')?.focus({preventScroll:true});
     }
 

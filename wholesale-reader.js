@@ -143,7 +143,7 @@
     return true;
   }
   async function scan(files,progress){
-    if(!files.length||files.length>3)throw Error('اختر من مستند واحد إلى ثلاثة مستندات للقراءة.');
+    if(!files.length||files.length>12)throw Error('اختر من مستند واحد إلى 12 مستندًا للقراءة.');
     const result=sources();let worker;
     const getWorker=async()=>{
       if(worker)return worker;
@@ -208,5 +208,5 @@
       return {rows:result.result(),failures};
     }finally{if(worker)await worker.terminate();}
   }
-  window.tamkeenWholesaleReader={scan};
+  window.tamkeenWholesaleReader={scan,labels:Object.freeze(labels)};
 })();
