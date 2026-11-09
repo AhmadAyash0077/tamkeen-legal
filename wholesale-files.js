@@ -119,8 +119,52 @@
       filter.addEventListener('change',refresh);
       refresh();
       body.replaceChildren(panel(role==='accountant'?'قائمة المحاسب':'ملفات العملاء',
-        h('div',{class:'row'},role==='legal'?btn('استقبال طلب واتساب',()=>creation(),'btn primary'):null,result.mail_enabled?btn('استقبال من Zoho Mail',mailIntake):null,btn('تحديث القائمة',run(list))),
+        h('div',{class:'row'},role==='legal'?btn('استقبال طلب واتساب',()=>creation(),'btn primary'):null,role==='legal'?btn('تجربة قراءة مستندات العميل',reader):null,result.mail_enabled?btn('استقبال من Zoho Mail',mailIntake):null,btn('تحديث القائمة',run(list))),
         grid(field('بحث في الملفات',query),field('حالة الملف',filter)),rows));
+    }
+    function reader(){
+      feedback('');
+      const file=h('input',{type:'file',multiple:true,accept:'.pdf,.png,.jpg,.jpeg,.webp'});
+      const progress=h('p',{role:'status','aria-live':'polite'});
+      const result=h('div');
+      const back=btn('العودة إلى القائمة',run(list),'btn ghost');
+      file.addEventListener('change',async()=>{
+        if(!file.files.length)return;
+        file.disabled=true;
+        result.replaceChildren();
+        progress.textContent='تجري قراءة المستندات داخل المتصفح…';
+        try{
+          const report=await window.tamkeenWholesaleReader.scan([...file.files],value=>progress.textContent=value);
+          const filled=report.rows.filter(row=>row.candidates.length===1).length;
+          const conflicts=report.rows.filter(row=>row.candidates.length>1).length;
+          progress.textContent='انتهت القراءة · '+filled+' خانة لها قراءة واحدة · '+conflicts+' تحتاج مقارنة.'
+            +(report.failures.length?' تعذرت قراءة مستند أو صفحة من '+report.failures.length+' ملف.':'');
+          const controls={};
+          const section=(title,rows)=>panel(title,grid(...rows.map(({key,label,candidates})=>{
+            const defaultValue=candidates.length===1?candidates[0].value:'';
+            const control=controls[key]=input(defaultValue,{maxlength:160,dir:'auto'});
+            const explanation=candidates.length===1?'المصدر · '+candidates[0].source:
+              candidates.length?'توجد قراءات مختلفة. راجع المصدر وأدخل القيمة الصحيحة.':'بانتظار البيانات من المستند.';
+            return h('div',{class:'wf-result'},field(label,control),h('small',{class:'muted'},explanation),
+              candidates.length>1?h('ul',null,...candidates.map(x=>h('li',null,x.value+' · '+x.source))):null);
+          })));
+          const groups=[['بيانات العميل',report.rows.filter(row=>!/^e[12]_/.test(row.key))],
+            ['المفوّض الأول',report.rows.filter(row=>row.key.startsWith('e1_'))],
+            ['المفوّض الثاني',report.rows.filter(row=>row.key.startsWith('e2_'))]];
+          result.replaceChildren(...groups.map(([title,rows])=>section(title,rows)),
+            btn('استخدام الاسم والرقم في طلب واتساب',()=>{
+              const name=controls.trade_name.value.trim();
+              const registration=controls.unified.value.trim()||controls.old_registration.value.trim();
+              if(!name||!/^\d{10}$/.test(registration)){progress.textContent='راجع الاسم ورقم السجل أو الرقم الموحّد أولًا.';return;}
+              creation(intakeFields(),{name,registration});
+            },'btn primary'));
+        }catch(error){progress.textContent=error?.message||'تعذرت قراءة المستندات.';}
+        finally{file.disabled=false;}
+      });
+      body.replaceChildren(panel('تجربة قراءة مستندات العميل',back,
+        h('p',null,'اختر PDF أو صورًا. ستظهر قراءات نموذج البيانات والتفويض للمراجعة. القراءة داخل المتصفح ولا تُحفظ هذه المسودة.'),
+        h('p',{class:'muted'},'الحد ثلاثة مستندات للقراءة. يبدأ الفحص بأول عشر صفحات من كل PDF، ويقرأ ضوئيًا حتى ثلاث صفحات ممسوحة.'),
+        field('مستندات العميل للقراءة',file),progress,result));
     }
     function intakeFields(){
       let receipt=crypto.randomUUID();
@@ -165,9 +209,9 @@
       }));
       body.replaceChildren(panel('استقبال من Zoho Mail',btn('العودة إلى القائمة',run(list),'btn ghost'),consent.label,load,choices));
     }
-    function creation(intake=intakeFields()){
+    function creation(intake=intakeFields(),draft={}){
       feedback('');
-      const name=input('',{maxlength:160}), number=input('',{dir:'ltr',inputmode:'numeric'});
+      const name=input(draft.name||'',{maxlength:160}), number=input(draft.registration||'',{dir:'ltr',inputmode:'numeric'});
       const result=h('div',{class:'wf-result'});
       const identity=()=>({name:name.value.trim(),registration:digit(number.value)});
       for(const field of [name,number])field.addEventListener('input',()=>result.replaceChildren());
