@@ -23,6 +23,7 @@ create table if not exists wholesale_private.clients (
   created_at timestamptz not null default now()
 );
 alter table wholesale_private.clients add column if not exists documents_review jsonb;
+alter table wholesale_private.clients add column if not exists profile jsonb not null default '{}';
 create unique index if not exists wholesale_customer_code
   on wholesale_private.clients (lower(customer_code)) where customer_code is not null;
 
@@ -34,6 +35,7 @@ create table if not exists wholesale_private.intake (
   source_ref text,
   created_at timestamptz not null default now()
 );
+alter table wholesale_private.intake add column if not exists profile jsonb not null default '{}';
 create unique index if not exists wholesale_mail_source
   on wholesale_private.intake (source_ref) where channel = 'zoho';
 
@@ -169,6 +171,7 @@ declare
   matches jsonb;
   found_existing uuid;
   files jsonb;
+  reviewed_profile jsonb;
   item jsonb;
   document_id uuid;
   category text;
@@ -298,23 +301,43 @@ begin
     then raise exception 'mail_disabled'; end if;
     if receipt is null or channel is null or channel not in ('whatsapp','zoho','manual')
        or length(message)>32000 or jsonb_typeof(files)<>'array'
-       or jsonb_array_length(files)>3 or (channel='zoho' and coalesce(source_ref,'') !~ '^[0-9]+_[0-9]+$')
+       or jsonb_array_length(files)>12 or (channel='zoho' and coalesce(source_ref,'') !~ '^[0-9]+_[0-9]+$')
        or (channel='whatsapp' and message='' and jsonb_array_length(files)=0)
        or (action='intake' and message='' and jsonb_array_length(files)=0)
     then raise exception 'invalid_intake'; end if;
     if exists (select 1 from wholesale_private.intake i where i.id=receipt and i.client_id=c.id)
     then return jsonb_build_object('id',c.id); end if;
+    if (select coalesce(sum(length(f->>'content')),0) from jsonb_array_elements(files) f)>22369664 then
+      raise exception 'intake_size_limit';
+    end if;
+    reviewed_profile := coalesce(payload->'profile','{}');
+    if jsonb_typeof(reviewed_profile)<>'object' then raise exception 'invalid_profile'; end if;
+    if reviewed_profile<>'{}' then
+      if payload->>'profile_reviewed' is distinct from 'true' or exists (
+        select 1 from jsonb_each(reviewed_profile) as field(k,v)
+        where field.k not in ('unified','old_registration','city','confirm','activity','address','manager','title','mobile','email',
+          'ref','date','hijri','e1_name','e1_nat','e1_id','e1_title','e1_mobile','e2_name','e2_nat','e2_id','e2_title','e2_mobile')
+          or jsonb_typeof(field.v)<>'string' or length(trim(field.v #>> '{}')) not between 1 and 160
+          or (field.v #>> '{}') ~ '[[:cntrl:]]'
+      ) or (reviewed_profile ? 'unified' and reviewed_profile->>'unified' !~ '^70[0-9]{8}$')
+        or (reviewed_profile ? 'unified' and reviewed_profile->>'unified' <> c.registration)
+      then raise exception 'invalid_profile'; end if;
+      if action='intake' and payload->'profile_base' is distinct from c.profile then
+        raise exception 'profile_changed';
+      end if;
+    end if;
     begin
-      insert into wholesale_private.intake(id,client_id,channel,message,source_ref)
-      values(receipt,c.id,channel,message,source_ref);
+      insert into wholesale_private.intake(id,client_id,channel,message,source_ref,profile)
+      values(receipt,c.id,channel,message,source_ref,reviewed_profile);
     exception when unique_violation then raise exception 'duplicate_intake'; end;
     for item in select value from jsonb_array_elements(files) loop
       perform wholesale_private.add_document(c.id,receipt,item || '{"kind":"support"}');
     end loop;
-    if jsonb_array_length(files)>0 then
-      update wholesale_private.clients x set documents_review=null where x.id=c.id;
+    if jsonb_array_length(files)>0 or reviewed_profile<>'{}' then
+      update wholesale_private.clients x set documents_review=null,profile=x.profile || reviewed_profile where x.id=c.id;
     end if;
-    details := jsonb_build_object('receipt',receipt,'channel',channel);
+    details := jsonb_build_object('receipt',receipt,'channel',channel,'profile_fields',
+      coalesce((select jsonb_agg(k order by k) from jsonb_object_keys(reviewed_profile) k),'[]'));
   elsif action='document' then
     document_id := wholesale_private.add_document(c.id,null,payload);
     if coalesce(payload->>'kind','support')='support' then
