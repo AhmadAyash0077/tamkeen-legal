@@ -27,3 +27,7 @@ test('Najiz video-session activation (real format, synthetic names)',()=>{
   assert.equal(p.plaintiff,'سالم بن خالد الاختبار');assert.equal(p.defendant,'شركة تمكين الدولية للاجهزة المنزلية');
   assert.equal(p.side,'مدعى عليها');assert.equal(p.place,'جلسة مرئية');assert.equal(p.caseNo,'4870000001');
 });
+test('Najiz remote taradi notice (real format, synthetic numbers) adds no invented parties',()=>{
+  const p=W.parseText('صاحب الهوية:\n******1111\nنبلغكم بموعد جلسة صلح (عن بعد) للطلب رقم:\n01-4800000001 \nيوم الثلاثاء\nبتاريخ: 1448/05/23 هـ\nالساعة: 01:00 PM\nوستصلكم رسالة نصية برابط الجلسة قبل موعدها');
+  assert.equal(p.place,'جلسة مرئية');assert.equal(p.plaintiff,undefined);assert.equal(p.defendant,undefined);
+});

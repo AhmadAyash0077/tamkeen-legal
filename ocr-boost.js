@@ -162,6 +162,59 @@
     w.__boost = true;
     return w;
   }
+  /* ===== قراءة ملف كامل (صورة أو PDF) إلى نص لكل صفحة =====
+     ملفات PDF الصادرة من ناجز والمنصات فيها نص رقمي: نأخذه مباشرة (أدق وأسرع)،
+     ولا نلجأ للقراءة الضوئية إلا للصفحات الممسوحة التي لا نص فيها. */
+  const letters = t => (String(t || '').match(/[\u0600-\u06FFA-Za-z0-9]/g) || []).length;
+  function itemsToText(items){
+    const W = root.tamkeenWholesaleReader;
+    if (W && typeof W.pdfText === 'function') return W.pdfText(items);
+    return items.map(x => x.str + (x.hasEOL ? '\n' : ' ')).join('');
+  }
+  // تنظيف نص PDF:
+  // 1) تحويل أشكال الحروف العربية المعروضة (ﻋﺒﺪﻩ) إلى حروف عادية.
+  // 2) Word يخزّن «ال» قبل بعض الحروف معكوسة (املدعي ← المدعي، اخلطأ ← الخطأ).
+  // 3) حذف العلامة المائية: الأسطر المكررة 3 مرات فأكثر (مثل اسم من نزّل الملف من ناجز).
+  function cleanPdfText(raw){
+    let t = String(raw || '').normalize('NFKC');
+    t = t.replace(/(^|[\s(«"،:])ا([مخحجهعغفقكبت])ل(?=[\u0621-\u064A])/g, '$1ال$2');
+    t = t.replace(/(^|\s)مب(حافظة|دينة|نطقة)/g, '$1بم$2');
+    t = t.replace(/امل\s?كمة/g, 'المحكمة').replace(/احملكمة/g, 'المحكمة').replace(/امل امي|املامي/g, 'المحامي');
+    const lines = t.split(/\r?\n/), count = new Map();
+    for (const l of lines){ const k = l.replace(/\s+/g, ' ').trim(); if (k) count.set(k, (count.get(k) || 0) + 1); }
+    return lines.filter(l => { const k = l.replace(/\s+/g, ' ').trim(); return !k || count.get(k) < 3; }).join('\n').replace(/\n{3,}/g, '\n\n');
+  }
+  root.TamkeenOcr.cleanPdfText = cleanPdfText;
+  async function readFilePages(file, progress = () => {}, maxPages = 10){
+    const out = [];
+    const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name);
+    if (isPdf){
+      const pdfjs = await root.pdfLib();
+      const doc = await pdfjs.getDocument({data: await file.arrayBuffer()}).promise;
+      const n = Math.min(doc.numPages, maxPages);
+      let rendered = null;
+      for (let i = 1; i <= n; i++){
+        progress('قراءة ' + file.name + (n > 1 ? ' — صفحة ' + i + ' من ' + n : '') + '…');
+        let text = '';
+        try { text = cleanPdfText(itemsToText((await (await doc.getPage(i)).getTextContent()).items)); } catch (e) {}
+        const uniqueWords = new Set((text.match(/[\u0621-\u064A]{2,}/g) || [])).size;
+        if (letters(text) >= 40 && uniqueWords >= 12 && !/\uFFFD/.test(text)){ out.push({text, method:'نص PDF'}); continue; }
+        // صفحة ممسوحة: قراءة ضوئية
+        if (!rendered){ progress('الملف ممسوح ضوئيًا — قراءة ضوئية (أول مرة تحمّل حزمة اللغة العربية)…'); rendered = (await root.renderPdfPages(await file.arrayBuffer(), maxPages)).pages; }
+        const w = await root.uxLangWorker();
+        const r = await w.recognize(rendered[i - 1].blob);
+        out.push({text: r.data.mainText || r.data.text || '', method:'قراءة ضوئية', textWithDigits: r.data.text || ''});
+      }
+    } else if (/^image\//.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name)){
+      progress('قراءة ' + file.name + '… (أول مرة تحمّل حزمة اللغة العربية)');
+      const w = await root.uxLangWorker();
+      const r = await w.recognize(file);
+      out.push({text: r.data.mainText || r.data.text || '', method:'قراءة ضوئية', textWithDigits: r.data.text || ''});
+    }
+    return out;
+  }
+  root.TamkeenOcr.readFilePages = readFilePages;
+
   function hook(){
     if (typeof root.uxLangWorker === 'function' && !root.uxLangWorker.__boost){
       const orig = root.uxLangWorker;

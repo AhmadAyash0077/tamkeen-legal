@@ -14,10 +14,18 @@
   function parseText(raw){
     const t = digits(raw);
     const out = {};
+    const ALL_LABELS = /^(?:رقم|المدعي|المدعى|المحكمة|الدائرة|تاريخ|الموضوع|موضوع|نوع|التصنيف|حالة|الحالة|المبلغ|قيمة|طالب|الطرف|المقامة|ضد|الساعة|الوقت)/;
     const label = (labels, max = 80) => {
       for (const l of labels){
         const m = new RegExp('(?:^|\\n|\\s)(?:' + l + ')\\s*[:：\\-]\\s*([^\\n]{2,' + max + '})').exec(t);
         if (m) return clean(m[1]);
+      }
+      // بدون نقطتين: «التسمية    القيمة» في سطر واحد، أو التسمية وحدها والقيمة في السطر التالي
+      for (const l of labels){
+        const a = new RegExp('(?:^|\\n)\\s*(?:' + l + ')[ \\t]{2,}([^\\n]{2,' + max + '})').exec(t);
+        if (a && !ALL_LABELS.test(a[1].trim())) return clean(a[1]);
+        const b = new RegExp('(?:^|\\n)\\s*(?:' + l + ')\\s*\\n\\s*([^\\n]{2,' + max + '})').exec(t);
+        if (b && !ALL_LABELS.test(b[1].trim()) && !/^\\d+$/.test(b[1].trim())) return clean(b[1]);
       }
       return '';
     };
@@ -25,8 +33,8 @@
     const cn = /(?:ال|لل|ل)?(?:قضية|قضيه|دعوى|دعوي)\s*(?:رقم)?\s*[:：#(]?\s*(\d{6,})/.exec(t);
     if (cn) out.caseNo = cn[1];
     // صيغة ناجز: «المقامة من: …» ثم «ضد: …» كل واحدة في سطر
-    out.plaintiff = label(['المدعي','المدعية','طالب الصلح','مقدم الطلب','طالب التنفيذ','المقامة من','المقامه من','مقامة من','المرفوعة من','المقدمة من']);
-    out.defendant = label(['المدعى عليه','المدعى عليها','المدعي عليه','الطرف الآخر','الطرف الثاني','المطلوب ضده الصلح','المنفذ ضده','ضد','في مواجهة']);
+    out.plaintiff = label(['اسم المدعي','المدعي','المدعية','بيانات المدعي','طالب الصلح','مقدم الطلب','طالب التنفيذ','المقامة من','المقامه من','مقامة من','المرفوعة من','المقدمة من']);
+    out.defendant = label(['اسم المدعى عليه','المدعى عليه','المدعى عليها','بيانات المدعى عليه','المدعي عليه','الطرف الآخر','الطرف الثاني','المطلوب ضده الصلح','المنفذ ضده','ضد','في مواجهة']);
     const vs = /(?:مقامة|المقامة|المرفوعة|مرفوعة|المقدمة|مقدمة)\s+من\s+(?:قبل\s+)?(.{3,60}?)\s+(?:ضد|على)\s+(.{3,60}?)(?=[\n،,.]|\s+(?:لدى|في|أمام|بتاريخ|وموعد)|$)/.exec(t);
     if (vs){ out.plaintiff = out.plaintiff || clean(vs[1]); out.defendant = out.defendant || clean(vs[2]); }
     // رسائل ناجز الموجهة لصاحب الهوية: «الدعوى المقامة ضدكم من X» أو «المقامة منكم ضد X»
@@ -39,12 +47,12 @@
     else if (/(?:ضدكم|عليكم)/.test(t) && out.plaintiff && !out.defendant){ out.defendant = COMPANY; out.side = 'مدعى عليها'; }
     else if (out.plaintiff && /تمكين/.test(out.plaintiff)) out.side = 'مدعية';
     else if (out.defendant && /تمكين/.test(out.defendant)) out.side = 'مدعى عليها';
-    out.subject = label(['موضوع الدعوى','موضوع القضية','موضوع النزاع','موضوع الطلب','نوع الدعوى','التصنيف الفرعي','التصنيف','الموضوع']);
-    const court = /(المحكمة\s+(?:ال)?[ء-ي]+(?:\s+(?:ال)?[ء-ي]+){0,3}?(?:\s+(?:ب|في\s+)[ء-ي]+)?)(?=[\n،,.]|\s+(?:الدائرة|بتاريخ|وموعد|موعد|رقم|في\s+تمام|الساعة)|$)/.exec(t);
+    out.subject = label(['موضوع الدعوى','نوع الدعوى الفرعي','التصنيف الفرعي للدعوى','موضوع القضية','موضوع النزاع','موضوع الطلب','نوع الدعوى','التصنيف الفرعي','التصنيف','الموضوع']);
+    const court = /(المحكمة\s+(?:ال)?[ء-ي]+(?:\s+(?:ال)?[ء-ي]+){0,3}?(?:\s+(?:ب|في\s+)[ء-ي]+)?)(?=[\n،,.]|\s+(?:الدائرة|بتاريخ|وموعد|موعد|رقم|في\s+تمام|الساعة|حفظه|حفظها|وفقه|سلمه)|$)/.exec(t);
     if (court) out.court = clean(court[1]);
     const circuit = /(الدائرة\s+(?:[ء-ي]+|\d+)(?:\s+(?:[ء-ي]+|\d+)){0,4}?)(?=[\n،,.]|\s+(?:بالمحكمة|في\s+المحكمة|لدى|بتاريخ|وموعد|موعد|في\s+تمام|الساعة)|$)/.exec(t);
     if (circuit) out.circuit = clean(circuit[1]);
-    const amt = /(?:بمبلغ|مبلغ\s+(?:المطالبة|الدعوى)?|قيمة\s+المطالبة|المطالبة\s+بمبلغ)\s*[:：]?\s*(\d[\d,٬\s]*(?:\.\d+)?)\s*(?:ريال|ر\.?\s?س)/.exec(t) || /(\d[\d,٬]{3,}(?:\.\d+)?)\s*(?:ريال|ر\.?\s?س)/.exec(t);
+    const amt = /(?:بمبلغ|مبلغ\s+(?:المطالبة|الدعوى)?|قيمة\s+المطالبة|المطالبة\s+بمبلغ)\s*[:：]?[\s(]*(\d[\d,٬]*(?:\.\d+)?)[\s)]*(?:ريال|ر\.?\s?س)/.exec(t) || /(\d[\d,٬]{3,}(?:\.\d+)?)[\s)]*(?:ريال|ر\.?\s?س)/.exec(t);
     if (amt){ const n = Number(amt[1].replace(/[,٬\s]/g, '')); if (n > 0) out.claimAmount = n; }
     if (/(?:مرئية|عن\s+بعد|افتراضية|عبر\s+(?:منصة\s+)?(?:ناجز|الاتصال|المرئي))/.test(t)) out.place = 'جلسة مرئية';
     const place = label(['مقر الجلسة','مكان الجلسة','القاعة','المكان'], 60);
@@ -75,23 +83,31 @@
 
   /* ===== قارئ الملفات (صور أو PDF) — يحوّلها لنص ثم يمر على نفس المحلل ===== */
   async function filesToText(files, progress){
-    const pages = [];
+    let text = '', methods = new Set(); const kinds = [];
     for (const f of files){
-      if (/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)){
-        progress('تجهيز ' + f.name + '…');
-        const r = await root.renderPdfPages(await f.arrayBuffer(), 10);
-        for (const pg of r.pages) pages.push({blob: pg.blob, name: f.name});
-      } else if (/^image\//.test(f.type)) pages.push({blob: f, name: f.name});
-      if (pages.length >= 10) break;
+      const pages = await root.TamkeenOcr.readFilePages(f, progress, 10);
+      let ft = '';
+      for (const pg of pages){ ft += (ft ? '\n' : '') + pg.text; methods.add(pg.method); }
+      kinds.push({name: f.name, kind: docKind(ft)});
+      text += (text ? '\n' : '') + ft;
     }
-    if (!pages.length) throw new Error('ارفع صورة (لقطة شاشة من ناجز أو واتساب) أو ملف PDF.');
-    const w = await root.uxLangWorker(); let text = '';
-    for (let i = 0; i < pages.length; i++){
-      progress('قراءة ' + (pages.length > 1 ? 'الصفحة ' + (i + 1) + ' من ' + pages.length : pages[i].name) + '… (أول مرة تحمّل حزمة اللغة العربية)');
-      const r = await w.recognize(pages[i].blob);
-      text += (text ? '\n' : '') + (r.data.mainText || r.data.text || '');
-    }
+    filesToText.lastKinds = kinds;
+    if (!text.trim() && !files.some(f => /pdf|image/i.test(f.type) || /\.(pdf|jpe?g|png|webp)$/i.test(f.name))) throw new Error('ارفع صورة (لقطة شاشة من ناجز أو واتساب) أو ملف PDF.');
+    filesToText.lastMethods = [...methods];
     return text.trim();
+  }
+  function docKind(text){
+    const t = String(text || '');
+    // الأكثر تحديدًا أولًا: المذكرة قد تذكر «فاتورة» في متنها
+    if (/(?:مذكرة جوابية|مذكرة رد|مذكرة دفاع|لائحة اعتراضية|لائحة الاعتراض|مذكرة)/.test(t)) return 'مذكرة';
+    if (/(?:صحيفة الدعوى|صحيفة دعوى)/.test(t)) return 'صحيفة دعوى';
+    if (/(?:منطوق الحكم|حكمت الدائرة|نص الحكم|صك الحكم)/.test(t)) return 'صك حكم';
+    if (/(?:مشفرة تمامًا|مشفرة تماما|مشغرة|الرسائل والمكالمات|WhatsApp|آخر ظهور|ليس ضمن جهات الاتصال)/.test(t)) return 'محادثة واتساب (لقطات شاشة)';
+    if (/(?:الرقم الضريبي|ضريبة القيمة|مبلغ الضريبة|سياسة الاستبدال|سياسة الإستبدال|فاتورة ضريبية)/.test(t)) return 'فاتورة';
+    if (/(?:الطرف الأول|الطرف الاول)/.test(t) && /(?:عقد|العقد)/.test(t)) return 'عقد';
+    // القراءة الضوئية قد تشوّه «الرقم الضريبي»؛ نكتفي بعلامتين من علامات الفاتورة
+    if ((t.match(/(?:الإجمالي|الاجمالي|صافي القيمة|كود الصنف|المبلغ|القيمة|الكمية|ريال)/g) || []).length >= 4) return 'فاتورة';
+    return '';
   }
   function readerControls(onText){
     const inp = root.h('input', {type:'file', multiple:true, accept:'image/png,image/jpeg,image/webp,application/pdf', style:'display:none'});
@@ -154,7 +170,18 @@
       if (mod === 'cases' && p.date && !p.time) kids.push(box('warn', 'في الرسالة تاريخ بدون وقت؛ أضف الجلسة من صفحة القضية بعد الحفظ.'));
       if (p.ambiguous) kids.push(box('warn', 'الرسالة فيها أكثر من رقم أو تاريخ؛ تأكد من القيم المختارة.'));
       if (mod === 'cases' && !d.plaintiff) kids.push(box('warn', 'الرسالة ما فيها اسم المدعي بشكل واضح — اكتبه يدويًا في خانة «المدعي» (حقل إلزامي للحفظ).'));
-      if (mod === 'taradi' && (!d.plaintiff || !d.defendant)) kids.push(box('warn', 'أكمل اسم ' + (!d.plaintiff ? 'طالب الصلح' : 'الطرف الآخر') + ' يدويًا؛ ما ورد في الرسالة.'));
+      if (mod === 'taradi'){
+        const miss = [['plaintiff','طالب الصلح'],['defendant','الطرف الآخر'],['subject','موضوع النزاع']].filter(([k]) => !d[k]).map(([, l]) => l);
+        if (miss.length) kids.push(box('warn', 'الرسالة ما فيها: ' + miss.join('، ') + ' — أكملها يدويًا (حقول إلزامية للحفظ).'));
+      }
+      // منع التكرار: نفس رقم القضية/الطلب موجود مسبقًا
+      const nn = v => (root.normDigits ? root.normDigits(String(v || '')) : String(v || '')).replace(/[\s\-–—]/g, '');
+      const num = mod === 'taradi' ? p.reqNo : p.caseNo;
+      if (num){
+        const dup = root.recs(mod).find(r => nn(mod === 'taradi' ? r.reqNo : r.caseNo) === nn(num));
+        if (dup) kids.unshift(box('warn', root.h('span', null, (mod === 'taradi' ? 'طلب الصلح' : 'القضية') + ' رقم ' + num + ' موجود مسبقًا في البرنامج. إذا كانت هذه رسالة موعد جديد ',
+          root.h('a', {href: '#' + mod + '-' + dup.id}, 'افتح السجل الموجود'), ' والصق الرسالة في «' + (mod === 'taradi' ? 'تحديث موعد الجلسة' : 'إضافة الجلسة القادمة') + '» بدل إنشاء سجل مكرر.')));
+      }
       if (!filled.length && !pendingHearing) kids.push(box('warn', 'ما قدرت أستخرج بيانات من الرسالة. عبّئ الحقول يدويًا، وحُفظ نص الرسالة مع السجل.'));
       out.replaceChildren(...kids);
     }
@@ -165,7 +192,12 @@
         : 'الصق الرسالة، أو ارفع صورة/لقطة شاشة من ناجز أو صحيفة الدعوى (صورة أو PDF). البرنامج يعبّي الحقول الفارغة ويحفظ النص مع القضية، ويرفق الملف بعد الحفظ.'),
       ta, root.h('div', {class:'row', style:'margin-top:10px;gap:8px;flex-wrap:wrap;align-items:center'}, btn, ...readerControls((text, files) => {
         pendingFiles = {mod, files};
-        if (text){ ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + text; run(); }
+        const p = text ? parseFull(mod, text) : {};
+        const useful = ['caseNo','reqNo','plaintiff','defendant','court','circuit','date'].some(k => p[k]);
+        const kinds = filesToText.lastKinds || [];
+        const list = kinds.length > 1 || (kinds[0] && kinds[0].kind) ? box('info', 'الملفات: ' + kinds.map(k => k.name + ' ← ' + (k.kind || 'غير مصنّف')).join(' · ') + '. كلها ستُرفق بالسجل بعد الحفظ.') : null;
+        if (text && useful){ ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + text; run(); if (list) out.prepend(list); }
+        else if (text) out.replaceChildren(...[list, box('info', 'الملفات قُرئت لكنها لا تحتوي بيانات القضية (رقم القضية أو الأطراف أو الموعد) — تبدو مستندات مؤيدة، وستُرفق بالسجل بعد الحفظ.')].filter(Boolean));
         else out.replaceChildren(box('warn', 'ما قدرت أقرأ نصًا واضحًا من الملف؛ عبّئ الحقول يدويًا. سيُرفق الملف بالسجل بعد الحفظ.'));
       })), out);
   }

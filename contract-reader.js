@@ -15,26 +15,18 @@
 
   // قراءة الملفات صفحةً صفحة
   async function readFiles(files, progress){
-    const pages = [];
+    const info = {}, types = []; let n = 0;
     for (const f of files){
-      if (/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)){
-        progress('تجهيز ' + f.name + '…');
-        const buf = await f.arrayBuffer();
-        const r = await root.renderPdfPages(buf, MAX_PAGES);
-        for (const p of r.pages) pages.push({blob: p.blob, file: f.name});
-      } else if (/^image\//.test(f.type)) pages.push({blob: f, file: f.name});
-      if (pages.length >= MAX_PAGES) break;
+      const pages = await root.TamkeenOcr.readFilePages(f, progress, MAX_PAGES);
+      for (const pg of pages){
+        n++; const x = root.uxReadPage(pg.textWithDigits || pg.text || '');
+        info[n] = x; types.push({file: f.name, type: x.type, method: pg.method});
+        if (n >= MAX_PAGES) break;
+      }
+      if (n >= MAX_PAGES) break;
     }
-    if (!pages.length) throw new Error('لم أجد صفحات قابلة للقراءة. ارفع صورًا (JPG/PNG) أو ملفات PDF.');
-    const w = await root.uxLangWorker();
-    const info = {}, types = [];
-    for (let i = 0; i < pages.length; i++){
-      progress('قراءة الصفحة ' + (i + 1) + ' من ' + pages.length + ' (' + pages[i].file + ')…');
-      const r = await w.recognize(pages[i].blob);
-      const x = root.uxReadPage(r.data.text || '');
-      info[i + 1] = x; types.push({file: pages[i].file, type: x.type});
-    }
-    return {info, types, pages: pages.length};
+    if (!n) throw new Error('لم أجد صفحات قابلة للقراءة. ارفع صورًا (JPG/PNG) أو ملفات PDF.');
+    return {info, types, pages: n};
   }
   const TYPE_AR = {cr:'سجل تجاري', national_id:'هوية', address:'عنوان وطني', license:'رخصة', vat:'شهادة ضريبية', bond:'سند', contract_auth:'نموذج التفويض', contract_cover:'غلاف العقد', internal_approval:'اعتماد داخلي', shop_photo:'صورة محل', other:'غير مصنّف'};
 
@@ -70,7 +62,7 @@
         if (!d) throw new Error('العقد غير موجود.');
         const rows = contractRows(info, d);
         const empty = rows.filter(r => r.kind === 'empty' && !r.conflict), diff = rows.filter(r => r.kind === 'diff' || r.conflict);
-        out.append(root.h('div', {class:'small'}, root.h('b', null, 'المستندات: '), types.map(t => t.file + ' ← ' + (TYPE_AR[t.type] || t.type)).join(' · ')));
+        out.append(root.h('div', {class:'small'}, root.h('b', null, 'المستندات: '), types.map(t => t.file + ' ← ' + (TYPE_AR[t.type] || t.type) + (t.method ? ' (' + t.method + ')' : '')).join(' · ')));
         if (mode === 'new'){
           for (const r of empty) setVal(d, r.fk, r.fv);
           if (empty.length) out.append(box('ok', 'عُبّئ ' + NF(empty.length) + ': ' + empty.map(r => LBL(r.fk)).join('، ') + '. راجعها مقابل المستندات قبل الحفظ.'));
