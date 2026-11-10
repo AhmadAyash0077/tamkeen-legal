@@ -2248,9 +2248,10 @@ let db=null,user=null,assets=null,sampleFn=null,downloads=null;
 const COLL_PATH=c=>c;
 async function boot(){
   applyTheme();renderShell();
-  if(!window.claude||typeof window.claude.use!=='function'){showFatal('افتح هذا التطبيق من رابطه على claude.ai؛ قاعدة البيانات لا تعمل خارج العارض.');return}
-  [db,user,assets,sampleFn,downloads]=await Promise.all(['db','user','assets','sample','downloads'].map(n=>window.claude.use(n).catch(()=>null)));
-  if(!db){showFatal('قاعدة البيانات غير متاحة في هذا العرض. سجّل الدخول إلى claude.ai وافتح الرابط من جديد.');return}
+  if(!window.claude||typeof window.claude.use!=='function'){showFatal('تعذر تشغيل خدمة البيانات. تحقق من اتصال الإنترنت ثم أعد تحميل الصفحة.');return}
+  let dbErr=null;
+  [db,user,assets,sampleFn,downloads]=await Promise.all(['db','user','assets','sample','downloads'].map(n=>window.claude.use(n).catch(e=>{if(n==='db')dbErr=e;return null})));
+  if(!db){showFatal((dbErr&&dbErr.message)||'تعذر الاتصال بقاعدة البيانات. تحقق من اتصال الإنترنت وسجّل الدخول من جديد ثم أعد تحميل الصفحة.');return}
   if(user){const me=await user.me();S.me={id:me.id,name:me.name,avatar:me.avatarUrl,canEdit:me.canEdit,isOwner:me.isOwner};const cw=await user.can('data.write');S.canWrite=cw!==false;S.readOnly=cw===false;if(S.readOnly)setSave('ro')}
   else S.canWrite=true;
   renderWho();
@@ -2921,9 +2922,9 @@ function clientPdfPanel(r,d0,onDone,existing,opts={}){
   function applyCats(){for(const p of st.pages){const x=st.info[p.page]||{};const t=PAGE_TYPES.find(y=>y[0]===x.type);st.cats[p.page]=t?(t[0]==='national_id'?idCategory(x,D()):t[2]):OTHER_CAT}}
   async function runAI(){st.aiErr=null;
     if(!aiEnabled()||!sampleFn){try{st.info=await uxLocalClassify(st.pages,D(),m=>report(m));const n=Object.values(st.info).filter(x=>x.type&&x.type!=='other').length;if(!n)st.aiErr='لم تتعرف القراءة المحلية على الصفحات. صنّفها يدويًا، أو اربط قراءة Claude من الإعدادات لدقة أعلى.';else report(`قراءة محلية: تعرّفت على ${n} من ${st.pages.length} صفحة. القراءة المحلية أقل دقة من Claude — راجع التصنيف والأرقام قبل الحفظ.`,n===st.pages.length?'ok':'warn')}catch(e){st.aiErr='تعذرت القراءة المحلية: '+(e?.message||e)+'. تحقق من الإنترنت (تُحمَّل حزمة اللغة أول مرة).'}}
-    else if(!sampleFn){st.aiErr='القراءة الآلية غير متاحة في هذا العرض. افتح البرنامج من المتصفح على claude.ai.'}
+    else if(!sampleFn){st.aiErr='القراءة الآلية غير مفعّلة. فعّل قراءة Claude من الإعدادات ثم أعد المحاولة.'}
     else{const lim=await sampleFn.limits().catch(()=>null);
-      if(!lim?.images)st.aiErr='هذا العرض لا يسمح بإرسال صور الصفحات للقراءة. افتح البرنامج من المتصفح على claude.ai ووافق على استخدام Claude.';
+      if(!lim?.images)st.aiErr='خدمة القراءة الآلية لا تقبل صور الصفحات حاليًا. تحقق من إعداد قراءة Claude في الإعدادات ثم أعد المحاولة.';
       else{try{st.info=await classifyPages(st.pages,D(),m=>report(m));const n=Object.keys(st.info).length;
           if(!n)st.aiErr='رجعت القراءة بدون نتيجة.';else report(`قُرئت ${n} من ${st.pages.length} صفحة. راجع التصنيف ثم احفظ.`,n===st.pages.length?'ok':'warn')}
         catch(e){st.aiErr=aiErr(e)+(e?.code?` (${e.code})`:'')}}}
