@@ -14,3 +14,10 @@ test('taradi labels and nothing invented from unrelated text',()=>{
   assert.equal(p.plaintiff,'خالد الاختبار');assert.equal(p.defendant,'شركة تمكين');assert.equal(p.subject,'أجور متأخرة');
   assert.deepEqual(W.parseText('مرحبا، تم استلام طلبك'),{});
 });
+test('Najiz style addressed to the ID holder',()=>{
+  const a=W.parseText('صاحب الهوية: ******6009\nنفيدكم بقيد الدعوى رقم (4470555555) المقامة ضدكم من (خالد عبدالله الاختبار) لدى المحكمة العمالية بالرياض');
+  assert.equal(a.plaintiff,'خالد عبدالله الاختبار');assert.equal(a.defendant,'شركة تمكين الدولية');assert.equal(a.side,'مدعى عليها');assert.equal(a.court,'المحكمة العمالية بالرياض');
+  const b=W.parseText('تم قيد الدعوى المقامة منكم ضد «مؤسسة النموذج» لدى المحكمة التجارية بجدة');
+  assert.equal(b.plaintiff,'شركة تمكين الدولية');assert.equal(b.defendant,'مؤسسة النموذج');assert.equal(b.side,'مدعية');
+  assert.equal(W.parseText('المدعي: (سالم الاختبار)').plaintiff,'سالم الاختبار');
+});

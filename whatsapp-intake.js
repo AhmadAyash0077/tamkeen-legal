@@ -8,7 +8,7 @@
 (function(root){
   'use strict';
   const digits = s => String(s ?? '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[‎‏‪-‮]/g, '');
-  const clean = s => String(s || '').replace(/[*_~]+/g, '').replace(/\s+/g, ' ').replace(/^[\s:：\-–—]+|[\s،,.\-–—]+$/g, '').trim();
+  const clean = s => String(s || '').replace(/[*_~()«»"“”]+/g, '').replace(/\s+/g, ' ').replace(/^[\s:：\-–—]+|[\s،,.\-–—]+$/g, '').trim();
 
   // استخراج الحقول النصية من رسالة (القيم الزمنية تأتي من محلل الإشعارات الموجود في البرنامج)
   function parseText(raw){
@@ -25,6 +25,16 @@
     out.defendant = label(['المدعى عليه','المدعى عليها','المدعي عليه','الطرف الآخر','الطرف الثاني','المطلوب ضده الصلح','المنفذ ضده']);
     const vs = /(?:مقامة|المقامة|المرفوعة|مرفوعة|المقدمة|مقدمة)\s+من\s+(?:قبل\s+)?(.{3,60}?)\s+(?:ضد|على)\s+(.{3,60}?)(?=[\n،,.]|\s+(?:لدى|في|أمام|بتاريخ|وموعد)|$)/.exec(t);
     if (vs){ out.plaintiff = out.plaintiff || clean(vs[1]); out.defendant = out.defendant || clean(vs[2]); }
+    // رسائل ناجز الموجهة لصاحب الهوية: «الدعوى المقامة ضدكم من X» أو «المقامة منكم ضد X»
+    const COMPANY = 'شركة تمكين الدولية';
+    const stop = '(?=[\\n،,.]|\\s+(?:لدى|في|أمام|بتاريخ|وموعد|موعد|برقم|رقم)|$)';
+    const against = new RegExp('(?:المقامة|المرفوعة|المقدمة|مقامة|مرفوعة|مقدمة)\\s+(?:عليكم|ضدكم|ضدك|عليك)\\s+(?:من|بواسطة)\\s+(?:قبل\\s+)?[(«"]?(.{3,70}?)[)»"]?' + stop).exec(t);
+    const byYou = new RegExp('(?:المقامة|المرفوعة|المقدمة|مقامة|مرفوعة|مقدمة)\\s+(?:منكم|منك)\\s+(?:ضد|على)\\s+[(«"]?(.{3,70}?)[)»"]?' + stop).exec(t);
+    if (against){ out.plaintiff = out.plaintiff || clean(against[1]); out.defendant = out.defendant || COMPANY; out.side = 'مدعى عليها'; }
+    else if (byYou){ out.defendant = out.defendant || clean(byYou[1]); out.plaintiff = out.plaintiff || COMPANY; out.side = 'مدعية'; }
+    else if (/(?:ضدكم|عليكم)/.test(t) && out.plaintiff && !out.defendant){ out.defendant = COMPANY; out.side = 'مدعى عليها'; }
+    else if (out.plaintiff && /تمكين/.test(out.plaintiff)) out.side = 'مدعية';
+    else if (out.defendant && /تمكين/.test(out.defendant)) out.side = 'مدعى عليها';
     out.subject = label(['موضوع الدعوى','موضوع القضية','موضوع النزاع','موضوع الطلب','نوع الدعوى','التصنيف الفرعي','التصنيف','الموضوع']);
     const court = /(المحكمة\s+(?:ال)?[ء-ي]+(?:\s+(?:ال)?[ء-ي]+){0,3}?(?:\s+(?:ب|في\s+)[ء-ي]+)?)(?=[\n،,.]|\s+(?:الدائرة|بتاريخ|وموعد|موعد|رقم|في\s+تمام|الساعة)|$)/.exec(t);
     if (court) out.court = clean(court[1]);
@@ -54,7 +64,7 @@
     r.ambiguous = !!base.ambiguous;
     return r;
   }
-  const LABELS = {caseNo:'رقم القضية', reqNo:'رقم طلب الصلح', plaintiff:'المدعي', defendant:'المدعى عليه', court:'المحكمة', circuit:'الدائرة', subject:'الموضوع', claimAmount:'قيمة المطالبة', date:'تاريخ الجلسة', time:'الوقت', place:'المكان', link:'رابط الجلسة'};
+  const LABELS = {side:'صفة الشركة', caseNo:'رقم القضية', reqNo:'رقم طلب الصلح', plaintiff:'المدعي', defendant:'المدعى عليه', court:'المحكمة', circuit:'الدائرة', subject:'الموضوع', claimAmount:'قيمة المطالبة', date:'تاريخ الجلسة', time:'الوقت', place:'المكان', link:'رابط الجلسة'};
   const showVal = (k, v) => k === 'date' ? fmtDate(v) : k === 'claimAmount' ? Number(v).toLocaleString('ar-SA-u-nu-latn') + ' ريال' : String(v);
   const box = (cls, ...kids) => root.h('div', {class: 'banner ' + cls}, ...kids);
   const styleTA = 'width:100%;min-height:96px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit;line-height:1.7';
@@ -116,7 +126,7 @@
       const p = parseFull(mod, raw);
       const map = mod === 'taradi'
         ? {reqNo:'reqNo', plaintiff:'plaintiff', defendant:'defendant', subject:'subject', claimAmount:'claimAmount', time:'time', place:'place', link:'link'}
-        : {caseNo:'caseNo', plaintiff:'plaintiff', defendant:'defendant', court:'court', circuit:'circuit', subject:'subject', claimAmount:'claimAmount'};
+        : {caseNo:'caseNo', plaintiff:'plaintiff', defendant:'defendant', court:'court', circuit:'circuit', subject:'subject', claimAmount:'claimAmount', side:'side'};
       const label = k => mod === 'taradi' ? ({plaintiff:'طالب الصلح', defendant:'الطرف الآخر'}[k] || LABELS[k]) : LABELS[k];
       const filled = [], skipped = [];
       const d = formData || {};
@@ -139,6 +149,8 @@
       if (mod === 'cases' && pendingHearing) kids.push(box('info', 'في الرسالة موعد جلسة ' + fmtDate(p.date) + ' الساعة ' + p.time + ' — ستُضاف الجلسة للقضية تلقائيًا بعد الحفظ.'));
       if (mod === 'cases' && p.date && !p.time) kids.push(box('warn', 'في الرسالة تاريخ بدون وقت؛ أضف الجلسة من صفحة القضية بعد الحفظ.'));
       if (p.ambiguous) kids.push(box('warn', 'الرسالة فيها أكثر من رقم أو تاريخ؛ تأكد من القيم المختارة.'));
+      if (mod === 'cases' && !d.plaintiff) kids.push(box('warn', 'الرسالة ما فيها اسم المدعي بشكل واضح — اكتبه يدويًا في خانة «المدعي» (حقل إلزامي للحفظ).'));
+      if (mod === 'taradi' && (!d.plaintiff || !d.defendant)) kids.push(box('warn', 'أكمل اسم ' + (!d.plaintiff ? 'طالب الصلح' : 'الطرف الآخر') + ' يدويًا؛ ما ورد في الرسالة.'));
       if (!filled.length && !pendingHearing) kids.push(box('warn', 'ما قدرت أستخرج بيانات من الرسالة. عبّئ الحقول يدويًا، وحُفظ نص الرسالة مع السجل.'));
       out.replaceChildren(...kids);
     }
