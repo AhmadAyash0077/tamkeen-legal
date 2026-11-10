@@ -43,38 +43,106 @@
     if(key.endsWith('mobile'))return mobile(s);
     if(key.endsWith('_id'))return /^[12]\d{9}$/.test(digits(s))&&uxIdOk(digits(s))?digits(s):'';
     if(key==='email')return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(s))?clean(s):'';
-    return arabic(s);
+    const value=clean(s);return /[\p{L}]{2}/u.test(value)&&value.length<=160?value:'';
   }
   function sources(){
-    const rows=new Map();
+    const rows=new Map();let accepted=0;
     return {
       put(key,value,source){
         const candidate=normalized(key,value);
         if(!candidate)return;
+        accepted++;
         const list=rows.get(key)||[];
         if(!list.some(x=>ar(x.value)===ar(candidate)))list.push({value:candidate,source});
         rows.set(key,list);
       },
+      count(){return accepted;},
       result(){return Object.entries(labels).map(([key,label])=>({key,label,candidates:rows.get(key)||[]}));}
     };
   }
+  const aliases={
+    trade_name:['الاسم التجاري','اسم المنشأة','اسم المؤسسة','اسم الشركة','اسم العميل','اسم التاجر','Trade name','Commercial name','Company name','Establishment name'],
+    unified:['الرقم الوطني الموحد','الرقم الموحد للمنشأة','الرقم الموحد','Unified national number','Unified number'],
+    old_registration:['رقم السجل التجاري','السجل التجاري رقم','Commercial registration number','CR number','CR No.'],
+    city:['مدينة الإصدار','مكان الإصدار','مدينة السجل','Issuance city'],
+    confirm:['تاريخ التأكيد السنوي','Annual confirmation date'],
+    activity:['نشاط المنشأة','النشاط التجاري','نوع النشاط','Business activity'],
+    address:['العنوان الوطني المختصر','العنوان المختصر','Short address'],
+    manager:['اسم الشخص المسؤول','اسم المسؤول','اسم المدير','الشخص المسؤول','Manager name','Contact person'],
+    title:['المسمى الوظيفي','الوظيفة','Job title'],mobile:['رقم الجوال','رقم الهاتف المحمول','الجوال','Mobile number','Mobile'],
+    email:['البريد الإلكتروني','البريد الالكتروني','البريد','E-mail','Email'],
+    ref:['الرقم أعلى النموذج','رقم النموذج'],date:['تاريخ النموذج ميلادي','تاريخ النموذج','التاريخ الميلادي'],hijri:['التاريخ الهجري','الموافق هجري'],
+    e1_name:['اسم المفوض الأول','اسم المفوض الاول'],e1_nat:['جنسية المفوض الأول','جنسية المفوض الاول'],
+    e1_id:['هوية المفوض الأول','هوية المفوض الاول'],e1_title:['وظيفة المفوض الأول','وظيفة المفوض الاول'],e1_mobile:['جوال المفوض الأول','جوال المفوض الاول'],
+    e2_name:['اسم المفوض الثاني'],e2_nat:['جنسية المفوض الثاني'],e2_id:['هوية المفوض الثاني'],e2_title:['وظيفة المفوض الثاني'],e2_mobile:['جوال المفوض الثاني']
+  };
+  const escaped=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const fieldNames=Object.entries(aliases).flatMap(([key,names])=>names.map(name=>({key,label:ar(name).toLowerCase()}))).sort((a,b)=>b.label.length-a.label.length);
+  const fieldPattern=new RegExp('(?:^|[\\s:：|])('+fieldNames.map(x=>escaped(x.label)).join('|')+')(?=$|[\\s:：|])','g');
+  function foundLabels(line){
+    const normalized=ar(line).toLowerCase();const found=[];
+    for(const match of normalized.matchAll(fieldPattern)){
+      const label=match[1],key=fieldNames.find(x=>x.label===label).key;
+      found.push({key,start:match.index+match[0].length-label.length,end:match.index+match[0].length});
+    }
+    return found;
+  }
+  function candidate(key,value){
+    const text=clean(value).replace(/^[\s:：|=\-]+|[\s:：|]+$/g,'');
+    if(!text||/^(?:غير متوفر|لا يوجد|اسم|رقم|التوقيع|الختم|name|number)$/i.test(ar(text)))return '';
+    if(['unified','old_registration'].includes(key)){
+      const matches=text.match(/(?<!\d)\d(?:[ \t]*\d){9}(?!\d)/g)||[];
+      return matches.map(digits).find(x=>key==='unified'?/^70\d{8}$/.test(x):/^[1-9]\d{9}$/.test(x)&&!/^70/.test(x))||'';
+    }
+    if(key.endsWith('mobile'))return (text.match(/(?:\+?966|00966|0)?5(?:[ -]*\d){8}(?!\d)/g)||[]).map(x=>mobile(x.replace(/-/g,''))).find(Boolean)||'';
+    if(key==='address')return text.match(/\b[A-Z](?:\s*[A-Z]){3}(?:\s*\d){4}\b/i)?.[0]||'';
+    if(key==='email')return text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]||'';
+    if(['confirm','date','hijri'].includes(key))return text.match(/\d{1,4}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*\d{1,4}/)?.[0]||'';
+    return text;
+  }
   function extractTextSource(raw,source,out){
-    const lines=String(raw||'').split(/\n/).map(clean).filter(Boolean);
-    const text=lines.join('\n');
-    const flat=ar(text);
-    if(/شهاد[هة] السجل التجاري|commercial registration certificate/i.test(flat)){
-      const id=text.match(/(?:الرقم الوطني الموحد)\s*[:：]?\s*(70\d{8})|(70\d{8})\s*[:：]?\s*(?:الرقم الوطني الموحد)/)?.slice(1).find(Boolean);
-      if(id)out.put('unified',id,source);
-      const heading=lines.findIndex(x=>/شهاد[هة] السجل التجاري/.test(ar(x)));
-      const candidate=lines.slice(Math.max(0,heading),heading+7).map(x=>x.match(/(?:شركة|مؤسسة)\s+[\p{Script=Arabic}][\p{Script=Arabic}\s]{3,100}/u)?.[0])
-        .find(x=>x&&!/ذات مسؤولي|شخص واحد/.test(x));
-      if(candidate)out.put('trade_name',candidate,source);
+    const lines=String(raw||'').normalize('NFKC').replace(/[\u200e\u200f\u202a-\u202eً-ْـ]/g,'').split(/\r?\n/).map(clean).filter(Boolean);
+    const before=out.count();
+    lines.forEach((line,index)=>{
+      const fields=foundLabels(line);
+      fields.forEach((field,n)=>{
+        let value=line.slice(field.end,fields[n+1]?.start??line.length);
+        if(!clean(value).replace(/[:：|\-]/g,'').trim()){
+          // A value can precede its label in PDF visual order, or occupy the next line.
+          const prefix=n===0?line.slice(0,field.start):'';
+          if(prefix.trim())value=prefix;
+          else if(lines[index+1]&&!foundLabels(lines[index+1]).length)value=lines[index+1];
+        }
+        const parsed=candidate(field.key,value);if(parsed)out.put(field.key,parsed,source);
+        // Modern commercial certificates may place the unified number under the CR label.
+        if(field.key==='old_registration'){const unified=candidate('unified',value);if(unified)out.put('unified',unified,source)}
+      });
+    });
+    const text=lines.join('\n'),flat=ar(text);
+    if(/شهاده السجل التجاري|commercial registration certificate/i.test(flat)){
+      const heading=lines.findIndex(x=>/شهاده السجل التجاري|commercial registration certificate/i.test(ar(x)));
+      const company=lines.slice(heading+1,heading+7).find(x=>/^(شركة|مؤسسة)\s+/.test(x)&&x.length<=120&&!foundLabels(x).length&&!/ذات مسؤولي|شخص واحد/.test(x));
+      if(company)out.put('trade_name',company,source);
     }
     if(/اثبات عنوان|address proof|العنوان المختصر|short address/i.test(flat)){
-      const short=text.match(/\b[A-Z]\s*[A-Z]\s*[A-Z]\s*[A-Z]\s*\d\s*\d\s*\d\s*\d\b/i)?.[0];
-      if(short)out.put('address',short,source);
+      const short=candidate('address',text);if(short)out.put('address',short,source);
     }
+    return out.count()-before;
   }
+  function pdfText(items){
+    if(!items.some(x=>Array.isArray(x.transform)))return items.map(x=>x.str+(x.hasEOL?'\n':' ')).join('');
+    const rows=[];
+    for(const item of items){
+      if(!item.str)continue;
+      const y=item.transform?.[5]??0;let row=rows.find(x=>Math.abs(x.y-y)<3);
+      if(!row){row={y,items:[]};rows.push(row)}row.items.push(item);
+    }
+    return rows.sort((a,b)=>b.y-a.y).map(row=>{
+      const rtl=row.items.some(x=>x.dir==='rtl'||/\p{Script=Arabic}/u.test(x.str));
+      return row.items.sort((a,b)=>rtl?(b.transform?.[4]||0)-(a.transform?.[4]||0):(a.transform?.[4]||0)-(b.transform?.[4]||0)).map(x=>x.str).join(' ');
+    }).join('\n');
+  }
+
   // Proportions measured from the supplied Tamkeen form. Confirm the headings before reading its cells.
   const template={
     trade_name:[752,435,1068,475],unified:[430,435,545,477],city:[145,435,265,477],
@@ -142,71 +210,86 @@
     for(const [key,value] of Object.entries(result))if(value)out.put(key,value,source);
     return true;
   }
-  async function scan(files,progress){
+  async function scan(files,progress=()=>{},options={}){
     if(!files.length||files.length>12)throw Error('اختر من مستند واحد إلى 12 مستندًا للقراءة.');
-    const result=sources();let worker;
+    const result=sources(),failures=[],reports=[];let worker,workerFailure;
+    const check=()=>{if(options.signal?.aborted)throw new DOMException('أوقفت القراءة.','AbortError')};
+    const timed=async(promise,ms,label)=>{let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(label)),ms)})])}finally{clearTimeout(timer)}};
     const getWorker=async()=>{
-      if(worker)return worker;
-      await libLoad(UX_OCR_LIB);
-      worker=await window.Tesseract.createWorker(['ara','eng'],1,{
-        workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
-        corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1'
-      });
-      return worker;
+      check();if(worker)return worker;if(workerFailure)throw workerFailure;
+      try{
+        await timed(libLoad(UX_OCR_LIB),30000,'تعذر تحميل محرك قراءة الصور؛ تحقق من الإنترنت.');
+        const pending=window.Tesseract.createWorker(['ara','eng'],1,{workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1'});
+        pending.then(w=>{if(workerFailure)w.terminate().catch(()=>{})},()=>{});
+        worker=await timed(pending,90000,'تعذر تحميل حزم اللغة العربية والإنجليزية خلال المهلة.');return worker;
+      }catch(error){workerFailure=error;throw error}
     };
-    const failures=[];
+    const ocr=async(canvas,source,report)=>{
+      check();const w=await getWorker();
+      try{
+        await timed((async()=>{
+          await w.setParameters({tessedit_char_whitelist:'',tessedit_pageseg_mode:'11'});
+          const raw=(await w.recognize(canvas)).data.text||'';
+          report.texts.push({source,method:'قراءة ضوئية',text:raw.slice(0,16000)});
+          extractTextSource(raw,source,result);
+          // Specialized form reading supplements the general reader; it never suppresses it.
+          await readTemplate(canvas,w,source,result);
+        })(),120000,'تجاوزت قراءة الصفحة المهلة؛ جرّب صورة أوضح أو قص الصفحة.');
+      }catch(error){workerFailure=error;await w.terminate().catch(()=>{});worker=null;throw error}
+      finally{canvas.width=canvas.height=0}
+    };
     try{
-      for(const file of files){
-        if(file.size>20*1024*1024){failures.push(file.name);continue;}
+      for(const [fileIndex,file] of [...files].entries()){
+        check();const before=result.count();const report={name:file.name,pages:0,totalPages:1,ocrPages:0,issues:[],texts:[],candidates:0};reports.push(report);
+        progress('ملف '+(fileIndex+1)+' من '+files.length+' · '+file.name);
+        if(file.size>20*1024*1024){report.issues.push('حجم الملف يتجاوز 20 ميجابايت.');failures.push(file.name);continue}
         try{
-          if(/\.pdf$/i.test(file.name)){
+          if(/\.pdf$/i.test(file.name)||file.type==='application/pdf'){
             const pdfjs=await pdfLib();
-            const doc=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise;
+            const task=pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false});
+            const doc=await task.promise;
+            report.totalPages=doc.numPages;
             try{
-              const scanned=[];
               for(let i=1;i<=Math.min(doc.numPages,10);i++){
-                const page=await doc.getPage(i);
-                const data=await page.getTextContent();
-                const text=data.items.map(item=>item.str+(item.hasEOL?'\n':' ')).join('');
-                const source=file.name+' · صفحة '+i;
-                if(clean(text).length<40 || /[\uFE70-\uFEFF]\s+[\uFE70-\uFEFF]\s+[\uFE70-\uFEFF]/u.test(text))scanned.push(i);
-                else extractTextSource(text,source,result);
+                check();const source=file.name+' · صفحة '+i;
+                progress('ملف '+(fileIndex+1)+' من '+files.length+' · '+file.name+' · صفحة '+i+' من '+Math.min(doc.numPages,10));
+                try{
+                  const page=await doc.getPage(i);let text='';
+                  try{text=pdfText((await page.getTextContent()).items)}catch{}
+                  report.pages++;
+                  if(text.trim())report.texts.push({source,method:'نص PDF',text:text.slice(0,16000)});
+                  const found=extractTextSource(text,source,result);
+                  if(!found||clean(text).length<40||/[\uFFFD]/u.test(text)){
+                    const original=page.getViewport({scale:1});const scale=Math.min(2.45,3000/Math.max(original.width,original.height));
+                    const view=page.getViewport({scale});const canvas=document.createElement('canvas');
+                    canvas.width=Math.ceil(view.width);canvas.height=Math.ceil(view.height);
+                    await page.render({canvasContext:canvas.getContext('2d'),viewport:view}).promise;
+                    report.ocrPages++;await ocr(canvas,source,report);
+                  }
+                  page.cleanup?.();
+                }catch(error){if(error.name==='AbortError')throw error;report.issues.push('صفحة '+i+': '+errorReason(error))}
               }
-              const priority=[...new Set([5,4,6,...scanned])].filter(i=>scanned.includes(i)).slice(0,3);
-              for(const i of priority){
-                progress('تجري قراءة الصفحة '+i+' ضوئيًا…');
-                const page=await doc.getPage(i);
-                const view=page.getViewport({scale:2.45});
-                const canvas=document.createElement('canvas');
-                canvas.width=Math.ceil(view.width);canvas.height=Math.ceil(view.height);
-                await page.render({canvasContext:canvas.getContext('2d'),viewport:view}).promise;
-                const source=file.name+' · صفحة '+i;
-                const w=await getWorker();
-                if(!await readTemplate(canvas,w,source,result)){
-                  await w.setParameters({tessedit_pageseg_mode:'11'});
-                  extractTextSource((await w.recognize(canvas)).data.text,source,result);
-                }
-                canvas.width=canvas.height=0;
-              }
-            }finally{await doc.destroy();}
-          }else if(/\.(png|jpe?g|webp)$/i.test(file.name)){
-            progress('تجري قراءة الصورة…');
-            const bitmap=await createImageBitmap(file);
-            const ratio=Math.min(1,2200/Math.max(bitmap.width,bitmap.height));
-            const canvas=document.createElement('canvas');
-            canvas.width=Math.ceil(bitmap.width*ratio);canvas.height=Math.ceil(bitmap.height*ratio);
-            canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);
-            bitmap.close();
-            const w=await getWorker();
-            if(!await readTemplate(canvas,w,file.name,result)){
-              await w.setParameters({tessedit_pageseg_mode:'11'});
-              extractTextSource((await w.recognize(canvas)).data.text,file.name,result);
-            }
-          }else failures.push(file.name);
-        }catch{failures.push(file.name);}
+              if(doc.numPages>10)report.issues.push('فُحصت أول 10 صفحات من '+doc.numPages+'؛ اختر الصفحات المتبقية في ملف مستقل لقراءتها.');
+            }finally{await doc.destroy()}
+          }else if(/\.(png|jpe?g|webp)$/i.test(file.name)||/^image\/(png|jpeg|webp)$/.test(file.type)){
+            const bitmap=await createImageBitmap(file);const ratio=Math.min(2,3000/Math.max(bitmap.width,bitmap.height));
+            const canvas=document.createElement('canvas');canvas.width=Math.ceil(bitmap.width*ratio);canvas.height=Math.ceil(bitmap.height*ratio);
+            const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+            report.pages=1;report.ocrPages=1;await ocr(canvas,file.name,report);
+          }else report.issues.push('صيغة غير مدعومة. اختر PDF أو PNG أو JPG أو WebP.');
+        }catch(error){if(error.name==='AbortError')throw error;report.issues.push(errorReason(error))}
+        report.candidates=result.count()-before;
+        if(report.issues.length)failures.push(file.name);
+        report.status=report.candidates?'استُخرجت بيانات تحتاج مراجعة':report.issues.length?'تعذرت القراءة كليًا أو جزئيًا':report.texts.some(x=>x.text.trim())?'قُرئ النص ولم تُطابق حقول العميل':'لم يظهر نص قابل للقراءة';
       }
-      return {rows:result.result(),failures};
-    }finally{if(worker)await worker.terminate();}
+      return {rows:result.result(),failures,reports};
+    }finally{if(worker)await worker.terminate().catch(()=>{})}
   }
-  window.tamkeenWholesaleReader={scan,labels:Object.freeze(labels)};
+  function errorReason(error){
+    if(error?.name==='PasswordException')return 'الملف محمي بكلمة مرور؛ اختر نسخة مفتوحة.';
+    if(error?.name==='InvalidPDFException')return 'ملف PDF تالف أو غير صالح.';
+    if(/fetch|network|load|importScripts/i.test(error?.message||''))return 'تعذر تحميل مكوّن القراءة أو اللغة؛ تحقق من الإنترنت وأعد المحاولة.';
+    return String(error?.message||'تعذرت قراءة الصفحة.').slice(0,200);
+  }
+  window.tamkeenWholesaleReader={scan,labels:Object.freeze(labels),extractText:(raw)=>{const out=sources();extractTextSource(raw,'نص مستند',out);return out.result()},pdfText};
 })();

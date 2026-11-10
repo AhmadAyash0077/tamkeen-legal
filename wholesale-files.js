@@ -131,7 +131,7 @@
       filter.addEventListener('change',refresh);
       refresh();
       body.replaceChildren(panel(role==='accountant'?'قائمة المحاسب':'ملفات العملاء',
-        h('div',{class:'row'},role==='legal'?btn('استقبال طلب واتساب',()=>creation(),'btn primary'):null,role==='legal'?btn('تجربة قراءة مستندات العميل',reader):null,result.mail_enabled?btn('استقبال من Zoho Mail',mailIntake):null,btn('تحديث القائمة',run(list))),
+        h('div',{class:'row'},role==='legal'?btn('استقبال طلب واتساب',()=>creation(),'btn primary'):null,role==='legal'?btn('قراءة مستندات العميل',reader):null,result.mail_enabled?btn('استقبال من Zoho Mail',mailIntake):null,btn('تحديث القائمة',run(list))),
         grid(field('بحث في الملفات',query),field('حالة الملف',filter)),rows));
     }
     function reader(){
@@ -150,7 +150,7 @@
           const report=await window.tamkeenWholesaleReader.scan(originals,value=>progress.textContent=value);
           const filled=report.rows.filter(row=>row.candidates.length===1).length;
           const conflicts=report.rows.filter(row=>row.candidates.length>1).length;
-          progress.textContent='انتهت القراءة · '+filled+' خانة لها قراءة واحدة · '+conflicts+' تحتاج مقارنة.'
+          progress.textContent=(filled||conflicts?'اكتملت محاولة القراءة · '+filled+' خانة لها قراءة واحدة · '+conflicts+' تحتاج مقارنة.':'لم تُستخرج بيانات العميل. راجع نتيجة كل ملف والنص المقروء أدناه، أو أدخل البيانات يدويًا بعد مراجعة الأصل.')
             +(report.failures.length?' تعذرت قراءة مستند أو صفحة من '+report.failures.length+' ملف.':'');
           const controls={};
           const section=(title,rows)=>panel(title,grid(...rows.map(({key,label,candidates})=>{
@@ -164,7 +164,12 @@
           const groups=[['بيانات العميل',report.rows.filter(row=>!/^e[12]_/.test(row.key))],
             ['المفوّض الأول',report.rows.filter(row=>row.key.startsWith('e1_'))],
             ['المفوّض الثاني',report.rows.filter(row=>row.key.startsWith('e2_'))]];
-          result.replaceChildren(...groups.map(([title,rows])=>section(title,rows)),
+          result.replaceChildren(panel('نتيجة قراءة الملفات',...(report.reports||[]).map(item=>h('details',null,
+            h('summary',null,item.name+' — '+(item.status||'تعذرت القراءة')),
+            h('p',{class:'muted'},'الصفحات المفحوصة: '+item.pages+' من '+item.totalPages+' · القراءة الضوئية: '+item.ocrPages),
+            ...item.issues.map(issue=>h('p',null,issue)),
+            ...item.texts.map(part=>h('details',null,h('summary',null,part.source+' · '+part.method),h('pre',{style:'white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto;direction:rtl'},part.text))),
+            !item.texts.length?h('p',null,'لم يتوفر نص مقروء من هذا الملف.'):null))),...groups.map(([title,rows])=>section(title,rows)),
             btn('متابعة إلى حفظ ملف العميل وأوراقه',()=>{
               const name=controls.trade_name.value.trim();
               const registration=digit(controls.unified.value)||digit(controls.old_registration.value);
@@ -177,7 +182,7 @@
         }catch(error){progress.textContent=error?.message||'تعذرت قراءة المستندات.';}
         finally{file.disabled=false;}
       });
-      body.replaceChildren(panel('تجربة قراءة مستندات العميل',back,
+      body.replaceChildren(panel('قراءة مستندات العميل',back,
         h('p',null,'اختر أوراق العميل بصيغة PDF أو صور. راجع الخانات المقروءة، ثم تابع لحفظ البيانات مع الأوراق الأصلية في ملف العميل.'),
         h('p',{class:'muted'},'يُقرأ حتى 12 مستندًا. يفحص القارئ أول عشر صفحات من كل PDF، وتبقى جميع صفحات المستند الأصلي ضمن الملف عند الحفظ.'),
         field('مستندات العميل للقراءة',file),progress,result));
