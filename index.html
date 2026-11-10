@@ -2568,7 +2568,7 @@ function splitForm(mod,data,onCh,ro,showFilled){
   const core=CORE[mod]||M.fields.map(f=>f.k);
   const main=[],more=[];
   for(const f of M.fields){(core.includes(f.k)||f.req||(showFilled&&filled(data[f.k]))?main:more).push(f)}
-  const mk=fs=>h('div',{class:'form'},fs.map(f=>fieldInput(f,data[f.k],v=>{data[f.k]=v;onCh&&onCh()},ro)));
+  const mk=fs=>h('div',{class:'form'},fs.map(f=>fieldInput(f,data[f.k],v=>{data[f.k]=v;onCh&&onCh()},ro,data)));
   return h('div',{style:'display:flex;flex-direction:column;gap:12px'},mk(main),
     more.length?h('details',{class:'more'},h('summary',null,showFilled?`إضافة معلومات أخرى (${more.length})`:`حقول إضافية اختيارية (${more.length})`),h('div',{style:'margin-top:12px'},mk(more))):null);
 }
@@ -6521,4 +6521,5 @@ boot().then(uxAfterBoot,e=>console.warn(e));
 <script src="wholesale-reader.js?v=3"></script>
 <script src="wholesale-files.js?v=4"></script>
 <script src="team-coordination.js?v=1"></script>
+<script src="autofill.js?v=1"></script>
 </html>
