@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32-v3.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon-v3.png"><link rel="manifest" href="manifest-v3.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="القانونية"><meta name="application-name" content="القانونية">
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="glass-ui.css?v=6"><script src="glass-ui.js?v=2"></script><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32-v3.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon-v3.png"><link rel="manifest" href="manifest-v3.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="القانونية"><meta name="application-name" content="القانونية">
 <link rel="stylesheet" href="wholesale-files.css?v=1">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>/* تشغيل محلي: قاعدة بيانات وملفات في متصفح هذا الجهاز (IndexedDB) */
@@ -3636,7 +3636,7 @@ function bondAmountNode(b){if(b.amount==null||b.readStatus==='غير مقروء 
 /* Hearing notice import: local parsing and local image OCR. */
 function hearingNoticeParse(raw){
   const text=normDigits(String(raw||'')).replace(/[\u200e\u200f\u202a-\u202e]/g,'');
-  const nums=[...text.matchAll(/(?:القضية|القضيه|الدعوى)\s*(?:رقم)?\s*[:：#(]?\s*(\d{5,})/g)].map(m=>m[1]);
+  const nums=[...text.matchAll(/(?:القضية|القضيه|للقضية|للقضيه|الدعوى|للدعوى)\s*(?:رقم)?\s*[:：#(]?\s*(\d{5,})/g)].map(m=>m[1]);
   const dates=[];
   for(const m of text.matchAll(/\b(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})\b|\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/g)){
     const y=+(m[1]||m[6]),mo=+(m[2]||m[5]),d=+(m[3]||m[4]);
@@ -6522,4 +6522,8 @@ boot().then(uxAfterBoot,e=>console.warn(e));
 <script src="wholesale-files.js?v=4"></script>
 <script src="team-coordination.js?v=1"></script>
 <script src="autofill.js?v=1"></script>
+<script src="ocr-boost.js?v=4"></script>
+<script src="entry-ux.js?v=1"></script>
+<script src="whatsapp-intake.js?v=10"></script>
+<script src="contract-reader.js?v=2"></script>
 </html>
