@@ -26,5 +26,14 @@
       return v};
     window.viewPrefs.__ui=true;
   }
+  // انتقال ناعم عند تغيّر الصفحة فقط (لا يتكرر مع تحديثات الصفحة نفسها)
+  var lastPage=null;
+  window.addEventListener('hashchange',function(){
+    if(document.documentElement.dataset.ui!=='glass')return;
+    var page=(location.hash.slice(1)||'home').split('-')[0];if(page===lastPage)return;lastPage=page;
+    var v=document.getElementById('view');if(!v)return;
+    v.classList.remove('g-enter');void v.offsetWidth;v.classList.add('g-enter');
+    setTimeout(function(){v.classList.remove('g-enter')},700);
+  });
   if(document.readyState!=='loading')hook();else document.addEventListener('DOMContentLoaded',hook);
 })();
