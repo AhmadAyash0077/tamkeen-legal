@@ -49,6 +49,10 @@
     for (const k of ['id_no','manager_id','e1_id','e2_id']) fixId(k);
     if (x.type === 'national_id' && f.id_no == null){ const alt = firstValid(cands, validSaudiId); if (alt){ f.id_no = alt; x.number = alt; } }
     if (f.cr_no != null && !validCr(f.cr_no)){ const alt = firstValid(cands, validCr); if (alt) f.cr_no = alt; else delete f.cr_no; }
+    if (x.type === 'cr' && !f.cr_city){
+      const m = /(?:مدينة الإصدار|مدينة الاصدار|المدينة|مدينه)\s*[:：]\s*([\u0621-\u064a]+(?:\s[\u0621-\u064a]+)?)/.exec(String(text || ''));
+      if (m) f.cr_city = m[1].trim();
+    }
     if (x.type === 'cr' && f.cr_no == null){ const alt = firstValid(cands, validCr); if (alt){ f.cr_no = alt; x.number = alt; } }
     if (f.vat_no != null && !validVat(f.vat_no)){ const alt = firstValid(cands, validVat); if (alt) f.vat_no = alt; else delete f.vat_no; }
     if (x.type === 'vat' && f.vat_no == null){ const alt = firstValid(cands, validVat); if (alt){ f.vat_no = alt; x.number = alt; } }
