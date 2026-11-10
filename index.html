@@ -2249,8 +2249,7 @@ const COLL_PATH=c=>c;
 async function boot(){
   applyTheme();renderShell();
   if(!window.claude||typeof window.claude.use!=='function'){showFatal('تعذر تشغيل خدمة البيانات. تحقق من اتصال الإنترنت ثم أعد تحميل الصفحة.');return}
-  let dbErr=null;
-  [db,user,assets,sampleFn,downloads]=await Promise.all(['db','user','assets','sample','downloads'].map(n=>window.claude.use(n).catch(e=>{if(n==='db')dbErr=e;return null})));
+  let dbErr=null;[db,user,assets,sampleFn,downloads]=await Promise.all(['db','user','assets','sample','downloads'].map(n=>window.claude.use(n).catch(e=>{if(n==='db')dbErr=e;return null})));
   if(!db){showFatal((dbErr&&dbErr.message)||'تعذر الاتصال بقاعدة البيانات. تحقق من اتصال الإنترنت وسجّل الدخول من جديد ثم أعد تحميل الصفحة.');return}
   if(user){const me=await user.me();S.me={id:me.id,name:me.name,avatar:me.avatarUrl,canEdit:me.canEdit,isOwner:me.isOwner};const cw=await user.can('data.write');S.canWrite=cw!==false;S.readOnly=cw===false;if(S.readOnly)setSave('ro')}
   else S.canWrite=true;
