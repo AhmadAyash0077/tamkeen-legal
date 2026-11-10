@@ -2,39 +2,34 @@
    خلفية حية بألوان الهوية (كحلي/ذهبي/فيروزي)، شريط جانبي وعلوي عائمان من الزجاج،
    لوحات محتوى شبه معتمة للمقروئية، وطباعة كبيرة. الرجوع للشكل الكلاسيكي من الإعدادات. */
 
-/* ===== الرموز ===== */
+/* ===== الرموز: مشتقة من سمة البرنامج المختارة (الكحلي، الفاتح، ميزان العدالة…) =====
+   لا نفرض ألوانًا ثابتة؛ نأخذ --bg و--surface و--ink و--accent و--brass من السمة نفسها،
+   فيتغير التصميم مع السمة ومع الوضع الداكن/الفاتح. */
 html[data-ui="glass"]{
-  --g-navy:#273580; --g-indigo:#4b4fd8; --g-gold:#c9a24e; --g-teal:#2fb8a6; --g-rose:#e8627a;
-  --g-bg:#eef1fa;
-  --g-ink:#101426; --g-ink-2:#4f566b; --g-ink-3:#8a90a3;
-  --g-panel:rgba(255,255,255,.78); --g-panel-solid:#ffffff;
-  --g-glass:rgba(255,255,255,.55); --g-edge:rgba(255,255,255,.85); --g-border:rgba(255,255,255,.6);
-  --g-line:rgba(16,20,38,.08); --g-fill:rgba(16,20,38,.05);
-  --g-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 10px 40px -18px rgba(30,40,110,.28),0 2px 8px -4px rgba(30,40,110,.10);
-  --g-blob-a:rgba(75,79,216,.42); --g-blob-b:rgba(201,162,78,.40); --g-blob-c:rgba(47,184,166,.32); --g-blob-d:rgba(232,98,122,.22);
-  --g-accent:var(--g-navy); --g-accent-text:var(--g-navy);
+  --g-bg:var(--bg);
+  --g-ink:var(--ink); --g-ink-2:var(--ink-2); --g-ink-3:color-mix(in srgb,var(--ink-2) 70%,transparent);
+  --g-panel:color-mix(in srgb,var(--surface) 80%,transparent); --g-panel-solid:var(--surface);
+  --g-glass:color-mix(in srgb,var(--surface) 58%,transparent);
+  --g-edge:rgba(255,255,255,.85); --g-border:color-mix(in srgb,var(--surface) 70%,rgba(255,255,255,.6));
+  --g-line:color-mix(in srgb,var(--ink) 9%,transparent); --g-fill:color-mix(in srgb,var(--ink) 6%,transparent);
+  --g-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 10px 40px -18px color-mix(in srgb,var(--accent) 35%,transparent),0 2px 8px -4px rgba(0,0,0,.08);
+  --g-blob-a:color-mix(in srgb,var(--accent) 42%,transparent); --g-blob-b:color-mix(in srgb,var(--brass,#c9a24e) 40%,transparent);
+  --g-blob-c:rgba(47,184,166,.28); --g-blob-d:rgba(232,98,122,.18);
+  --g-a1:color-mix(in srgb,var(--accent) 72%,#000); --g-a2:color-mix(in srgb,var(--accent) 78%,#5b5bff);
+  --g-gold:var(--brass,#c9a24e);
+  --g-accent:var(--accent); --g-accent-text:var(--accent);
   --g-r:24px; --g-r-s:14px;
   --g-font:-apple-system,BlinkMacSystemFont,"SF Pro Arabic","SF Arabic","IBM Plex Sans Arabic","Segoe UI",system-ui,sans-serif;
   --g-ease:cubic-bezier(.22,1,.36,1);
-  /* تمرير إلى متغيرات البرنامج */
-  --bg:transparent!important; --surface:var(--g-panel-solid)!important; --surface-2:rgba(16,20,38,.035)!important; --elev:var(--g-panel-solid)!important;
-  --ink:var(--g-ink)!important; --ink-2:var(--g-ink-2)!important; --ink-3:var(--g-ink-3)!important;
-  --line:var(--g-line)!important; --sep:var(--g-line)!important; --card-line:var(--g-line)!important; --fill:var(--g-fill)!important;
-  --rail-ink:var(--g-ink)!important; --rail-ink-2:var(--g-ink-2)!important;
+  /* الخطوط فقط، ونص الشريط الجانبي لأنه صار زجاجيًا فوق خلفية الصفحة */
   --f-display:var(--g-font)!important; --f-body:var(--g-font)!important; --f-num:var(--g-font)!important;
-  color-scheme:light;
+  --rail-ink:var(--ink)!important; --rail-ink-2:var(--ink-2)!important;
 }
 html[data-ui="glass"][data-theme="dark"]{
-  --g-bg:#070a18;
-  --g-ink:#f1f3fa; --g-ink-2:#a9b0c6; --g-ink-3:#6c7390;
-  --g-panel:rgba(20,24,44,.72); --g-panel-solid:#141a30;
-  --g-glass:rgba(22,27,52,.55); --g-edge:rgba(255,255,255,.16); --g-border:rgba(255,255,255,.10);
-  --g-line:rgba(255,255,255,.08); --g-fill:rgba(255,255,255,.06);
-  --g-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 20px 50px -24px rgba(0,0,0,.7);
-  --g-blob-a:rgba(75,79,216,.45); --g-blob-b:rgba(201,162,78,.28); --g-blob-c:rgba(47,184,166,.26); --g-blob-d:rgba(232,98,122,.18);
-  --g-accent:#7c86ff; --g-accent-text:#aab1ff;
-  --surface-2:rgba(255,255,255,.05)!important;
-  color-scheme:dark;
+  --g-edge:rgba(255,255,255,.14); --g-border:rgba(255,255,255,.09);
+  --g-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 20px 50px -24px rgba(0,0,0,.75);
+  --g-blob-a:color-mix(in srgb,var(--accent) 38%,transparent); --g-blob-b:color-mix(in srgb,var(--brass,#c9a24e) 26%,transparent);
+  --g-blob-c:rgba(47,184,166,.20); --g-blob-d:rgba(232,98,122,.14);
 }
 
 /* ===== الخلفية الحية ===== */
@@ -70,7 +65,7 @@ html[data-ui="glass"][data-ui] .rail .nav a{color:var(--g-ink)!important;border-
   transition:background-color .25s var(--g-ease),transform .25s var(--g-ease)}
 html[data-ui="glass"][data-ui] .rail .nav a:hover{background:var(--g-fill)!important;transform:translateX(-2px)}
 html[data-ui="glass"][data-ui] .rail .nav a[aria-current="page"]{color:#fff!important;font-weight:700!important;
-  background:linear-gradient(135deg,var(--g-navy),var(--g-indigo))!important;box-shadow:0 8px 22px -10px rgba(75,79,216,.75)!important}
+  background:linear-gradient(135deg,var(--g-a1),var(--g-a2))!important;box-shadow:0 8px 22px -10px color-mix(in srgb,var(--accent) 70%,transparent)!important}
 html[data-ui="glass"][data-ui] .rail .nav a[aria-current="page"] :is(span,.nav-l){color:inherit!important}
 html[data-ui="glass"][data-ui] .rail .nav a[aria-current="page"] .chip{background:rgba(255,255,255,.2)!important;color:#fff!important;border-color:transparent!important}
 html[data-ui="glass"] .nav a[aria-current="page"]::before{display:none!important}
@@ -93,7 +88,7 @@ html[data-ui="glass"] .ux-kpi{padding:20px!important;transition:transform .35s v
 html[data-ui="glass"] .ux-kpi:hover{transform:translateY(-4px)!important;box-shadow:0 1px 0 var(--g-edge) inset,0 24px 50px -22px rgba(30,40,110,.45)!important}
 html[data-ui="glass"] :is(.ux-kpi-v,.ux-num){font-family:var(--g-font)!important;font-weight:800!important;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 html[data-ui="glass"] .ux-kpi-v{font-size:clamp(30px,2.6vw,40px)!important;line-height:1.1!important}
-html[data-ui="glass"] .ux-kpi-ic{box-shadow:0 8px 20px -8px var(--kc,var(--g-indigo))!important;border-radius:14px!important}
+html[data-ui="glass"] .ux-kpi-ic{box-shadow:0 8px 20px -8px var(--kc,var(--g-a2))!important;border-radius:14px!important}
 html[data-ui="glass"] :is(.ux-kpi-l,.ux-kpi-s){color:var(--g-ink-2)!important}
 html[data-ui="glass"] .ux-panel-h h2{font-size:1.2rem!important;font-weight:750!important}
 
@@ -112,9 +107,9 @@ html[data-ui="glass"] .page-head p{color:var(--g-ink-2)!important;font-size:1.02
 /* ===== الأزرار ===== */
 html[data-ui="glass"] .btn{border-radius:999px!important;font-weight:650!important;transition:transform .2s var(--g-ease),box-shadow .2s var(--g-ease),background-color .2s}
 html[data-ui="glass"] .btn:active{transform:scale(.96)}
-html[data-ui="glass"] .btn.primary{background:linear-gradient(135deg,var(--g-navy),var(--g-indigo))!important;color:#fff!important;border-color:transparent!important;
-  box-shadow:0 10px 24px -12px rgba(75,79,216,.9)!important}
-html[data-ui="glass"] .btn.primary:hover{box-shadow:0 14px 30px -12px rgba(75,79,216,1)!important;transform:translateY(-1px)}
+html[data-ui="glass"] .btn.primary{background:linear-gradient(135deg,var(--g-a1),var(--g-a2))!important;color:#fff!important;border-color:transparent!important;
+  box-shadow:0 10px 24px -12px color-mix(in srgb,var(--accent) 80%,transparent)!important}
+html[data-ui="glass"] .btn.primary:hover{box-shadow:0 14px 30px -12px var(--accent)!important;transform:translateY(-1px)}
 html[data-ui="glass"] .btn:not(.primary):not(.ghost){background:var(--g-fill)!important;color:var(--g-ink)!important;border-color:transparent!important;box-shadow:none!important}
 html[data-ui="glass"] .btn.ghost{background:transparent!important;box-shadow:none!important}
 
@@ -129,7 +124,7 @@ html[data-ui="glass"] .f label{color:var(--g-ink-2)!important;font-weight:650!im
 html[data-ui="glass"] table th{background:transparent!important;color:var(--g-ink-2)!important;font-weight:650!important;font-size:.82rem!important;border-bottom:1px solid var(--g-line)!important}
 html[data-ui="glass"] table td{border-bottom:1px solid var(--g-line)!important;font-variant-numeric:tabular-nums}
 html[data-ui="glass"] table tbody tr{transition:background-color .2s}
-html[data-ui="glass"] table tbody tr:hover{background:color-mix(in srgb,var(--g-indigo) 7%,transparent)!important}
+html[data-ui="glass"] table tbody tr:hover{background:color-mix(in srgb,var(--g-a2) 7%,transparent)!important}
 html[data-ui="glass"] .pill{border-radius:999px!important;font-weight:650!important}
 html[data-ui="glass"] .banner{border-radius:var(--g-r-s)!important}
 html[data-ui="glass"] :is(.tabs .tab,.ux-cttab,.ux-chipf){border-radius:999px!important}
@@ -205,12 +200,12 @@ html[data-ui="glass"] .login-wrap::after{width:60vmax;height:60vmax;inset:auto a
 html[data-ui="glass"] .login-card{position:relative;z-index:1;background:var(--g-glass)!important;-webkit-backdrop-filter:blur(30px) saturate(1.9);backdrop-filter:blur(30px) saturate(1.9);
   border:1px solid var(--g-border)!important;border-radius:32px!important;box-shadow:var(--g-shadow)!important;padding:36px 30px!important;animation:g-page .7s var(--g-ease) both}
 html[data-ui="glass"] .login-card h1{font-size:2rem!important;font-weight:800!important;
-  background:linear-gradient(120deg,var(--g-navy),var(--g-indigo) 55%,var(--g-gold));-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent}
+  background:linear-gradient(120deg,var(--g-a1),var(--g-a2) 55%,var(--g-gold));-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent}
 html[data-ui="glass"][data-theme="dark"] .login-card h1{background-image:linear-gradient(120deg,#fff,#c9ccff 55%,var(--g-gold))}
 html[data-ui="glass"] .login-card input{border-radius:14px!important;background:var(--surface-2)!important;border:1px solid var(--g-line)!important;color:var(--g-ink)!important}
 html[data-ui="glass"] .login-card input:focus{border-color:var(--g-accent)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--g-accent) 20%,transparent)!important;outline:none}
 html[data-ui="glass"] .login-card .btn{border-radius:999px!important}
-html[data-ui="glass"] .login-card .btn.primary{background:linear-gradient(135deg,var(--g-navy),var(--g-indigo))!important;box-shadow:0 12px 28px -12px rgba(75,79,216,.9)!important}
+html[data-ui="glass"] .login-card .btn.primary{background:linear-gradient(135deg,var(--g-a1),var(--g-a2))!important;box-shadow:0 12px 28px -12px color-mix(in srgb,var(--accent) 80%,transparent)!important}
 
 @media (prefers-reduced-motion: reduce){
   html[data-ui="glass"] :is(.ux-hero h1,.ux-hero-art,.ux-hero::after,#view.g-enter,.ux-kpi-ic,.login-card,.login-wrap::before,.login-wrap::after){animation:none!important}
