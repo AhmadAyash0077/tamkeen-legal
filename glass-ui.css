@@ -210,3 +210,41 @@ html[data-ui="glass"] .login-card .btn.primary{background:linear-gradient(135deg
 @media (prefers-reduced-motion: reduce){
   html[data-ui="glass"] :is(.ux-hero h1,.ux-hero-art,.ux-hero::after,#view.g-enter,.ux-kpi-ic,.login-card,.login-wrap::before,.login-wrap::after){animation:none!important}
 }
+
+/* ================= تخفيف الكحلي في كل السمات ================= */
+html[data-ui="glass"]{
+  /* بلا خلط بالأزرق الثابت: الدرجة الثانية تفتيح لنفس لون السمة */
+  --g-a1:var(--accent); --g-a2:color-mix(in srgb,var(--accent) 82%,#ffffff);
+  /* الذهبي يقود الخلفية الحية، والكحلي خفيف */
+  --g-blob-a:color-mix(in srgb,var(--accent) 18%,transparent);
+  --g-blob-b:color-mix(in srgb,var(--brass,#c9a24e) 42%,transparent);
+  --g-blob-c:rgba(47,184,166,.22); --g-blob-d:rgba(232,98,122,.14);
+  --g-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 12px 36px -20px rgba(0,0,0,.18),0 2px 8px -4px rgba(0,0,0,.06);
+}
+html[data-ui="glass"][data-theme="dark"]{
+  --g-blob-a:color-mix(in srgb,var(--accent) 16%,transparent);
+  --g-blob-b:color-mix(in srgb,var(--brass,#c9a24e) 24%,transparent);
+  --g-blob-c:rgba(47,184,166,.14); --g-blob-d:rgba(232,98,122,.10);
+  --g-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 20px 50px -24px rgba(0,0,0,.75);
+}
+/* القسم المختار: تظليل خفيف + خط ذهبي، بدل الزر الكحلي المصمت */
+html[data-ui="glass"][data-ui] .rail .nav a[aria-current="page"]{
+  background:color-mix(in srgb,var(--accent) 12%,transparent)!important;color:var(--ink)!important;font-weight:750!important;
+  box-shadow:inset -3px 0 0 var(--g-gold)!important}
+html[data-ui="glass"][data-theme="dark"][data-ui] .rail .nav a[aria-current="page"]{background:color-mix(in srgb,var(--accent) 18%,transparent)!important}
+html[data-ui="glass"][data-ui] .rail .nav a[aria-current="page"] .chip{background:color-mix(in srgb,var(--g-gold) 22%,transparent)!important;color:var(--g-gold)!important}
+/* الأزرار الرئيسية: لون السمة صافيًا، بظل محايد */
+html[data-ui="glass"] .btn.primary,html[data-ui="glass"] .login-card .btn.primary{background:var(--accent)!important;background-image:none!important;
+  box-shadow:0 8px 20px -12px rgba(0,0,0,.45)!important}
+html[data-ui="glass"][data-theme="dark"] .btn.primary{color:#0b0d14!important}
+html[data-ui="glass"] .btn.primary:hover{box-shadow:0 12px 26px -12px rgba(0,0,0,.55)!important}
+/* البطاقة الرئيسية: نفس لون السمة لكن يذوب نحو الذهبي في الزاوية، وظل محايد */
+html[data-ui="glass"] .ux-hero{box-shadow:0 1px 0 rgba(255,255,255,.16) inset,0 30px 70px -40px rgba(0,0,0,.55)!important}
+html[data-ui="glass"] .ux-hero{box-shadow:inset 520px -260px 420px -220px color-mix(in srgb,var(--g-gold) 46%,transparent),0 1px 0 rgba(255,255,255,.16) inset,0 30px 70px -40px rgba(0,0,0,.55)!important}
+/* عنوان شاشة الدخول: من لون الحبر إلى الذهبي بدل الأزرق */
+html[data-ui="glass"] .login-card h1{background-image:linear-gradient(120deg,var(--ink) 30%,var(--g-gold))!important}
+
+html[data-ui="glass"] .btn.primary *{color:inherit!important}
+html[data-ui="glass"][data-skin] :is(a,button).btn.primary{background:var(--accent)!important;background-image:none!important;border-color:transparent!important}
+html[data-ui="glass"][data-skin][data-theme="dark"] :is(a,button).btn.primary{color:#0b0d14!important}
+html[data-ui="glass"][data-skin][data-theme="light"] :is(a,button).btn.primary{color:#fff!important}
