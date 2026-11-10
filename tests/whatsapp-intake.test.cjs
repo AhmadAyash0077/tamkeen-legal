@@ -21,3 +21,9 @@ test('Najiz style addressed to the ID holder',()=>{
   assert.equal(b.plaintiff,'شركة تمكين الدولية');assert.equal(b.defendant,'مؤسسة النموذج');assert.equal(b.side,'مدعية');
   assert.equal(W.parseText('المدعي: (سالم الاختبار)').plaintiff,'سالم الاختبار');
 });
+test('Najiz video-session activation (real format, synthetic names)',()=>{
+  const msg='صاحب الهوية:\n******1234\nنبلغكم بتفعيل الجلسة المرئية للقضية رقم:\n4870000001\nالمقامة من: سالم بن خالد الاختبار\n ضد: شركة تمكين الدولية للاجهزة المنزلية\nالمحددة بتاريخ:\n08/06/1448\nالساعة: 12:05 مساءً\nويمكنكم حضور الجلسة عبر ناجز\nكما يمكنكم مشاهدة آلية حضور الجلسات عبر الرابط التالي:\nhttps://youtu.be/xxxx';
+  const p=W.parseText(msg);
+  assert.equal(p.plaintiff,'سالم بن خالد الاختبار');assert.equal(p.defendant,'شركة تمكين الدولية للاجهزة المنزلية');
+  assert.equal(p.side,'مدعى عليها');assert.equal(p.place,'جلسة مرئية');assert.equal(p.caseNo,'4870000001');
+});

@@ -3636,7 +3636,7 @@ function bondAmountNode(b){if(b.amount==null||b.readStatus==='غير مقروء 
 /* Hearing notice import: local parsing and local image OCR. */
 function hearingNoticeParse(raw){
   const text=normDigits(String(raw||'')).replace(/[\u200e\u200f\u202a-\u202e]/g,'');
-  const nums=[...text.matchAll(/(?:القضية|القضيه|الدعوى)\s*(?:رقم)?\s*[:：#(]?\s*(\d{5,})/g)].map(m=>m[1]);
+  const nums=[...text.matchAll(/(?:القضية|القضيه|للقضية|للقضيه|الدعوى|للدعوى)\s*(?:رقم)?\s*[:：#(]?\s*(\d{5,})/g)].map(m=>m[1]);
   const dates=[];
   for(const m of text.matchAll(/\b(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})\b|\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/g)){
     const y=+(m[1]||m[6]),mo=+(m[2]||m[5]),d=+(m[3]||m[4]);
@@ -6524,6 +6524,6 @@ boot().then(uxAfterBoot,e=>console.warn(e));
 <script src="autofill.js?v=1"></script>
 <script src="ocr-boost.js?v=1"></script>
 <script src="entry-ux.js?v=1"></script>
-<script src="whatsapp-intake.js?v=3"></script>
+<script src="whatsapp-intake.js?v=5"></script>
 <script src="contract-reader.js?v=1"></script>
 </html>
