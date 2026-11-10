@@ -59,6 +59,46 @@
   const box = (cls, ...kids) => root.h('div', {class: 'banner ' + cls}, ...kids);
   const styleTA = 'width:100%;min-height:96px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit;line-height:1.7';
 
+  /* ===== قارئ الملفات (صور أو PDF) — يحوّلها لنص ثم يمر على نفس المحلل ===== */
+  async function filesToText(files, progress){
+    const pages = [];
+    for (const f of files){
+      if (/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)){
+        progress('تجهيز ' + f.name + '…');
+        const r = await root.renderPdfPages(await f.arrayBuffer(), 10);
+        for (const pg of r.pages) pages.push({blob: pg.blob, name: f.name});
+      } else if (/^image\//.test(f.type)) pages.push({blob: f, name: f.name});
+      if (pages.length >= 10) break;
+    }
+    if (!pages.length) throw new Error('ارفع صورة (لقطة شاشة من ناجز أو واتساب) أو ملف PDF.');
+    const w = await root.uxLangWorker(); let text = '';
+    for (let i = 0; i < pages.length; i++){
+      progress('قراءة ' + (pages.length > 1 ? 'الصفحة ' + (i + 1) + ' من ' + pages.length : pages[i].name) + '… (أول مرة تحمّل حزمة اللغة العربية)');
+      const r = await w.recognize(pages[i].blob);
+      text += (text ? '\n' : '') + (r.data.mainText || r.data.text || '');
+    }
+    return text.trim();
+  }
+  function readerControls(onText){
+    const inp = root.h('input', {type:'file', multiple:true, accept:'image/png,image/jpeg,image/webp,application/pdf', style:'display:none'});
+    const prog = root.h('span', {class:'small muted', 'aria-live':'polite'});
+    const btn = root.h('button', {type:'button', class:'btn sm', onclick: () => inp.click()}, '📎 قراءة من صورة أو PDF');
+    inp.onchange = async () => {
+      const files = [...inp.files].slice(0, 6); inp.value = ''; if (!files.length) return;
+      btn.disabled = true;
+      try { const text = await filesToText(files, m => { prog.textContent = m; }); prog.textContent = text ? 'قُرئ الملف.' : 'ما قدرت أقرأ نصًا من الملف.'; await onText(text, files); }
+      catch (e){ prog.textContent = e.message || String(e); }
+      finally { btn.disabled = false; }
+    };
+    return [btn, inp, prog];
+  }
+  let pendingFiles = null;       // ملفات تُرفق بالسجل الجديد بعد حفظه
+  async function attachPending(mod, id){
+    const pf = pendingFiles; if (!pf || pf.mod !== mod) return; pendingFiles = null;
+    try { await root.uploadFiles(pf.files, [mod + ':' + id], () => {}, mod === 'taradi' ? 'إشعار جلسة' : 'مستندات القضية'); root.toast && root.toast('أُرفقت ' + pf.files.length + ' ملفات بالسجل'); }
+    catch (e){ root.toast && root.toast('تعذر إرفاق الملفات: ' + e.message); }
+  }
+
   /* ===== 1) نموذج «إضافة جديد» ===== */
   let formData = null;           // بيانات النموذج المفتوح (تُلتقط من fieldInput)
   let pendingHearing = null;     // موعد جلسة ينتظر إنشاء القضية
@@ -103,9 +143,15 @@
       out.replaceChildren(...kids);
     }
     return root.h('div', {class:'panel wa-intake'},
-      root.h('h2', {style:'margin:0 0 6px;font-size:1.05rem'}, 'من رسالة واتساب'),
-      root.h('p', {class:'small muted', style:'margin:0 0 10px'}, 'الصق الرسالة كما وصلتك، والبرنامج يعبّي الحقول الفارغة ويحفظ نص الرسالة مع السجل.'),
-      ta, root.h('div', {class:'row', style:'margin-top:10px'}, btn), out);
+      root.h('h2', {style:'margin:0 0 6px;font-size:1.05rem'}, 'من رسالة واتساب أو ملف'),
+      root.h('p', {class:'small muted', style:'margin:0 0 10px'}, mod === 'taradi'
+        ? 'الصق الرسالة، أو ارفع صورة/لقطة شاشة أو PDF لإشعار الجلسة. البرنامج يعبّي الحقول الفارغة ويحفظ النص مع السجل، ويرفق الملف بعد الحفظ.'
+        : 'الصق الرسالة، أو ارفع صورة/لقطة شاشة من ناجز أو صحيفة الدعوى (صورة أو PDF). البرنامج يعبّي الحقول الفارغة ويحفظ النص مع القضية، ويرفق الملف بعد الحفظ.'),
+      ta, root.h('div', {class:'row', style:'margin-top:10px;gap:8px;flex-wrap:wrap;align-items:center'}, btn, ...readerControls((text, files) => {
+        pendingFiles = {mod, files};
+        if (text){ ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + text; run(); }
+        else out.replaceChildren(box('warn', 'ما قدرت أقرأ نصًا واضحًا من الملف؛ عبّئ الحقول يدويًا. سيُرفق الملف بالسجل بعد الحفظ.'));
+      })), out);
   }
   function setVal(d, k, v){
     d[k] = v;
@@ -145,7 +191,10 @@
       root.h('p', {class:'small muted'}, mod === 'taradi'
         ? 'يُحدَّث موعد جلسة الصلح، ويُحفظ الموعد السابق ونص الرسالة في سجل المواعيد.'
         : 'تُضاف جلسة جديدة مرتبطة بهذه القضية، وتبقى الجلسات السابقة كما هي.'),
-      ta, root.h('div', {class:'row', style:'margin-top:10px'}, root.h('button', {type:'button', class:'btn primary sm', onclick: analyse}, 'قراءة الموعد')), out);
+      ta, root.h('div', {class:'row', style:'margin-top:10px;gap:8px;flex-wrap:wrap;align-items:center'}, root.h('button', {type:'button', class:'btn primary sm', onclick: analyse}, 'قراءة الموعد'), ...readerControls(async (text, files) => {
+        if (text){ ta.value = text; analyse(); }
+        if (!root.S?.readOnly){ try { await root.uploadFiles(files, [mod + ':' + id], () => {}, 'إشعار جلسة'); out.prepend(box('info', 'أُرفق الملف بالسجل.')); } catch (e){ out.prepend(box('warn', 'تعذر إرفاق الملف: ' + e.message)); } }
+      })), out);
     function analyse(){
       out.replaceChildren();
       const raw = ta.value.trim(); if (!raw){ out.append(box('warn', 'الصق الرسالة أولًا.')); return; }
@@ -236,6 +285,7 @@
         try {
           if ((mod === 'cases' || mod === 'taradi') && v && v.el){
             if (mod === 'cases' && pendingHearing) setTimeout(() => afterCaseSaved(id), 300);
+            if (pendingFiles && pendingFiles.mod === mod) setTimeout(() => attachPending(mod, id), 500);
             if (!root.S?.readOnly && root.rec(mod, id)){
               const panel = updatePanel(mod, id);
               let hist = null;
