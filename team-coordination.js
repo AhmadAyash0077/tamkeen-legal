@@ -1,4 +1,4 @@
-/* The ten-role roster routes internal work through the existing legal requests. */
+/* Internal team roles route work through the existing legal requests (platform roles retired). */
 (() => {
   const roster = [
     ['lead','المدير التنفيذي الذكي','توزيع المهام ومتابعة الإنجاز','داخلي','#requests','أخرى'],
@@ -12,6 +12,9 @@
     ['mail','مسؤول البريد والمراسلات','مراجعة العقود والتجديدات الواردة من Zoho Mail','يتطلب ربط الصندوق','#team~mail','مراجعة عقد'],
     ['review','المدقق القانوني','مراجعة المستندات والنتائج قبل اعتمادها','مراجعة داخلية','#requests','أخرى']
   ].map(([id,name,scope,readiness,href,kind])=>({id,name,scope,readiness,href,kind}));
+  // أدوار المنصات الحكومية أُلغيت: ناجز ونافذ وقوى لا تتيح ربطًا آليًا. تبقى في الخريطة لعرض المهام القديمة فقط.
+  const retired = new Set(['nafith_issue','nafith_track','najiz_cases','najiz_exec','qiwa_contracts','qiwa_renew']);
+  const active = roster.filter(r => !retired.has(r.id));
   const finished = new Set(['معتمد','مغلق','مرفوض','ملغى']);
   const roleById = new Map(roster.map(role=>[role.id,role]));
   const state = (r)=>r.status||'مقدم';
@@ -27,7 +30,7 @@
     const status=h('p',{class:'wf-notice',role:'status',hidden:true});
     const tasks=h('div',{class:'wf-body'}), cards=h('div',{class:'tc-cards'}), counts=h('div',{class:'tc-counts'});
     const query=h('input',{type:'search',placeholder:'عنوان المهمة'});
-    const roleSelect=h('select',null,h('option',{value:''},'كل الأدوار'),roster.map(r=>h('option',{value:r.id},r.name)));
+    const roleSelect=h('select',null,h('option',{value:''},'كل الأدوار'),active.map(r=>h('option',{value:r.id},r.name)));
     const stateSelect=h('select',null,h('option',{value:''},'كل الحالات'),h('option',{value:'late'},'المتأخرة'),
       REQ_ST_LIST.map(s=>h('option',{value:s},s)));
     const form=h('div');
@@ -40,9 +43,9 @@
         &&String(r.title||'').toLowerCase().includes(query.value.trim().toLowerCase()))
         .sort((a,b)=>Number(!!overdue(b))-Number(!!overdue(a))||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
       const tile=(label,value)=>h('div',{class:'panel tc-count'},h('strong',null,value),h('span',null,label));
-      counts.replaceChildren(tile('أدوار الفريق',roster.length),tile('مهام مفتوحة',records.filter(r=>!finished.has(state(r))).length),
+      counts.replaceChildren(tile('أدوار الفريق',active.length),tile('مهام مفتوحة',records.filter(r=>!finished.has(state(r))).length),
         tile('مهام متأخرة',records.filter(overdue).length),tile('مهام معتمدة أو مغلقة',records.filter(r=>['معتمد','مغلق'].includes(state(r))).length));
-      cards.replaceChildren(...roster.map(r=>{
+      cards.replaceChildren(...active.map(r=>{
         const assigned=records.filter(t=>t.teamRole===r.id&&!finished.has(state(t))).length;
         return h('article',{class:'panel tc-role','data-team-role':r.id},h('h3',null,r.name),h('p',null,r.scope),
           h('span',{class:'wf-badge'},r.readiness),h('div',{class:'row'},
@@ -51,7 +54,7 @@
             },'btn sm'),r.href?h('a',{class:'btn sm ghost',href:r.href},'فتح القسم'):null));
       }));
       tasks.replaceChildren(...relevant.map(r=>h('div',{class:'wf-row'},h('div',null,
-        h('b',null,r.title),h('p',{class:'muted'},roleById.get(r.teamRole).name,dateG(r.due)?' · '+dateG(r.due):'')),
+        h('b',null,r.title),h('p',{class:'muted'},roleById.get(r.teamRole).name+(retired.has(r.teamRole)?' (دور ملغى)':''),dateG(r.due)?' · '+dateG(r.due):'')),
         h('span',{class:'wf-badge'},state(r)+(overdue(r)?' · متأخرة':'')),
         h('a',{class:'btn sm',href:'#requests-'+r.id},'فتح المهمة'))));
       if(!relevant.length)tasks.append(h('p',{class:'muted'},'لا توجد مهام مطابقة.'));
@@ -62,7 +65,7 @@
       say('');
       const title=h('input',{required:true,maxlength:160});
       const detail=h('textarea',{rows:3,maxlength:4000});
-      const target=h('select',{required:true},h('option',{value:''},'اختر الدور المطلوب'),roster.map(r=>h('option',{value:r.id},r.name)));
+      const target=h('select',{required:true},h('option',{value:''},'اختر الدور المطلوب'),active.map(r=>h('option',{value:r.id},r.name)));
       const due=h('input',{type:'date'});
       const save=h('button',{type:'submit',class:'btn primary'},'حفظ وإسناد داخلي');
       const id=uid();
@@ -91,9 +94,8 @@
       title.focus();
     }
     el.append(h('header',{class:'wf-header'},h('h1',null,'لوحة فريق تمكين'),
-      h('p',null,'عشرة أدوار لتوزيع الطلبات ومتابعة الحالات والمواعيد. إسناد المهمة هنا ينظم العمل الداخلي.')),
-      status,h('div',{class:'row'},canCreate?button('إسناد مهمة',create,'btn primary'):null,
-        h('a',{class:'btn',href:'#team~tools'},'الأدوات الحالية')),
+      h('p',null,'أدوار لتوزيع المهام الداخلية على فريقك ومتابعتها.')),
+      status,h('div',{class:'row'},canCreate?button('إسناد مهمة',create,'btn primary'):null),
       form,counts,h('section',{class:'tc-section'},h('h2',null,'الأدوار المعتمدة'),cards),
       h('section',{class:'panel tc-section'},h('h2',null,'مهام الفريق'),h('div',{class:'tc-filters'},
         field('البحث',query),field('الدور',roleSelect),field('الحالة',stateSelect)),tasks));

@@ -126,18 +126,33 @@
   const EMPS = [
     {id:'reports', icon:'📊', name:'موظف التقارير والمتابعة', desc:'يجهّز التقارير ويطلّع لك المواعيد والطلبات المتوقفة', tasks: REPORTS},
     {id:'data', icon:'🗂️', name:'موظف البيانات', desc:'يفحص النواقص ويجهّز التجديدات ويطابق ويفحص الإفلاس', tasks: DATA},
-    {id:'drafter', icon:'✍️', name:'المستشار والصائغ', desc:'يكتب المذكرات واللوائح والردود ويحلّل القضايا والعقود', tasks: null}
+    {id:'drafter', icon:'✍️', name:'المستشار والصائغ', desc:'يكتب المذكرات واللوائح والردود ويحلّل القضايا والعقود', tasks: null},
+    // الموظفون الذين يعملون تلقائيًا (لكل واحد صفحته في البرنامج)
+    {id:'morning', icon:'☀️', name:'مساعد الصباح', desc:'ملخص يومك: الجلسات والمهل والمتأخرات', href:'#team~morning', stat: () => { const m = root.uxMorning(); return m.hs.length + ' جلسة اليوم · ' + m.soon.length + ' مهلة قريبة'; }},
+    {id:'collect', icon:'💰', name:'مساعد التحصيل', desc:'يرتّب طلبات التنفيذ حسب الأولوية ويقترح الخطوة التالية', href:'#team~collect', stat: () => root.uxCollectList().filter(x => !x.done).length + ' طلب بانتظار المتابعة'},
+    {id:'quality', icon:'🛡️', name:'مساعد جودة البيانات', desc:'يكتشف السجلات الناقصة ويوصلك لها', href:'#team~quality', stat: () => { const n = root.uxQualityChecks().reduce((a, c) => a + c.rows.length, 0); return n ? n + ' سجل يحتاج إكمال' : 'البيانات مكتملة'; }},
+    {id:'renew', icon:'🔁', name:'موظف التجديد', desc:'يجهّز عقود التركيب الجديدة قبل انتهاء القديمة', href:'#team~renew', stat: () => { const d = root.uxRenewDue(); return d.soon.length + ' تنتهي قريبًا · ' + d.drafts.length + ' مسودة'; }},
+    {id:'match', icon:'🔗', name:'موظف المطابقة', desc:'يقارن ملفات الجملة بطلبات التنفيذ وينقل المتطابق', href:'#team~match', stat: () => { const s = root.uxMatchScan(); return (s.sure || []).length + ' مؤكد · ' + (s.likely || []).length + ' محتمل'; }},
+    {id:'ocr', icon:'📄', name:'قارئ الملفات', desc:'يقرأ ملفات العملاء الممسوحة ويقترح البيانات', href:'#team~ocr', stat: () => root.uxOcrPending().length + ' اقتراح بانتظار المراجعة'},
+    {id:'bkr', icon:'⚖️', name:'موظف الإفلاس', desc:'يتأكد إن عملاءك مو عليهم إجراءات إفلاس', href:'#team~bkr', stat: () => { const n = root.uxBkrMatches().length; return n ? n + ' تطابق يحتاج مراجعة' : 'لا تطابق'; }},
+    {id:'library', icon:'📚', name:'أمين المكتبة', desc:'يتابع الأنظمة واللوائح السارية', href:'#team~library'}
   ];
   function desk(){
     const out = h('div', {'aria-live':'polite', style:'margin-top:12px'});
     let cur = EMPS[0];
     const taskSel = h('select', {'aria-label':'المهمة'});
     const body = h('div');
-    const tabs = h('div', {class:'row', style:'gap:8px;flex-wrap:wrap;margin:6px 0 12px'});
+    const tabs = h('div', {class:'ai-emps'});
     const histBox = h('div');
     const paintHist = () => { const a = readLog().slice(0, 6); histBox.replaceChildren(a.length ? h('details', {style:'margin-top:12px'}, h('summary', {class:'small muted', style:'cursor:pointer'}, 'آخر المهام المنفّذة على هذا الجهاز'), list(a.map(x => x.emp + ': ' + x.task + ' — ' + new Date(x.at).toLocaleString('ar-SA-u-nu-latn-ca-gregory')))) : ''); };
     const paint = () => {
-      tabs.replaceChildren(...EMPS.map(e => h('button', {type:'button', class:'btn sm' + (e === cur ? ' primary' : ''), 'aria-pressed':String(e === cur), onclick: () => { cur = e; out.replaceChildren(); paint(); }}, e.icon + ' ' + e.name)));
+      tabs.replaceChildren(...EMPS.map(e => {
+        let st = e.href ? 'يعمل تلقائيًا' : 'أعطه مهمة';
+        if (e.stat){ try { st = e.stat(); } catch(_){} }
+        return h('button', {type:'button', class:'ai-emp' + (e === cur ? ' on' : ''), 'aria-pressed':String(e === cur), title: e.desc,
+          onclick: () => { if (e.href){ location.hash = e.href; return; } cur = e; out.replaceChildren(); paint(); }},
+          h('span', {class:'ai-emp-ic', 'aria-hidden':'true'}, e.icon), h('b', null, e.name), h('small', null, e.desc), h('em', null, h('i'), st));
+      }));
       if (cur.tasks){
         taskSel.replaceChildren(...Object.keys(cur.tasks).map(k => h('option', {value:k}, k)));
         const run = h('button', {type:'button', class:'btn primary', onclick: async () => {
@@ -151,10 +166,18 @@
     };
     paint(); paintHist();
     return h('section', {class:'panel ai-desk'},
-      h('h2', {style:'margin:0 0 4px;font-size:1.25rem'}, '🤖 مكتب الموظفين الإلكترونيين'),
-      h('p', {class:'small muted', style:'margin:0'}, 'اختر الموظف وأعطه المهمة، ويقوم بها مباشرة.'),
+      h('h2', {style:'margin:0 0 4px;font-size:1.25rem'}, '🤖 الموظفون الإلكترونيون'),
+      h('p', {class:'small muted', style:'margin:0'}, 'كل الموظفين في مكان واحد. الثلاثة الأولى تعطيهم مهمة فيقومون بها، والباقون يعملون تلقائيًا — اضغط أي موظف لتفتح شغله.'),
       tabs, body, out, histBox);
   }
+
+  const css = document.createElement('style');
+  css.textContent = '.ai-emps{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:12px 0 14px}'
+    + '.ai-emp{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:10px;row-gap:2px;align-items:start;text-align:start;padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s}'
+    + '.ai-emp:hover{transform:translateY(-2px);box-shadow:0 10px 24px -16px rgba(0,0,0,.45)}.ai-emp.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}'
+    + '.ai-emp-ic{grid-row:1/4;font-size:1.6rem;line-height:1}.ai-emp b{font-size:.98rem}.ai-emp small{color:var(--ink-2);font-size:.8rem;line-height:1.5}'
+    + '.ai-emp em{font-style:normal;font-size:.78rem;color:var(--ok,#1f7a4a);display:flex;align-items:center;gap:6px}.ai-emp em i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}';
+  document.head.appendChild(css);
 
   function hook(){
     if (typeof root.uxTeamView === 'function' && !root.uxTeamView.__desk){
