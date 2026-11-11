@@ -15,18 +15,18 @@
 
   // قراءة الملفات صفحةً صفحة
   async function readFiles(files, progress){
-    const info = {}, types = []; let n = 0;
+    const info = {}, types = [], texts = []; let n = 0;
     for (const f of files){
       const pages = await root.TamkeenOcr.readFilePages(f, progress, MAX_PAGES);
       for (const pg of pages){
-        n++; const x = root.uxReadPage(pg.textWithDigits || pg.text || '');
-        info[n] = x; types.push({file: f.name, type: x.type, method: pg.method});
+        n++; const t = pg.textWithDigits || pg.text || ''; const x = root.uxReadPage(t);
+        info[n] = x; texts.push(t); types.push({file: f.name, type: x.type, method: pg.method});
         if (n >= MAX_PAGES) break;
       }
       if (n >= MAX_PAGES) break;
     }
     if (!n) throw new Error('لم أجد صفحات قابلة للقراءة. ارفع صورًا (JPG/PNG) أو ملفات PDF.');
-    return {info, types, pages: n};
+    return {info, types, texts, pages: n};
   }
   const TYPE_AR = {cr:'سجل تجاري', national_id:'هوية', address:'عنوان وطني', license:'رخصة', vat:'شهادة ضريبية', bond:'سند', contract_auth:'نموذج التفويض', contract_cover:'غلاف العقد', internal_approval:'اعتماد داخلي', shop_photo:'صورة محل', other:'غير مصنّف'};
 
@@ -40,69 +40,159 @@
     return rows.map(r => ({...r, conflict: conflicted.has(r.ck), alts: (cd[r.ck] && cd[r.ck].alt || []).map(a => a.v)}));
   }
 
+  /* ===== السند: قراءة رقم السند ومبلغه وتاريخه ومحرره ونوعه ===== */
+  const dig = s => (root.normDigits ? root.normDigits(String(s || '')) : String(s || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+  function toDate(raw){
+    const t = dig(raw); let m = /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/.exec(t), y, mo, d;
+    if (m){ y = +m[1]; mo = +m[2]; d = +m[3]; } else if ((m = /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/.exec(t))){ d = +m[1]; mo = +m[2]; y = +m[3]; } else return null;
+    const iso = y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    if (y > 1350 && y < 1600){ const g = root.h2g ? root.h2g(iso) : null; return g ? {orig:'h', g, h: iso, verified:false} : null; }
+    if (y > 1950 && y < 2100) return {orig:'g', g: iso, h: root.g2h ? root.g2h(iso) : '', verified:true};
+    return null;
+  }
+  function bondFields(text){
+    const t = dig(text), f = {};
+    if (!/(?:سند\s*لأمر|سند\s*لامر|السند|نافذ)/.test(t)) return f;
+    const lab = (labels, re) => { for (const l of labels){ const m = new RegExp('(?:' + l + ')\\s*[:：\\-]?\\s*' + re).exec(t); if (m) return m[1].trim(); } return ''; };
+    const no = lab(['رقم السند','رقم سند الأمر','رقم سند لأمر'], '([\\d\\-]{4,30})'); if (no) f.bond_no = no;
+    const amt = lab(['قيمة السند','مبلغ السند','المبلغ المستحق','المبلغ','قيمة'], '([\\d,٬]+(?:\\.\\d+)?)');
+    if (amt){ const n = Number(amt.replace(/[,٬]/g, '')); if (n > 0) f.bond_amount = n; }
+    const dt = lab(['تاريخ الإنشاء','تاريخ الانشاء','تاريخ إنشاء السند','تاريخ الإصدار','تاريخ الاصدار','تاريخ السند','تاريخ التحرير'], '([\\d]{1,4}[\\/\\-.][\\d]{1,2}[\\/\\-.][\\d]{1,4})');
+    const dd = dt ? toDate(dt) : null; if (dd) f.bond_date = dd;
+    const iss = lab(['اسم المدين','المدين','محرر السند','اسم محرر السند'], '([^\\n]{3,70})');
+    if (iss && !/\d{5,}/.test(iss)) f.bond_issuer = iss.replace(/[:：]+$/, '').trim();
+    if (/نافذ|إلكتروني|الكتروني/.test(t)) f.bond_type = 'إلكتروني (نافذ)';
+    return f;
+  }
+  // صفوف السند: فارغ ← تعبئة، مختلف ← قرار المستخدم
+  function bondRows(texts, d){
+    const all = {};
+    for (const t of texts){ const f = bondFields(t); for (const [k, v] of Object.entries(f)) if (all[k] == null) all[k] = v; }
+    const rows = [];
+    const same = (a, b) => (a && typeof a === 'object' ? a.g : String(a ?? '').replace(/[\s,]/g, '')) === (b && typeof b === 'object' ? b.g : String(b ?? '').replace(/[\s,]/g, ''));
+    for (const [k, v] of Object.entries(all)){
+      const cur = d[k];
+      const empty = cur == null || cur === '' || (typeof cur === 'object' && !cur.g && !cur.h);
+      if (empty) rows.push({fk:k, fv:v, kind:'empty', alts:[]});
+      else if (!same(cur, v)) rows.push({fk:k, fv:v, kind:'diff', cur: showV(cur), alts:[]});
+    }
+    return rows;
+  }
+
+  // حقول عامة تُقرأ من أي نص (مفيدة لرسائل التحديث): الجوال، السجل التجاري، العنوان الوطني، الاسم التجاري
+  function genericFields(text){
+    const t = dig(text), f = {};
+    const O = root.TamkeenOcr || {};
+    const mob = (t.replace(/[\s\-]/g, '').match(/(?:\+?966|0)5\d{8}/) || [])[0];
+    if (mob && O.normMobile) f.manager_mobile = O.normMobile(mob);
+    const cr = /(?:السجل التجاري|رقم السجل|الرقم الموحد|سجل تجاري)[^\d\n]{0,15}(\d{10})/.exec(t);
+    if (cr && (!O.validCr || O.validCr(cr[1]))) f.cr_no = cr[1];
+    const na = (t.match(/\b[A-Z]{4}\s?\d{4}\b/) || [])[0]; if (na) f.national_address = na.replace(/\s/, '');
+    const tn = /(?:الاسم التجاري|اسم المنشأة|اسم المنشاة)\s*[:：]\s*([^\n]{3,70})/.exec(t); if (tn) f.trade_name = tn[1].trim();
+    return f;
+  }
+  function genericRows(texts, d){
+    const all = {};
+    for (const t of texts){ const f = genericFields(t); for (const [k, v] of Object.entries(f)) if (all[k] == null) all[k] = v; }
+    const rows = [];
+    for (const [k, v] of Object.entries(all)){
+      const cur = d[k]; const cs = String(cur ?? '').trim();
+      if (!cs) rows.push({fk:k, fv:v, kind:'empty', alts:[]});
+      else if (cs.replace(/\s/g, '') !== String(v).replace(/\s/g, '')) rows.push({fk:k, fv:v, kind:'diff', cur: cs, alts:[]});
+    }
+    return rows;
+  }
+  // دمج الصفوف: قراءة البرنامج الأصلية أولًا، ثم ما ينقص من السند والحقول العامة (بدون تكرار)
+  function mergeRows(...lists){
+    const seen = new Set(), out = [];
+    for (const l of lists) for (const r of l){ if (seen.has(r.fk)) continue; seen.add(r.fk); out.push(r); }
+    return out;
+  }
+  root.TamkeenContractReader = {bondFields, bondRows, genericFields};
   function setVal(d, k, v){
     if (v && typeof v === 'object'){ d[k] = v; const el = document.getElementById('f_' + k); if (el && el.type === 'date' && v.g){ el.value = v.g; el.dispatchEvent(new Event('input', {bubbles:true})); } return; }
+    const el = document.getElementById('f_' + k);
+    if (el && el.tagName === 'SELECT'){ d[k] = v; el.value = v; el.dispatchEvent(new Event('change', {bubbles:true})); return; }
     if (root.setField) root.setField(d, k, v, null); else d[k] = v;
+  }
+  const readOnly = () => typeof S !== 'undefined' && !!S.readOnly;
+
+  // عرض النتائج (مشترك بين رفع الملفات ولصق الرسالة)
+  function render(mode, id, out, rows, srcWord){
+    const d = mode === 'new' ? (formData || {}) : root.rec('contracts', id);
+    const empty = rows.filter(r => r.kind === 'empty' && !r.conflict), diff = rows.filter(r => r.kind === 'diff' || r.conflict);
+    if (mode === 'new'){
+      for (const r of empty) setVal(d, r.fk, r.fv);
+      if (empty.length) out.append(box('ok', 'عُبّئ ' + NF(empty.length) + ': ' + empty.map(r => LBL(r.fk)).join('، ') + '. راجعها قبل الحفظ.'));
+    } else if (empty.length){
+      const btn = root.h('button', {type:'button', class:'btn primary sm', disabled: readOnly(), onclick: async () => {
+        btn.disabled = true;
+        const fresh = root.rec('contracts', id), patch = {};
+        for (const r of empty) patch[r.fk] = r.fv;
+        const res = await root.writeDoc('contracts', id, patch, fresh.rev);
+        if (res && res.ok){ root.audit && root.audit('تحديث العقد من ' + srcWord, 'contracts', id, NF(empty.length)); btn.replaceWith(box('ok', 'حُفظت الحقول.')); }
+        else { btn.disabled = false; out.append(box('bad', res && res.conflict ? 'عُدّل العقد من جهاز آخر؛ حدّث الصفحة وأعد المحاولة.' : 'تعذر الحفظ.')); }
+      }}, 'تعبئة الحقول الفارغة (' + NF(empty.length) + ')');
+      out.append(box('ok', root.h('span', null, 'حقول فارغة وجدت لها قيمًا: ' + empty.map(r => LBL(r.fk) + ' = ' + showV(r.fv)).join('، ') + ' ')), btn);
+    }
+    if (diff.length){
+      out.append(root.h('div', {class:'small', style:'margin-top:4px'}, root.h('b', null, 'قيم تحتاج قرارك (التحديث لا يُطبَّق إلا بضغطتك):')));
+      for (const r of diff){
+        const apply = root.h('button', {type:'button', class:'btn sm', disabled: mode !== 'new' && readOnly(), onclick: async () => {
+          if (mode === 'new'){ setVal(formData || {}, r.fk, r.fv); apply.replaceWith(root.h('span', {class:'small'}, '✓ طُبّقت')); return; }
+          apply.disabled = true; const fresh = root.rec('contracts', id);
+          const res = await root.writeDoc('contracts', id, {[r.fk]: r.fv}, fresh.rev);
+          if (res && res.ok) root.audit && root.audit('تحديث العقد من ' + srcWord, 'contracts', id, LBL(r.fk));
+          apply.replaceWith(root.h('span', {class:'small'}, res && res.ok ? '✓ حُفظت' : 'تعذر الحفظ'));
+        }}, 'استخدم القيمة الجديدة');
+        out.append(root.h('div', {class:'banner warn', style:'display:flex;gap:10px;align-items:center;flex-wrap:wrap'},
+          root.h('span', null, LBL(r.fk) + ': في ' + srcWord + ' «' + showV(r.fv) + '»' + (r.cur ? '، والمسجّل «' + r.cur + '»' : '') + (r.alts && r.alts.length ? ' — وفي مستند آخر: ' + r.alts.join(' / ') : '')), apply));
+      }
+    }
+    if (!rows.length) out.append(box('warn', srcWord === 'الرسالة' ? 'ما لقيت في الرسالة بيانات جديدة أو مختلفة عن المسجّل.' : 'ما لقيت بيانات جديدة في المستندات. إذا كانت الصور غير واضحة جرّب صورة أوضح أو ملف PDF.'));
   }
 
   function panel(mode, id){
     const inp = root.h('input', {type:'file', multiple:true, accept:'image/png,image/jpeg,image/webp,application/pdf', style:'display:none'});
     const out = root.h('div', {'aria-live':'polite', style:'display:grid;gap:8px;margin-top:10px'});
     const prog = root.h('div', {class:'small muted', 'aria-live':'polite'});
-    const pick = root.h('button', {type:'button', class:'btn primary', onclick: () => inp.click()}, '📄 رفع مستندات العميل وقراءتها');
+    const pick = root.h('button', {type:'button', class:'btn primary', onclick: () => inp.click()}, '📄 رفع مستندات وقراءتها');
     let busy = false;
     inp.onchange = async () => {
       const files = [...inp.files].slice(0, MAX_FILES); inp.value = '';
       if (!files.length || busy) return;
       busy = true; pick.disabled = true; out.replaceChildren(); prog.textContent = 'أول قراءة تحمّل حزمة اللغة العربية مرة واحدة، قد تأخذ دقيقة…';
       try {
-        const {info, types, pages} = await readFiles(files, m => { prog.textContent = m; });
+        const {info, types, texts, pages} = await readFiles(files, m => { prog.textContent = m; });
         prog.textContent = 'قُرئت ' + pages + ' صفحة.';
         const d = mode === 'new' ? (formData || {}) : root.rec('contracts', id);
         if (!d) throw new Error('العقد غير موجود.');
-        const rows = contractRows(info, d);
-        const empty = rows.filter(r => r.kind === 'empty' && !r.conflict), diff = rows.filter(r => r.kind === 'diff' || r.conflict);
+        const rows = mergeRows(contractRows(info, d), bondRows(texts, d), genericRows(texts, d));
         out.append(root.h('div', {class:'small'}, root.h('b', null, 'المستندات: '), types.map(t => t.file + ' ← ' + (TYPE_AR[t.type] || t.type) + (t.method ? ' (' + t.method + ')' : '')).join(' · ')));
-        if (mode === 'new'){
-          for (const r of empty) setVal(d, r.fk, r.fv);
-          if (empty.length) out.append(box('ok', 'عُبّئ ' + NF(empty.length) + ': ' + empty.map(r => LBL(r.fk)).join('، ') + '. راجعها مقابل المستندات قبل الحفظ.'));
-          pendingFiles = files;
-          out.append(box('info', 'ستُرفق المستندات بالعقد تلقائيًا بعد الحفظ.'));
-        } else {
-          if (empty.length){
-            const btn = root.h('button', {type:'button', class:'btn primary sm', onclick: async () => {
-              btn.disabled = true;
-              const fresh = root.rec('contracts', id), patch = {};
-              for (const r of empty) patch[r.fk] = r.fv;
-              const res = await root.writeDoc('contracts', id, patch, fresh.rev);
-              if (res && res.ok){ root.audit && root.audit('تعبئة من قراءة المستندات', 'contracts', id, NF(empty.length)); btn.replaceWith(box('ok', 'حُفظت الحقول.')); }
-              else { btn.disabled = false; out.append(box('bad', res && res.conflict ? 'عُدّل العقد من جهاز آخر؛ حدّث الصفحة وأعد المحاولة.' : 'تعذر الحفظ.')); }
-            }}, 'تعبئة الحقول الفارغة (' + NF(empty.length) + ')');
-            out.append(box('ok', root.h('span', null, 'حقول فارغة وجدت لها قيمًا: ' + empty.map(r => LBL(r.fk) + ' = ' + showV(r.fv)).join('، ') + ' ')), btn);
-          }
-          try { await root.uploadFiles(files, ['contracts:' + id], m => out.append(typeof m === 'string' ? box('info', m) : m), 'مستندات العميل'); } catch (e){ out.append(box('warn', 'تعذر إرفاق الملفات: ' + e.message)); }
-        }
-        if (diff.length){
-          out.append(root.h('div', {class:'small', style:'margin-top:4px'}, root.h('b', null, 'قيم تحتاج قرارك:')));
-          for (const r of diff){
-            const apply = root.h('button', {type:'button', class:'btn sm', onclick: async () => {
-              if (mode === 'new'){ setVal(formData || {}, r.fk, r.fv); apply.replaceWith(root.h('span', {class:'small'}, '✓ طُبّقت')); return; }
-              apply.disabled = true; const fresh = root.rec('contracts', id);
-              const res = await root.writeDoc('contracts', id, {[r.fk]: r.fv}, fresh.rev);
-              apply.replaceWith(root.h('span', {class:'small'}, res && res.ok ? '✓ حُفظت' : 'تعذر الحفظ'));
-            }}, 'استخدم قيمة المستند');
-            out.append(root.h('div', {class:'banner warn', style:'display:flex;gap:10px;align-items:center;flex-wrap:wrap'},
-              root.h('span', null, LBL(r.fk) + ': في المستند «' + showV(r.fv) + '»' + (r.cur ? '، والمسجّل «' + r.cur + '»' : '') + (r.alts.length ? ' — وفي مستند آخر: ' + r.alts.join(' / ') : '')), apply));
-          }
-        }
-        if (!rows.length) out.append(box('warn', 'ما لقيت بيانات جديدة في المستندات. إذا كانت الصور غير واضحة جرّب صورة أوضح أو ملف PDF.'));
+        render(mode, id, out, rows, 'المستند');
+        if (mode === 'new'){ pendingFiles = files; out.append(box('info', 'ستُرفق المستندات بالعقد تلقائيًا بعد الحفظ.')); }
+        else if (!readOnly()){ try { await root.uploadFiles(files, ['contracts:' + id], m => out.append(typeof m === 'string' ? box('info', m) : m), 'مستندات العميل'); } catch (e){ out.append(box('warn', 'تعذر إرفاق الملفات: ' + e.message)); } }
       } catch (e){ out.append(box('bad', e.message || String(e))); prog.textContent = ''; }
       finally { busy = false; pick.disabled = false; }
     };
+    // تحديث من رسالة أو بريد (داخل العقد)
+    let msgBox = null;
+    if (mode === 'detail'){
+      const ta = root.h('textarea', {dir:'auto', rows:4, style:'width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit', 'aria-label':'نص رسالة التحديث',
+        placeholder:'الصق رسالة أو بريد التحديث هنا: سجل تجاري جديد، جوال أو عنوان جديد، مفوض جديد، سند جديد (رقم السند، المبلغ، التاريخ)…'});
+      const read = root.h('button', {type:'button', class:'btn sm', onclick: () => {
+        out.replaceChildren(); const t = ta.value.trim();
+        if (!t){ out.append(box('warn', 'الصق الرسالة أولًا.')); return; }
+        const d = root.rec('contracts', id); if (!d){ out.append(box('bad', 'العقد غير موجود.')); return; }
+        const rows = mergeRows(contractRows({1: root.uxReadPage(t)}, d), bondRows([t], d), genericRows([t], d));
+        render('detail', id, out, rows, 'الرسالة');
+      }}, 'قراءة الرسالة');
+      msgBox = root.h('div', {style:'margin-top:12px;display:grid;gap:8px'}, root.h('b', null, '✉️ أو الصق رسالة / بريد التحديث'), ta, root.h('div', {class:'row'}, read));
+    }
     return root.h('div', {class:'panel cr-reader'},
-      root.h('h2', {style:'margin:0 0 6px;font-size:1.05rem'}, 'قارئ مستندات العميل'),
-      root.h('p', {class:'small muted', style:'margin:0 0 10px'}, 'ارفع السجل التجاري والهوية والعنوان الوطني والرخصة أو صفحات العقد (صور أو PDF، حتى ' + MAX_FILES + ' ملفات). يقرأها البرنامج ويعبّي الحقول الفارغة، ويعرض لك أي قيمة مختلفة عن المسجّل لتقرر.'),
-      root.h('div', {class:'row'}, pick, inp), prog, out);
+      root.h('h2', {style:'margin:0 0 6px;font-size:1.05rem'}, mode === 'new' ? 'قارئ مستندات العميل' : 'تحديث العقد من مستند أو رسالة'),
+      root.h('p', {class:'small muted', style:'margin:0 0 10px'}, 'ارفع السجل التجاري أو الهوية أو العنوان الوطني أو الرخصة أو السند أو صفحات العقد (صور أو PDF، حتى ' + MAX_FILES + ' ملفات). يعبّي البرنامج الحقول الفارغة، ويعرض لك أي قيمة مختلفة عن المسجّل لتقرر.'),
+      root.h('div', {class:'row'}, pick, inp), prog, msgBox, out);
   }
 
   async function attachPending(id){
@@ -123,7 +213,7 @@
         if (mod === 'contracts'){ formData = null; pendingFiles = null; }
         const v = orig.apply(this, arguments);
         try {
-          if (mod === 'contracts' && v && v.el && !root.S?.readOnly){
+          if (mod === 'contracts' && v && v.el && !(typeof S !== 'undefined' && S.readOnly)){
             const p = panel('new'); const head = v.el.querySelector('.page-head');
             head ? head.after(p) : v.el.prepend(p);
           }
@@ -139,8 +229,8 @@
         try {
           if (mod === 'contracts' && v && v.el){
             if (pendingFiles) setTimeout(() => attachPending(id), 400);
-            if (!root.S?.readOnly && root.rec('contracts', id)){
-              const p = root.h('details', {class:'panel cr-reader-d'}, root.h('summary', {style:'cursor:pointer;font-weight:700'}, '📄 قراءة مستندات العميل وتعبئة العقد'), panel('detail', id));
+            if (!(typeof S !== 'undefined' && S.readOnly) && root.rec('contracts', id)){
+              const p = root.h('details', {class:'panel cr-reader-d'}, root.h('summary', {style:'cursor:pointer;font-weight:700'}, '📄 تحديث العقد من مستند أو رسالة'), panel('detail', id));
               const place = () => { if (v.el.contains(p)) return; const head = v.el.querySelector('.page-head'); head ? head.after(p) : v.el.prepend(p); };
               place();
               const r = v.refresh; if (typeof r === 'function') v.refresh = function(){ const o = r.apply(this, arguments); try { place(); } catch(e){} return o; };

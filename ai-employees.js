@@ -18,9 +18,32 @@
   const isOpen = (mod, r) => { let closed = []; try { closed = MODS[mod].closed || []; } catch(e){} return !r.status || !closed.includes(r.status); };
 
   /* ===== موظف التقارير والمتابعة ===== */
+  // تقرير بهوية شركة تمكين: الشعار، الكحلي والذهبي، رأس الإدارة، التاريخ، «أعدّه»، وخانة الاعتماد
   function printable(title, bodyHtml){
     const w = window.open('', '_blank'); if (!w){ root.toast && root.toast('اسمح بالنوافذ المنبثقة لعرض التقرير'); return; }
-    w.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + title + '</title><style>body{font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;margin:32px;color:#14202e;line-height:1.8}h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:22px 0 6px;border-bottom:1px solid #e3e7ec;padding-bottom:4px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{border:1px solid #e3e7ec;padding:6px 8px;text-align:right}th{background:#f5f6f8}.k{display:inline-block;margin:0 0 0 18px}.k b{font-size:20px;display:block}button{margin:0 0 18px;padding:8px 18px;font:inherit}@media print{button{display:none}}</style></head><body><button onclick="print()">طباعة / حفظ PDF</button>' + bodyHtml + '</body></html>');
+    const logo = (typeof LOGO !== 'undefined') ? LOGO : '';
+    const today = (typeof todayISO === 'function' ? todayISO() : new Date().toISOString().slice(0, 10));
+    let dateTxt = today; try { dateTxt = root.fmtG(today) + ' — ' + root.fmtH(root.g2h(today)); } catch(e){}
+    const me = (typeof S !== 'undefined' && S.me && S.me.name) || (function(){ try { return localStorage.getItem('tl_user_name'); } catch(e){ return ''; } })();
+    const prep = esc(me || 'إدارة الشؤون القانونية');
+    w.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(title) + ' — ' + esc(today) + '</title>'
+      + '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet"><style>'
+      + ':root{--ink:#14202e;--ink2:#5a6878;--line:#e3e7ec;--brand:#0f2a44;--gold:#b08a3e;--soft:#f5f6f8}*{box-sizing:border-box}html{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+      + 'body{margin:0;background:#e9ecf0;color:var(--ink);font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;font-size:13px;line-height:1.6}'
+      + '.bar{position:sticky;top:0;z-index:5;display:flex;gap:10px;justify-content:center;padding:12px;background:var(--brand)}.bar button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 20px;cursor:pointer;background:var(--gold);color:#fff}'
+      + '.page{width:210mm;max-width:100%;margin:18px auto;padding:16mm 15mm;background:#fff;box-shadow:0 10px 40px -20px rgba(0,0,0,.35)}'
+      + 'header{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px solid var(--gold);padding-bottom:12px;margin-bottom:14px}header img{height:60px;width:auto}header h1{margin:0;font-size:22px;color:var(--brand)}header .sub{color:var(--ink2);font-size:12px}'
+      + '.meta{display:flex;flex-wrap:wrap;gap:6px 22px;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:14px;color:var(--ink2)}.meta b{color:var(--ink)}'
+      + '.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 14px}.kpi{border:1px solid var(--line);border-top:3px solid var(--brand);border-radius:10px;padding:10px 12px}.kpi .l{color:var(--ink2);font-size:12px}.kpi .v{font-size:20px;font-weight:700;color:var(--brand)}'
+      + 'h2{font-size:15px;color:var(--brand);margin:18px 0 8px;border-inline-start:4px solid var(--gold);padding-inline-start:8px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:var(--brand);color:#fff;font-weight:600}td,th{border:1px solid var(--line);padding:6px 8px;text-align:right}tr:nth-child(even) td{background:var(--soft)}'
+      + '.sign{display:flex;justify-content:space-between;gap:20px;margin-top:28px;padding-top:12px;border-top:1px dashed var(--line)}footer{margin-top:18px;text-align:center;color:var(--ink2);font-size:11px;border-top:1px solid var(--line);padding-top:8px}'
+      + '@media print{body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;width:auto}}</style></head><body>'
+      + '<div class="bar"><button onclick="print()">🖨 طباعة / حفظ PDF</button></div><section class="page">'
+      + '<header><div><h1>' + esc(title) + '</h1><div class="sub">إدارة الشؤون القانونية — شركة تمكين الدولية للأجهزة المنزلية</div></div>' + (logo ? '<img src="' + logo + '" alt="تمكين">' : '') + '</header>'
+      + '<div class="meta"><span>تاريخ التقرير: <b>' + esc(dateTxt) + '</b></span><span>أعدّه: <b>' + prep + '</b></span></div>'
+      + bodyHtml
+      + '<div class="sign"><div>أعدّه: <b>' + prep + '</b></div></div>'
+      + '<footer>شركة تمكين الدولية للأجهزة المنزلية — إدارة الشؤون القانونية</footer></section></body></html>');
     w.document.close();
   }
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -37,9 +60,8 @@
       const sum = rows.reduce((s, r) => s + (Number(r.claimAmount) || 0), 0);
       const by = k => { const m = new Map(); for (const r of rows){ const v = (r[k] || 'غير محدد'); m.set(v, (m.get(v) || 0) + 1); } return [...m].sort((a, b) => b[1] - a[1]); };
       const hs = upcoming(30).filter(x => x.mod === 'hearings');
-      const html = '<h1>تقرير القضايا المفتوحة</h1><div>' + esc(fd({orig:'g', g: (typeof todayISO === 'function' ? todayISO() : new Date().toISOString().slice(0, 10)), h:'', verified:true})) + '</div>'
-        + '<p><span class="k">عدد القضايا<b>' + N(rows.length) + '</b></span><span class="k">إجمالي المطالبات<b>' + N(sum) + ' ريال</b></span><span class="k">جلسات خلال 30 يومًا<b>' + N(hs.length) + '</b></span></p>'
-        + '<h2>حسب المحكمة</h2><table>' + by('court').map(([k, v]) => '<tr><td>' + esc(k) + '</td><td>' + v + '</td></tr>').join('') + '</table>'
+      const html = '<div class="kpis"><div class="kpi"><div class="l">عدد القضايا المفتوحة</div><div class="v">' + N(rows.length) + '</div></div><div class="kpi"><div class="l">إجمالي المطالبات</div><div class="v">' + N(sum) + ' ريال</div></div><div class="kpi"><div class="l">جلسات خلال 30 يومًا</div><div class="v">' + N(hs.length) + '</div></div></div>'
+        + '<h2>حسب المحكمة</h2><table><tr><th>المحكمة</th><th>عدد القضايا</th></tr>' + by('court').map(([k, v]) => '<tr><td>' + esc(k) + '</td><td>' + v + '</td></tr>').join('') + '</table>'
         + '<h2>الجلسات القادمة</h2><table><tr><th>الموعد</th><th>القضية</th></tr>' + hs.map(x => '<tr><td>' + esc(x.when) + '</td><td>' + esc(x.t) + '</td></tr>').join('') + '</table>'
         + '<h2>تفاصيل القضايا</h2><table><tr><th>رقم القضية</th><th>المدعي</th><th>المدعى عليه</th><th>المحكمة</th><th>الحالة</th><th>المطالبة</th></tr>'
         + rows.map(r => '<tr><td>' + esc(r.caseNo) + '</td><td>' + esc(r.plaintiff) + '</td><td>' + esc(r.defendant) + '</td><td>' + esc(r.court) + '</td><td>' + esc(r.status) + '</td><td>' + (r.claimAmount ? N(r.claimAmount) : '') + '</td></tr>').join('') + '</table>';
@@ -59,9 +81,9 @@
     'فحص البيانات الناقصة في كل الأقسام': () => { let q = []; try { q = root.uxQualityChecks().filter(c => c.rows.length); } catch(e){}
       const total = q.reduce((s, c) => s + c.rows.length, 0);
       return h('div', null, box(total ? 'warn' : 'ok', total ? N(total) + ' سجل يحتاج إكمال:' : 'البيانات مكتملة.'), list(q.map(c => [h('b', null, c.t + ' (' + c.rows.length + '): '), ...c.rows.slice(0, 5).flatMap((r, i) => [i ? '، ' : '', link(c.mod, r)]), c.rows.length > 5 ? ' …' : '']))); },
-    'تجهيز تجديدات عقود التركيب': async () => { if (root.S?.readOnly) return box('warn', 'صلاحيتك مشاهدة فقط.'); let n = 0; try { n = await root.uxRenewAuto(true); } catch(e){ return box('bad', 'تعذر: ' + e.message); }
+    'تجهيز تجديدات عقود التركيب': async () => { if ((typeof S !== 'undefined' && S.readOnly)) return box('warn', 'صلاحيتك مشاهدة فقط.'); let n = 0; try { n = await root.uxRenewAuto(true); } catch(e){ return box('bad', 'تعذر: ' + e.message); }
       return box(n ? 'ok' : 'info', n ? 'جُهّز ' + N(n) + ' عقد تجديد كمسودة للمراجعة في «عقود التركيب».' : 'لا عقود تركيب تنتهي خلال 30 يومًا وتحتاج تجديدًا.'); },
-    'مطابقة ملفات الجملة مع طلبات التنفيذ': async () => { if (root.S?.readOnly) return box('warn', 'صلاحيتك مشاهدة فقط.'); let n = 0, likely = 0;
+    'مطابقة ملفات الجملة مع طلبات التنفيذ': async () => { if ((typeof S !== 'undefined' && S.readOnly)) return box('warn', 'صلاحيتك مشاهدة فقط.'); let n = 0, likely = 0;
       try { const s = root.uxMatchScan(); likely = (s.likely || []).length; n = await root.uxMatchAuto(true); } catch(e){ return box('bad', 'تعذر: ' + e.message); }
       return box('ok', 'نُقل ' + N(n || 0) + ' تطابق مؤكد' + (likely ? '، و' + N(likely) + ' تطابق محتمل ينتظر مراجعتك في «موظف المطابقة».' : '.')); },
     'فحص العملاء في قائمة الإفلاس': () => { let m = []; try { m = root.uxBkrMatches(); } catch(e){}

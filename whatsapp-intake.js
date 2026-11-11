@@ -241,7 +241,7 @@
         : 'تُضاف جلسة جديدة مرتبطة بهذه القضية، وتبقى الجلسات السابقة كما هي.'),
       ta, root.h('div', {class:'row', style:'margin-top:10px;gap:8px;flex-wrap:wrap;align-items:center'}, root.h('button', {type:'button', class:'btn primary sm', onclick: analyse}, 'قراءة الموعد'), ...readerControls(async (text, files) => {
         if (text){ ta.value = text; analyse(); }
-        if (!root.S?.readOnly){ try { await root.uploadFiles(files, [mod + ':' + id], () => {}, 'إشعار جلسة'); out.prepend(box('info', 'أُرفق الملف بالسجل.')); } catch (e){ out.prepend(box('warn', 'تعذر إرفاق الملف: ' + e.message)); } }
+        if (!(typeof S !== 'undefined' && S.readOnly)){ try { await root.uploadFiles(files, [mod + ':' + id], () => {}, 'إشعار جلسة'); out.prepend(box('info', 'أُرفق الملف بالسجل.')); } catch (e){ out.prepend(box('warn', 'تعذر إرفاق الملف: ' + e.message)); } }
       })), out);
     function analyse(){
       out.replaceChildren();
@@ -258,7 +258,7 @@
       const cur = mod === 'taradi' ? (root.dateG ? root.dateG(r.date) : '') : '';
       const same = mod === 'taradi' && cur === p.date && (r.time || '') === (p.time || '');
       const rows = [['التاريخ', fmtDate(p.date)], ...(p.link ? [['الرابط', p.link]] : []), ...(p.place ? [['المكان', p.place]] : [])];
-      const save = root.h('button', {type:'button', class:'btn primary sm', disabled: same || root.S?.readOnly, onclick: async () => {
+      const save = root.h('button', {type:'button', class:'btn primary sm', disabled: same || (typeof S !== 'undefined' && S.readOnly), onclick: async () => {
         save.disabled = true;
         try {
           const time = timeIn.value;
@@ -316,7 +316,7 @@
         formData = null;
         const v = orig.apply(this, arguments);
         try {
-          if ((mod === 'cases' || mod === 'taradi') && v && v.el && !root.S?.readOnly){
+          if ((mod === 'cases' || mod === 'taradi') && v && v.el && !(typeof S !== 'undefined' && S.readOnly)){
             const panel = newFormPanel(mod, v.el);
             const head = v.el.querySelector('.page-head');
             head ? head.after(panel) : v.el.prepend(panel);
@@ -334,7 +334,7 @@
           if ((mod === 'cases' || mod === 'taradi') && v && v.el){
             if (mod === 'cases' && pendingHearing) setTimeout(() => afterCaseSaved(id), 300);
             if (pendingFiles && pendingFiles.mod === mod) setTimeout(() => attachPending(mod, id), 500);
-            if (!root.S?.readOnly && root.rec(mod, id)){
+            if (!(typeof S !== 'undefined' && S.readOnly) && root.rec(mod, id)){
               const panel = updatePanel(mod, id);
               let hist = null;
               // يُعاد وضع اللوحة إذا أعادت الصفحة رسم نفسها (مثلًا بعد حفظ جلسة)
