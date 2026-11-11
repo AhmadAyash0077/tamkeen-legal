@@ -72,6 +72,41 @@
     'تقرير العقود': () => { const rows = root.recs('contracts'); root.contractsReport(rows, ['جميع العقود']); return box('ok', 'جُهّز تقرير ' + N(rows.length) + ' عقد.'); },
     'تقرير المخالفات': () => { const rows = root.recs('violations'); root.violationsReport(rows, ['جميع المخالفات']); return box('ok', 'جُهّز تقرير ' + N(rows.length) + ' مخالفة.'); },
     'الجلسات والمهل خلال 14 يومًا': () => { const u = upcoming(14); return h('div', null, box(u.length ? 'warn' : 'ok', u.length ? N(u.length) + ' موعد خلال 14 يومًا:' : 'لا مواعيد خلال 14 يومًا.'), list(u.map(x => [h('b', null, x.when + ' — '), link(x.mod, x.r, x.t)]))); },
+    'ملخص اليوم على واتساب': () => {
+      // نفس محتوى البريد اليومي: أعداد ومواعيد وأرقام مرجعية فقط، بدون أسماء أشخاص أو هويات أو جوالات
+      const today = (typeof todayISO === 'function' ? todayISO() : new Date().toISOString().slice(0, 10));
+      const dm = g => { const [y, m, d] = String(g).split('-'); return d + '/' + m + '/' + y; };
+      const rel = g => { const n = root.daysUntil(g); return n === 0 ? ' (اليوم)' : n === 1 ? ' (غدًا)' : ''; };
+      const L = [];
+      const hs = root.recs('hearings').filter(r => { const n = root.daysUntil(root.dateG(r.date)); return n != null && n >= 0 && n <= 7; })
+        .sort((a, b) => String(root.dateG(a.date) + (a.time || '')).localeCompare(root.dateG(b.date) + (b.time || '')));
+      const ts = root.recs('taradi').filter(r => { const n = root.daysUntil(root.dateG(r.date)); return n != null && n >= 0 && n <= 7; });
+      let late = [], soon = [];
+      for (const v of root.recs('violations')){
+        if (['مسدد','مسددة','ملغاة','ملغى'].includes(v.status || '')) continue;
+        const ds = ['objDeadline','payDeadline','deadline'].map(k => root.dateG(v[k])).filter(Boolean).sort();
+        if (!ds.length) continue; const n = root.daysUntil(ds[0]);
+        if (n < 0) late.push([ds[0], v]); else if (n <= 7) soon.push([ds[0], v]);
+      }
+      const noRes = root.recs('hearings').filter(r => { const n = root.daysUntil(root.dateG(r.date)); return n != null && n < 0 && n >= -30 && !String(r.result || '').trim(); });
+      const inst = root.recs('contracts').filter(c => (c.fileKind === 'تركيب' || c.ctype === 'تركيب') && !c.renewedTo && (() => { const n = root.daysUntil(root.dateG(c.end)); return n != null && n >= 0 && n <= 30; })());
+      L.push('📋 ملخص الشؤون القانونية — ' + dm(today));
+      L.push('جلسات الأسبوع ' + hs.length + ' · تراضي ' + ts.length + ' · مهل متأخرة ' + late.length + ' · مهل قريبة ' + soon.length + ' · جلسات بلا نتيجة ' + noRes.length + ' · عقود تركيب تنتهي ' + inst.length);
+      if (hs.length){ L.push('', '⚖️ الجلسات:'); for (const r of hs){ const c = root.rec('cases', r.caseId); L.push('• ' + dm(root.dateG(r.date)) + rel(root.dateG(r.date)) + (r.time ? ' ' + r.time : '') + (c && c.caseNo ? ' — قضية ' + c.caseNo : '') + ' — ' + ((c && c.court) || r.place || '')); } }
+      if (ts.length){ L.push('', '🤝 جلسات تراضي:'); for (const r of ts) L.push('• ' + dm(root.dateG(r.date)) + rel(root.dateG(r.date)) + (r.time ? ' ' + r.time : '') + (r.reqNo ? ' — طلب ' + r.reqNo : '')); }
+      const grp = arr => { const m = new Map(); for (const [g, v] of arr){ const k = g + '|' + (v.authority || ''); const e = m.get(k) || {g, a: v.authority || '', nums: []}; e.nums.push(v.number || '—'); m.set(k, e); } return [...m.values()]; };
+      if (late.length){ L.push('', '⚠️ مهل مخالفات متأخرة:'); for (const e of grp(late)) L.push('• ' + dm(e.g) + ' — ' + e.nums.length + ' مخالفة' + (e.a ? ' (' + e.a + ')' : '')); }
+      if (soon.length){ L.push('', '⏳ مهل مخالفات قريبة:'); for (const e of grp(soon)) L.push('• ' + dm(e.g) + rel(e.g) + ' — ' + e.nums.length + ' مخالفة' + (e.a ? ' (' + e.a + ')' : '')); }
+      if (noRes.length) L.push('', '📝 جلسات مضت بلا نتيجة: ' + noRes.length + ' — سجّل نتائجها');
+      if (inst.length) L.push('', '🔁 عقود تركيب تنتهي خلال 30 يومًا: ' + inst.length);
+      if (!hs.length && !ts.length && !late.length && !soon.length && !noRes.length && !inst.length) L.push('', 'لا جلسات أو مهل خلال الأسبوع القادم.');
+      L.push('', 'التفاصيل: https://ahmadayash0077.github.io/tamkeen-legal/');
+      const text = L.join('\n');
+      const ta = h('textarea', {dir:'auto', rows:10, style:'width:100%', 'aria-label':'نص الملخص'}); ta.value = text;
+      const send = h('button', {type:'button', class:'btn primary', onclick: () => window.open('https://wa.me/?text=' + encodeURIComponent(ta.value), '_blank', 'noopener')}, '🟢 افتح واتساب وأرسل');
+      const copy = h('button', {type:'button', class:'btn', onclick: async () => { try { await navigator.clipboard.writeText(ta.value); root.toast && root.toast('نُسخ الملخص'); } catch(e){ ta.select(); } }}, 'نسخ');
+      return h('div', {style:'display:grid;gap:8px'}, box('ok', 'جُهّز ملخص اليوم. اضغط «افتح واتساب» واختر نفسك أو الزميل، ثم إرسال. (أعداد ومواعيد وأرقام مرجعية فقط — بدون أسماء أو هويات)'), ta, h('div', {class:'row', style:'gap:8px'}, send, copy));
+    },
     'طلبات التنفيذ المتوقفة': () => { let l = []; try { l = root.uxCollectList().filter(x => !x.done && ['stale','paygap','grace'].includes(x.n.k)); } catch(e){}
       return h('div', null, box(l.length ? 'warn' : 'ok', l.length ? N(l.length) + ' طلب يحتاج متابعة:' : 'لا طلبات متوقفة.'), list(l.slice(0, 40).map(x => [link('executions', x.r), ' — ' + x.n.t]))); }
   };
