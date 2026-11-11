@@ -91,7 +91,7 @@
     if (mob && O.normMobile) f.manager_mobile = O.normMobile(mob);
     const cr = /(?:السجل التجاري|رقم السجل|الرقم الموحد|سجل تجاري)[^\d\n]{0,15}(\d{10})/.exec(t);
     if (cr && (!O.validCr || O.validCr(cr[1]))) f.cr_no = cr[1];
-    const na = (t.match(/\b[A-Z]{4}\s?\d{4}\b/) || [])[0]; if (na) f.national_address = na.replace(/\s/, '');
+    const na = shortAddr(t); if (na) f.national_address = na;
     const tn = /(?:الاسم التجاري|اسم المنشأة|اسم المنشاة)\s*(?:لل(?:مؤسسة|شركة|منشأة|منشاة))?\s*[:：]?\s*([^\n]{3,70})/.exec(t); if (tn) f.trade_name = cleanName(tn[1]);
     if (!f.cr_no){ const c2 = /(?:السجل|الموحد|سجل|المنشأة)[^\d\n]{0,40}((?:70|[1-5]\d)\d{8})(?!\d)/.exec(t); if (c2 && (!O.validCr || O.validCr(c2[1]))) f.cr_no = c2[1]; }
     const city = /(?:مدينة الإصدار|مدينة الاصدار|المدينة|المقر الرئيسي)\s*[:：]?\s*([ء-ي]{2,15})/.exec(t); if (city) f.cr_city = city[1];
@@ -99,6 +99,15 @@
     if (f.activity && f.activity.length < 4) delete f.activity;
     const br = /(?:تابع(?:ين|ة)?\s*(?:ل)?)?فرع\s+(?:مدينة\s+)?([ء-ي]{2,15})/.exec(t); if (br && !/^(?:الشركة|رئيسي|الرئيسي)$/.test(br[1])) f.branch = br[1].replace(/^الاحساء$/, 'الأحساء');
     return f;
+  }
+  // العنوان المختصر: 4 حروف + 4 أرقام، حتى لو جاء في مربعات منفصلة «F H G H 4 2 7 5» أو معكوسًا «5 7 2 4 H G H F»
+  function shortAddr(text){
+    const t = String(text || '').toUpperCase();
+    let m = /(?<![A-Z0-9])([A-Z])[\s|]*([A-Z])[\s|]*([A-Z])[\s|]*([A-Z])[\s|]*(\d)[\s|]*(\d)[\s|]*(\d)[\s|]*(\d)(?![A-Z0-9])/.exec(t);
+    if (m) return m.slice(1, 9).join('');
+    m = /(?<![A-Z0-9])(\d)[\s|]*(\d)[\s|]*(\d)[\s|]*(\d)[\s|]*([A-Z])[\s|]*([A-Z])[\s|]*([A-Z])[\s|]*([A-Z])(?![A-Z0-9])/.exec(t);
+    if (m && /العنوان\s*المختصر|Short\s*Address|National\s*Address|العنوان\s*الوطني/i.test(text)) return m.slice(1, 9).reverse().join('');
+    return '';
   }
   // يشيل البادئات مثل «للمؤسسة :» والرموز الشاذة من الاسم التجاري
   function cleanName(v){ return String(v || '').replace(/^\s*(?:لل(?:مؤسسة|شركة|منشأة|منشاة)|للمنشأة)\s*[:：]?\s*/, '').replace(/^[\s:：\-–|]+/, '').replace(/[^ء-ي0-9A-Za-z ()\-&.]/g, ' ').replace(/\s+/g, ' ').trim(); }
@@ -127,6 +136,19 @@
     }
     return rows;
   }
+  // السند: تاريخه = تاريخ إنشاء العقد، ومحرره = العميل (الاسم التجاري) إذا كانت فاضية
+  function bondDefaults(rows, d){
+    const has = k => rows.some(r => r.fk === k);
+    const val = k => { const r = rows.find(x => x.fk === k); return r ? r.fv : d[k]; };
+    const bondKnown = ['bond_type', 'bond_amount', 'bond_no'].some(k => has(k) || (d[k] && d[k] !== 'ما فيه سند'));
+    if (!bondKnown || val('bond_type') === 'ما فيه سند') return rows;
+    const out = rows.slice();
+    const cd = d.date && (d.date.g || (typeof d.date === 'string' ? d.date : ''));
+    if (!has('bond_date') && !(d.bond_date && d.bond_date.g) && cd) out.push({fk:'bond_date', fv:{orig:'g', g:cd, h: root.g2h ? root.g2h(cd) : '', verified:true}, kind:'empty', alts:[]});
+    const tn = val('trade_name');
+    if (!has('bond_issuer') && !String(d.bond_issuer || '').trim() && tn) out.push({fk:'bond_issuer', fv: String(tn), kind:'empty', alts:[]});
+    return out;
+  }
   // دمج الصفوف: قراءة البرنامج الأصلية أولًا، ثم ما ينقص من السند والحقول العامة (بدون تكرار)
   // قيمة فيها عناوين خانات أخرى = قراءة خاطئة لخانة فاضية في النموذج (مثل «رقم الجوال البريد الالكتروني…»)
   const LABELISH = /(?:رقم\s*(?:ال)?جوال|البريد\s*(?:الإ|الا)?ل?كترو|اسم\s*الشخص|نموذج\s*التوقيع|العنوان\s*الوطني|رقم\s*السجل|اسم\s*الموظف|رقم\s*الهوية)/;
@@ -135,7 +157,7 @@
     for (const l of lists) for (let r of l){ if (seen.has(r.fk)) continue; if (r.fk === 'trade_name' && typeof r.fv === 'string'){ r = {...r, fv: cleanName(r.fv)}; if (!r.fv) continue; } if (typeof r.fv === 'string' && LABELISH.test(r.fv)) continue; seen.add(r.fk); out.push(r); }
     return out;
   }
-  root.TamkeenContractReader = {bondFields, bondRows, genericFields, cleanName};
+  root.TamkeenContractReader = {bondFields, bondRows, genericFields, cleanName, shortAddr, bondDefaults};
   function setVal(d, k, v){
     if (v && typeof v === 'object'){ d[k] = v; const el = document.getElementById('f_' + k); if (el && el.type === 'date' && v.g){ el.value = v.g; el.dispatchEvent(new Event('input', {bubbles:true})); } return; }
     const el = document.getElementById('f_' + k);
@@ -200,7 +222,7 @@
         if (crFile && typeof root.uxCrExtract === 'function'){
           try { const {info: ex, qr} = await root.uxCrExtract(crFile, m => { prog.textContent = m; }); const ci = Object.assign({}, ex); if (typeof root.uxCrParse === 'function'){ const crTxt = types.map((t, i) => t.f === crFile ? texts[i] : '').join('\n'); const cp = root.uxCrParse(crTxt); for (const [k, v] of Object.entries(cp)) if (v) ci[k] = v; } crR = crRows(ci, d); if (qr && /^https:\/\/([a-z0-9-]+\.)*(saudibusiness\.gov\.sa|mc\.gov\.sa)\//i.test(qr) && !d.cr_qr) d.cr_qr = qr; prog.textContent = 'قُرئت ' + pages + ' صفحة' + (qr ? ' · وقُرئ باركود السجل' : '') + '.'; } catch (e) {}
         }
-        const rows = mergeRows(crR, contractRows(info, d), bondRows(texts, d), genericRows(texts, d));
+        const rows = bondDefaults(mergeRows(crR, contractRows(info, d), bondRows(texts, d), genericRows(texts, d)), d);
         out.append(root.h('div', {class:'small'}, root.h('b', null, 'المستندات: '), types.map(t => t.file + ' ← ' + (TYPE_AR[t.type] || t.type) + (t.method ? ' (' + t.method + ')' : '')).join(' · ')));
         render(mode, id, out, rows, 'المستند');
         if (mode === 'new'){ pendingFiles = files; out.append(box('info', 'ستُرفق المستندات بالعقد تلقائيًا بعد الحفظ.')); }
@@ -218,7 +240,7 @@
         msgOut.replaceChildren(); const t = ta.value.trim();
         if (!t){ msgOut.append(box('warn', 'الصق الرسالة أولًا.')); return; }
         const d = mode === 'new' ? (formData || {}) : root.rec('contracts', id); if (!d){ msgOut.append(box('bad', 'العقد غير موجود.')); return; }
-        const rows = mergeRows(contractRows({1: root.uxReadPage(t)}, d), bondRows([t], d), genericRows([t], d));
+        const rows = bondDefaults(mergeRows(contractRows({1: root.uxReadPage(t)}, d), bondRows([t], d), genericRows([t], d)), d);
         render(mode, id, msgOut, rows, 'الرسالة');
       }}, 'قراءة الرسالة');
       msgBox = root.h('div', {style:'margin-top:12px;display:grid;gap:8px'}, root.h('b', null, mode === 'new' ? '✉️ رسالة المندوب (واتساب): الجوال، السند ومبلغه، الفرع…' : '✉️ أو الصق رسالة / بريد التحديث'), ta, root.h('div', {class:'row'}, read), msgOut);
