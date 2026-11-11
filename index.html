@@ -3751,7 +3751,7 @@ function hearingNoticePanel(mod='hearings'){
 
 /* ============ إنشاء سجل ============ */
 function viewNew(mod){
-  const M=MODS[mod];const d={status:M.st[0]};for(const f of M.fields){if(f.k==='currency')d.currency='ريال سعودي';if(f.k==='priority')d.priority='عادية';if(mod==='bonds'&&f.k==='kind')d.kind='سند لأمر'}if(mod==='contracts'){d.fileKind=(()=>{const k=LS.get('ctKind','');return k==='تركيب'?'تركيب':'جملة'})();d.activity='البيع بالتجزئة للأجهزة المنزلية';d.date={orig:'g',g:todayISO(),h:g2h(todayISO()),verified:true};d.e1_nat='';const y=todayISO().slice(0,4);d.ref_no=`ع/${y}/${String(recs('contracts',true).length+1).padStart(3,'0')}`}
+  const M=MODS[mod];const d={status:M.st[0]};for(const f of M.fields){if(f.k==='currency')d.currency='ريال سعودي';if(f.k==='priority')d.priority='عادية';if(mod==='bonds'&&f.k==='kind')d.kind='سند لأمر'}if(mod==='contracts'){d.fileKind=(()=>{const k=LS.get('ctKind','');return k==='تركيب'?'تركيب':'جملة'})();d.activity='البيع بالتجزئة للأجهزة المنزلية';d.date={orig:'g',g:todayISO(),h:g2h(todayISO()),verified:true};d.e1_nat='';const y=todayISO().slice(0,4);d.ref_no=uxNextRef(d.fileKind,y)}
   if(mod==='hearings'&&S.prefill?.caseId){d.caseId=S.prefill.caseId}
   const linkTo=S.prefill?.link||null;S.prefill=null;
   const err=h('div');
@@ -6519,6 +6519,11 @@ function uxCtCovered(r){const d=contractDocs(r.id);return{full:d.some(x=>x.categ
   if(c.full)out=out.filter(x=>x!==SIGNED_CAT&&!s.papers.includes(x));if(c.bond)out=out.filter(x=>x!=='سند لأمر')}catch(e){}return out}}
 function uxCtDocMiss(r){return missingContractItems(r).filter(x=>x!=='بيانات العقد غير مكتملة')}
 if(typeof METRICS!=='undefined'&&METRICS.ct_docs){METRICS.ct_docs.f=r=>ctOpen(r)&&uxCtDocMiss(r).length>0;METRICS.ct_docs.p='غير منتهية أو مؤرشفة، وينقصها مستند (ملف العميل الكامل يغطي العقد والأوراق)'}
+
+/* ===== 30) رقم العقد التلقائي: آخر رقم مكتوب + 1 (لنفس نوع الملف) ===== */
+function uxRefSeq(ref){const t=normDigits(String(ref||''));const m=t.match(/^\s*[ء-ي]*\s*\/?\s*(\d{4})\s*\/\s*(\d{1,6})\s*$/)||t.match(/^\s*[ء-ي]*\s*\/?\s*(\d{1,6})\s*\/\s*(\d{4})\s*$/);if(m){const a=+m[1],b=+m[2];return /^\d{4}$/.test(m[1])&&(a>1900||a>1400&&a<1500)&&!(/^\d{4}$/.test(m[2])&&b>1900)?{n:b,w:m[2].length}:{n:a,w:m[1].length}}const one=t.match(/^\s*[ء-ي]*\s*\/?\s*(\d{1,6})\s*$/);return one?{n:+one[1],w:one[1].length}:null}
+function uxNextRef(kind,y){let best=null;const all=recs('contracts',true).filter(c=>!c.deleted&&(c.fileKind||'جملة')===(kind||'جملة'));for(const c of all){const q=uxRefSeq(c.ref_no);if(q&&(!best||q.n>best.n)){best=q;best.p=(normDigits(String(c.ref_no)).match(/^\s*([ء-ي]+)/)||[])[1]||'ع'}}
+  if(!best){const n=all.length+1;return `ع/${y}/${String(n).padStart(3,'0')}`}return `${best.p}/${y}/${String(best.n+1).padStart(Math.max(3,best.w),'0')}`}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
