@@ -5212,7 +5212,7 @@ function uxCollectList(){return statRecs('executions').filter(r=>isOpen('executi
 function uxQualityChecks(){const C=[];const add=(id,mod,ic,t,why,rows)=>{if(MODS[mod]&&canSee(mod)&&!uxHidden?.(mod))C.push({id,mod,ic,t,why,rows})};
   add('ct_docs','contracts','paperclip','عقود مستنداتها ناقصة','مستندات مطلوبة لم تُرفق بعد',mrecs('ct_docs'));
   add('inst_end','contracts','calendar','عقود تركيب بدون تاريخ انتهاء','لا تظهر لها تنبيهات التجديد',statRecs('contracts').filter(r=>uxCtKind(r)==='تركيب'&&!dateG(r.end)));
-  add('v_nodl','violations','alert','مخالفات غير مسددة بدون مهلة','لا يطلع لها تنبيه قبل فوات الاعتراض أو السداد',statRecs('violations').filter(r=>isOpen('violations',r)&&!violNext(r)));
+  add('v_nodl','violations','alert','مخالفات غير مسددة بدون مهلة','لا يطلع لها تنبيه قبل فوات الاعتراض أو السداد',statRecs('violations').filter(r=>isOpen('violations',r)&&!violNext(r)&&violationGroup(r)!=='v_review'&&r.status!=='قيد الاعتراض'));
   add('h_result','hearings','gavel','جلسات مضت بدون نتيجة','سجّل ما حدث في الجلسة',mrecs('h_result'));
   add('h_nocase','hearings','link','جلسات غير مرتبطة بقضية','اربطها بقضيتها',statRecs('hearings').filter(x=>{const c=rec('cases',x.caseId);return!c||c.deleted}));
   add('c_nolaw','cases','briefcase','قضايا مفتوحة بدون محامٍ','حدّد المحامي المسؤول',statRecs('cases').filter(c=>isOpen('cases',c)&&!caseLawyer(c)&&!String(c.lawyer||'').trim()));
@@ -6512,6 +6512,13 @@ const UX_TITLES=/^(مالك|المالك|مالكة|صاحب المؤسسة|مد
 /* السجل: يُقترح الرقم الوطني الموحد (يبدأ بـ7) فقط — الأرقام القديمة تتلخبط مع هوية المالك فما تُقترح */
 {const _s2=uxOcrSane;uxOcrSane=function(k,v){if(k==='cr_no'&&!/^7\d{9}$/.test(String(v).trim()))return false;return _s2(k,v)}}
 {const _r5=uxOcrRows;uxOcrRows=function(c){const R=_r5(c);const mob=R.filter(r=>/mobile$/.test(r.k));if(mob.length>1){const seen=new Set();return R.filter(r=>{if(!/mobile$/.test(r.k))return true;const v=String(r.v);if(r.k==='manager_mobile'&&R.some(x=>/^e[12]_mobile$/.test(x.k)&&String(x.v)===v))return false;if(seen.has(r.k+v))return false;seen.add(r.k+v);return true})}return R}}
+
+/* ===== 29) فحص الجودة: «ملف العميل الموقّع كاملًا» يغطي العقد والأوراق، وتاريخ السند المقروء يغطي السند ===== */
+function uxCtCovered(r){const d=contractDocs(r.id);return{full:d.some(x=>x.category===FULL_CAT),bond:(typeof contractBonds==='function'&&contractBonds(r).length>0)||!!(uxCtBondInfo(r)||{}).date}}
+{const _m=missingContractItems;missingContractItems=function(r){let out=_m(r);try{const c=uxCtCovered(r);const s=contractStage(r);
+  if(c.full)out=out.filter(x=>x!==SIGNED_CAT&&!s.papers.includes(x));if(c.bond)out=out.filter(x=>x!=='سند لأمر')}catch(e){}return out}}
+function uxCtDocMiss(r){return missingContractItems(r).filter(x=>x!=='بيانات العقد غير مكتملة')}
+if(typeof METRICS!=='undefined'&&METRICS.ct_docs){METRICS.ct_docs.f=r=>ctOpen(r)&&uxCtDocMiss(r).length>0;METRICS.ct_docs.p='غير منتهية أو مؤرشفة، وينقصها مستند (ملف العميل الكامل يغطي العقد والأوراق)'}
 
 boot().then(uxAfterBoot,e=>console.warn(e));
 </script>
