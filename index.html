@@ -186,7 +186,7 @@ function loginVerificationInput(value,email,authOrigin){
 <title>المساعد القانوني — تمكين الدولية</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700&family=El+Messiri:wght@500;600;700&family=Amiri:wght@400;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700&family=El+Messiri:wght@500;600;700&family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&family=Noto+Sans+Arabic:wght@400;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap">
 <style>
 /* Layout: right-hand rail (RTL) with record ledger in the main column; on phones the rail becomes a drawer. */
 :root{
@@ -421,11 +421,12 @@ h1.ph,h2.ph{display:flex;align-items:center;gap:10px}
 .doc-ov-bar b{font-family:var(--f-display);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .doc-ov-body{flex:1;overflow:auto;padding:16px 8px calc(16px + env(safe-area-inset-bottom,0px))}
 .doc-host{width:794px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-.a4{--sakkal:"Sakkal Majalla","Traditional Arabic","Arabic Typesetting",serif;--calibri:Calibri,Carlito,"Segoe UI",Arial,sans-serif;position:relative;width:794px;height:1123px;flex:none;background:#fff center/100% 100% no-repeat;color:#000;box-shadow:0 6px 24px rgb(0 0 0 / .45);font-family:var(--sakkal);direction:rtl;overflow:hidden}
+.a4{--sakkal:"Sakkal Majalla","Noto Naskh Arabic","Traditional Arabic","Arabic Typesetting",serif;--calibri:Calibri,Carlito,"Noto Sans Arabic","Segoe UI",Arial,sans-serif;position:relative;width:794px;height:1123px;flex:none;background:#fff center/100% 100% no-repeat;color:#000;box-shadow:0 6px 24px rgb(0 0 0 / .45);font-family:var(--sakkal);direction:rtl;overflow:hidden}
 .a4 .abs{position:absolute}
 .a4 table{border-collapse:collapse;table-layout:fixed;direction:rtl}
 .a4 td{color:#000;background:transparent;cursor:default;vertical-align:top;padding:0 7px;overflow-wrap:anywhere}
-.a4 .grid td{border:1px solid #000;text-align:center;line-height:1.5;height:22px}
+.a4 .grid td{border:1px solid #000;text-align:center;line-height:1.5;height:30px}
+.a4 .grid.auth td{height:24px}
 .a4 .grid .lab{background:#DDD9C3;font:700 16px/1.5 var(--calibri);text-align:center}
 .a4 .grid .val{font:700 13.3px/1.5 var(--calibri)}
 .a4 .hd{font:700 26.7px/1.3 var(--sakkal);text-decoration:underline dotted;text-underline-offset:5px;white-space:nowrap}
@@ -2164,7 +2165,7 @@ const MODS={
     {k:'ref_no',l:'الرقم',t:'ltr',sec:'النموذج'},{k:'date',l:'التاريخ',t:'date',req:1,sec:'النموذج',hint:'يُكتب في الملف بالميلادي والهجري (أم القرى) ولا يتغير عند فتح الملف'},{k:'customer_code',l:'كود العميل',t:'ltr',sec:'النموذج'},
     {k:'trade_name',l:'الاسم التجاري',t:'text',req:1,sec:'بيانات العميل'},{k:'cr_no',l:'رقم السجل التجاري',t:'ltr',sec:'بيانات العميل',chk:'cr'},{k:'cr_city',l:'مدينة الإصدار',t:'text',sec:'بيانات العميل',list:CITIES},
     {k:'cr_confirm',l:'تاريخ التأكيد السنوي للسجل',t:'date',sec:'بيانات العميل'},{k:'cr_entity',l:'نوع الكيان',t:'text',sec:'بيانات العميل'},{k:'cr_state',l:'حالة السجل',t:'text',sec:'بيانات العميل'},{k:'bond_type',l:'نوع السند',t:'select',o:['إلكتروني (نافذ)','ورقي','إلكتروني + ورقي','ما فيه سند'],sec:'السند'},{k:'bond_amount',l:'مبلغ السند',t:'money',sec:'السند'},{k:'bond_date',l:'تاريخ السند',t:'date',sec:'السند'},{k:'bond_issuer',l:'محرر السند',t:'text',sec:'السند'},{k:'bond_import_note',l:'ملاحظات السند من ملف Excel',t:'area',sec:'السند',w:1},{k:'bond_no',l:'رقم السند في نافذ',t:'ltr',sec:'السند'},{k:'activity',l:'نشاط المنشأة',t:'text',sec:'بيانات العميل',list:ACTS},{k:'national_address',l:'العنوان الوطني',t:'text',sec:'بيانات العميل',hint:'المدينة، الحي، رقم المبنى أو الرمز المختصر'},
-    {k:'manager_name',l:'اسم الشخص المسؤول',t:'text',sec:'الشخص المسؤول'},{k:'manager_title',l:'الوظيفة',t:'text',sec:'الشخص المسؤول',list:TITLES},{k:'manager_mobile',l:'رقم الجوال',t:'ltr',sec:'الشخص المسؤول',chk:'mobile'},{k:'inst_region',l:'منطقة التركيب',t:'text',sec:'بيانات التركيب',list:CITIES,hint:'تُكتب في التمهيد والبنود: مثال جدة'},{k:'ins_amount',l:'مبلغ التأمين (ريال)',t:'money',sec:'بيانات التركيب',hint:'مبلغ التأمين المودع قبل بدء العمل حسب العقد'},{k:'manager_nat',l:'جنسية ممثل الطرف الثاني',t:'text',sec:'بيانات التركيب',list:NATS},{k:'manager_id',l:'رقم الهوية / السجل المدني للممثل',t:'ltr',sec:'بيانات التركيب',chk:'id'},{k:'inst_final',l:'تاريخ انتهاء العقد عند عدم التجديد',t:'date',sec:'بيانات التركيب',hint:'يُكتب في بند «فينتهي هذا العقد بتاريخ». إن تُرك فارغًا يُستخدم تاريخ نهاية العقد'},
+    {k:'manager_name',l:'اسم الشخص المسؤول',t:'text',sec:'الشخص المسؤول'},{k:'manager_title',l:'الوظيفة',t:'text',sec:'الشخص المسؤول',list:TITLES},{k:'manager_mobile',l:'رقم الجوال',t:'ltr',sec:'الشخص المسؤول',chk:'mobile'},{k:'manager_email',l:'البريد الإلكتروني',t:'ltr',sec:'الشخص المسؤول'},{k:'inst_region',l:'منطقة التركيب',t:'text',sec:'بيانات التركيب',list:CITIES,hint:'تُكتب في التمهيد والبنود: مثال جدة'},{k:'ins_amount',l:'مبلغ التأمين (ريال)',t:'money',sec:'بيانات التركيب',hint:'مبلغ التأمين المودع قبل بدء العمل حسب العقد'},{k:'manager_nat',l:'جنسية ممثل الطرف الثاني',t:'text',sec:'بيانات التركيب',list:NATS},{k:'manager_id',l:'رقم الهوية / السجل المدني للممثل',t:'ltr',sec:'بيانات التركيب',chk:'id'},{k:'inst_final',l:'تاريخ انتهاء العقد عند عدم التجديد',t:'date',sec:'بيانات التركيب',hint:'يُكتب في بند «فينتهي هذا العقد بتاريخ». إن تُرك فارغًا يُستخدم تاريخ نهاية العقد'},
     {k:'e1_name',l:'اسم الموظف المفوض',t:'text',req:1,sec:'المفوض الأول'},{k:'e1_nat',l:'الجنسية',t:'text',sec:'المفوض الأول',list:NATS},{k:'e1_id',l:'رقم الهوية أو الإقامة',t:'ltr',sec:'المفوض الأول',chk:'id'},{k:'e1_title',l:'الوظيفة',t:'text',sec:'المفوض الأول',list:TITLES},{k:'e1_mobile',l:'رقم الجوال',t:'ltr',sec:'المفوض الأول',chk:'mobile'},
     {k:'e2_name',l:'اسم الموظف المفوض',t:'text',sec:'المفوض الثاني'},{k:'e2_nat',l:'الجنسية',t:'text',sec:'المفوض الثاني',list:NATS},{k:'e2_id',l:'رقم الهوية أو الإقامة',t:'ltr',sec:'المفوض الثاني',chk:'id'},{k:'e2_title',l:'الوظيفة',t:'text',sec:'المفوض الثاني',list:TITLES},{k:'e2_mobile',l:'رقم الجوال',t:'ltr',sec:'المفوض الثاني',chk:'mobile'},
     {sec:'تفاصيل العقد الإضافية',k:'ctype',l:'نوع العقد',t:'select',o:CT_TYPES_LIST,hint:'يحدد قائمة المستندات المطلوبة؛ الافتراضي «توريد بضاعة آجل»'},{sec:'تفاصيل العقد الإضافية',k:'title',l:'عنوان العقد',t:'text',w:1},{sec:'تفاصيل العقد الإضافية',k:'parties',l:'الأطراف',t:'area',w:1},
@@ -2580,7 +2581,7 @@ function hijriDocDate(v){const g=dateG(v);const hs=(v&&typeof v==='object'&&v.or
 function formValues(r){const n=x=>normDigits(String(x??'')).trim();const t=x=>String(x??'').replace(/\s*[\r\n]+\s*/g,' — ').trim();
   const num=x=>n(x).replace(/[\s\-‎‏‪-‮]/g,'');const mob=x=>num(x).replace(/^(?:\+|00)?9665(\d{8})$/,'05$1').replace(/^5(\d{8})$/,'05$1');
   return{ref_no:n(r.ref_no),date_g:docDate(dateG(r.date)),date_h:hijriDocDate(r.date),customer_code:n(r.customer_code),trade_name:t(r.trade_name),cr_no:num(r.cr_no),cr_city:t(r.cr_city),cr_confirm:docDate(r.cr_confirm)+(r.cr_confirm&&r.cr_confirm.orig==='h'&&r.cr_confirm.h?'هـ':''),activity:t(r.activity),national_address:t(r.national_address),
-    manager_name:t(r.manager_name),manager_title:t(r.manager_title),manager_mobile:mob(r.manager_mobile),
+    manager_name:t(r.manager_name),manager_title:t(r.manager_title),manager_mobile:mob(r.manager_mobile),manager_email:t(r.manager_email),
     e1_name:t(r.e1_name),e1_nat:t(r.e1_nat),e1_id:num(r.e1_id),e1_title:t(r.e1_title),e1_mobile:mob(r.e1_mobile),e2_name:t(r.e2_name),e2_nat:t(r.e2_nat),e2_id:num(r.e2_id),e2_title:t(r.e2_title),e2_mobile:mob(r.e2_mobile)}}
 function formChecks(v){const w=[];const id=(x,l,nat)=>{if(!x)return;if(!/^[12]\d{9}$/.test(x))w.push(`${l}: رقم الهوية أو الإقامة يجب أن يكون 10 أرقام يبدأ بـ1 أو 2`);else if(/سعود/.test(nat||'')&&x[0]!=='1')w.push(`${l}: الجنسية سعودية لكن الرقم يبدأ بـ2 (رقم إقامة)`);else if(nat&&!/سعود/.test(nat)&&x[0]==='1')w.push(`${l}: الجنسية غير سعودية لكن الرقم يبدأ بـ1 (هوية وطنية)`)};
   const mob=(x,l)=>{if(x&&!/^05\d{8}$/.test(x))w.push(`${l}: رقم الجوال يجب أن يبدأ بـ5 (9 أرقام) أو بـ05 (10 أرقام)`)};
@@ -2621,17 +2622,17 @@ function contractPages(v){
     A('left:49px;top:236px',h('table',{class:'grid',style:'width:713px'},grid([1479,2109,270,872,526,534,498,389,919,311,115,1414,1260]),h('tbody',null,
       h('tr',null,L('الاسم التجاري'),V(v.trade_name,{colspan:3}),L('رقم السجل التجاري',{colspan:4}),V(v.cr_no,{colspan:2,style:'padding:0 1px;white-space:nowrap;overflow-wrap:normal'}),L('مدينة الإصدار',{colspan:2}),V(v.cr_city)),
       h('tr',null,L('تاريخ التأكيد السنوي للسجل التجاري',{colspan:2}),h('td',{class:'val',colspan:4},D(v.cr_confirm)),L('نشاط المنشاة',{colspan:3}),V(v.activity,{colspan:4})),
-      h('tr',null,L('العنوان الوطني'),V(v.national_address,{colspan:4}),L('اسم الشخص المسؤول',{colspan:6}),V(v.manager_name,{colspan:2})),
-      h('tr',null,L('الوظيفة'),V(v.manager_title,{colspan:2}),L('رقم الجوال',{colspan:4}),V(v.manager_mobile,{colspan:6,style:'text-align:center'}))))),
-    A('left:85px;width:630px;top:500px;text-align:center',h('div',{class:'hd'},'تفويض تمثيل المنشأة - طلب شراء و استلام البضاعة')),
-    A('left:51px;top:600px',h('table',{class:'grid',style:'width:690px'},grid([2790,1800,2070,1890,1806]),h('tbody',null,
+      h('tr',null,L('العنوان الوطني'),V(v.national_address,{colspan:4}),L('اسم الشخص المسؤول',{colspan:6}),V(v.manager_name,{colspan:2})))),
+      h('table',{class:'grid',style:'width:713px;margin-top:-1px'},grid([1479,1461,1425,1695,2070,2565]),h('tbody',null,h('tr',null,L('الوظيفة'),V(v.manager_title),L('رقم الجوال'),V(v.manager_mobile),L('البريد الالكتروني'),V(v.manager_email||'**'))))),
+    A('left:85px;width:630px;top:445px;text-align:center',h('div',{class:'hd'},'تفويض تمثيل المنشأة - طلب شراء و استلام البضاعة')),
+    A('left:51px;top:548px',h('table',{class:'grid auth',style:'width:690px'},grid([2790,1800,2070,1890,1806]),h('tbody',null,
       h('tr',null,['اسم الموظف المفوض','الجنسية','رقم الهوية','الوظيفة','رقم الجوال'].map((t,i)=>L(t,i?null:{style:'text-align:right'}))),
       h('tr',null,V(v.e1_name),V(v.e1_nat),V(v.e1_id),V(v.e1_title),V(v.e1_mobile)),
-      hasE2(v)?h('tr',null,V(v.e2_name),V(v.e2_nat),V(v.e2_id),V(v.e2_title),V(v.e2_mobile)):null))),
-    A('left:85px;width:630px;top:690px',h('p',{class:'par'},'نحن ',h('span',{class:'u un'},B(v.trade_name)),' نفوض الأشخاص المذكورين أعلاه في الجدول في تمثيل المنشأة في طلب واستلام توريد مشتريات أجهزة منزلية مع تحملنا كافة المسؤولية تجاه التفويض وفي حال إلغاء التفويض سوف يتم تزويد شركة تمكين الدولية بخطاب رسمي من قبلنا مصدق من الغرفة التجارية كما نلتزم بتسديد كافة المديونية المستحقة بموعدها وأنه في حال تأخير السداد لأي سبب ستكون كافة الفواتير وسند الضمان مستحقة فورا وبدون الحاجة الى الاعتراض .')),
+      h('tr',null,...['e2_name','e2_nat','e2_id','e2_title','e2_mobile'].map(k=>V(hasE2(v)?v[k]:'**')))))),
+    A('left:85px;width:630px;top:650px',h('p',{class:'par'},'نحن ',h('span',{class:'u un'},B(v.trade_name)),' نفوض الأشخاص المذكورين أعلاه في الجدول في تمثيل المنشأة في طلب واستلام توريد مشتريات أجهزة منزلية مع تحملنا كافة المسؤولية تجاه التفويض وفي حال إلغاء التفويض سوف يتم تزويد شركة تمكين الدولية بخطاب رسمي من قبلنا مصدق من الغرفة التجارية كما نلتزم بتسديد كافة المديونية المستحقة بموعدها وأنه في حال تأخير السداد لأي سبب ستكون كافة الفواتير وسند الضمان مستحقة فورا وبدون الحاجة الى الاعتراض .')),
     A('left:85px;top:858px',h('div',{class:'hd hd2'},'تصديق الغرفة التجارية')),
     A('left:425px;top:912px',h('table',{class:'cham',style:'width:278px'},grid([1055,3113]),h('tbody',null,
-      h('tr',{style:'height:30px'},h('td',{class:'chl'},'الاسم'),h('td',{class:'chv'})),
+      h('tr',{style:'height:30px'},h('td',{class:'chl'},'الاسم'),h('td',{class:'chv',style:'font:700 21.3px/1.2 var(--sakkal);text-align:center'},B(v.manager_name))),
       h('tr',{style:'height:39px'},h('td',{class:'chl'},'التوقيع'),h('td',{class:'chv'})),
       h('tr',{style:'height:30px'},h('td',{class:'chl'},'الختم'),h('td',{class:'chv'}))))));
   return[p1,p2];
@@ -4946,7 +4947,7 @@ async function uxReportPdf(R){await libLoad(LIB.h2c);await libLoad(LIB.jspdf);co
   pdf.setProperties({title:R.title,author:S.me.name||'',creator:'المساعد القانوني — تمكين'});return pdf.output('blob')}
 /* ملف العقد PDF بدل Word */
 async function uxContractPdfBlob(r){await libLoad(LIB.h2c);await libLoad(LIB.jspdf);const host=h('div',{class:'doc-host',style:'position:fixed;left:-30000px;top:0;zoom:1'},contractPages(formValues(r)));document.body.append(host);
-  try{await Promise.all([...host.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));try{await document.fonts.ready}catch(e){}uxFitCells(host);const pages=[...host.querySelectorAll('.a4')];const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'p',unit:'pt',format:'a4',compress:true});const pw=pdf.internal.pageSize.getWidth(),ph2=pdf.internal.pageSize.getHeight();
+  try{await Promise.all([...host.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));try{await Promise.all(['400 16px "Noto Naskh Arabic"','700 16px "Noto Naskh Arabic"','400 16px "Noto Sans Arabic"','700 16px "Noto Sans Arabic"'].map(f=>document.fonts.load(f,'عربي')));await document.fonts.ready}catch(e){}uxFitCells(host);const pages=[...host.querySelectorAll('.a4')];const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'p',unit:'pt',format:'a4',compress:true});const pw=pdf.internal.pageSize.getWidth(),ph2=pdf.internal.pageSize.getHeight();
     for(let i=0;i<pages.length;i++){const sh=pages[i].style.boxShadow;pages[i].style.boxShadow='none';const c=await window.html2canvas(pages[i],{scale:2,backgroundColor:'#ffffff',useCORS:true});pages[i].style.boxShadow=sh;if(i)pdf.addPage();pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw,ph2)}
     pdf.setProperties({title:'عقد — '+(r.trade_name||''),creator:'المساعد القانوني — تمكين'});return pdf.output('blob')}finally{host.remove()}}
 const uxContractName=r=>`عقد - ${(r.trade_name||'بدون اسم').replace(/[\\/:*?"<>|]/g,' ')}.pdf`;
