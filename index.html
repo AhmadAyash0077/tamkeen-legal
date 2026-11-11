@@ -421,7 +421,7 @@ h1.ph,h2.ph{display:flex;align-items:center;gap:10px}
 .doc-ov-bar b{font-family:var(--f-display);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .doc-ov-body{flex:1;overflow:auto;padding:16px 8px calc(16px + env(safe-area-inset-bottom,0px))}
 .doc-host{width:794px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-.a4{--sakkal:"Sakkal Majalla","Noto Naskh Arabic","Traditional Arabic","Arabic Typesetting",serif;--calibri:Calibri,Carlito,"Noto Sans Arabic","Segoe UI",Arial,sans-serif;position:relative;width:794px;height:1123px;flex:none;background:#fff center/100% 100% no-repeat;color:#000;box-shadow:0 6px 24px rgb(0 0 0 / .45);font-family:var(--sakkal);direction:rtl;overflow:hidden}
+.a4{--calibri:Calibri,Carlito,"Noto Sans Arabic","Segoe UI",Arial,sans-serif;--sakkal:var(--calibri);position:relative;width:794px;height:1123px;flex:none;background:#fff center/100% 100% no-repeat;color:#000;box-shadow:0 6px 24px rgb(0 0 0 / .45);font-family:var(--sakkal);direction:rtl;overflow:hidden}
 .a4 .abs{position:absolute}
 .a4 table{border-collapse:collapse;table-layout:fixed;direction:rtl}
 .a4 td{color:#000;background:transparent;cursor:default;vertical-align:top;padding:0 7px;overflow-wrap:anywhere}
@@ -2608,7 +2608,7 @@ function contractPages(v){
   const grid=ws=>h('colgroup',null,ws.map(w=>h('col',{style:`width:${(w/15).toFixed(2)}px`})));
   const page=(...k)=>h('div',{class:'a4',style:`background-image:url("${LETTERHEAD}")`},k);
   const p1=page(
-    A('left:113px;top:245px;width:602px;height:151px;border:1px solid #000;border-radius:25px;display:flex;align-items:center;justify-content:center;text-align:center;font:700 32px/1.4 var(--sakkal);padding:0 10px',h('span',null,'" ',h('span',{style:'font-size:37.3px'},'ملف فتح حساب توريد بضاعة -آجل'),' "')),
+    A('left:113px;top:245px;width:602px;height:151px;border:1px solid #000;border-radius:25px;display:flex;align-items:center;justify-content:center;text-align:center;font:700 28px/1.4 var(--sakkal);padding:0 10px;white-space:nowrap',h('span',null,'" ',h('span',{style:'font-size:33px'},'ملف فتح حساب توريد بضاعة -آجل'),' "')),
     A('left:113px;top:522px;width:608px;height:176px;border:1px solid #000;border-radius:29px;display:flex;align-items:center;justify-content:center',
       h('table',{class:'cov',style:'width:545px'},grid([1969,6217]),h('tbody',null,
         h('tr',null,h('td',{class:'cl'},'اسم العميل'),h('td',{class:'cv',style:'color:#17365D;font:700 21.3px/1.4 var(--calibri)'},B(v.trade_name))),
