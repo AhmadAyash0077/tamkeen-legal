@@ -52,16 +52,20 @@
   }
   function bondFields(text){
     const t = dig(text), f = {};
-    if (!/(?:سند\s*لأمر|سند\s*لامر|السند|نافذ)/.test(t)) return f;
+    if (!/(?:سند\s*لأمر|سند\s*لامر|السند|نافذ|(?:^|[\s،,و])سند)/.test(t)) return f;
     const lab = (labels, re) => { for (const l of labels){ const m = new RegExp('(?:' + l + ')\\s*[:：\\-]?\\s*' + re).exec(t); if (m) return m[1].trim(); } return ''; };
     const no = lab(['رقم السند','رقم سند الأمر','رقم سند لأمر'], '([\\d\\-]{4,30})'); if (no) f.bond_no = no;
     const amt = lab(['قيمة السند','مبلغ السند','المبلغ المستحق','المبلغ','قيمة'], '([\\d,٬]+(?:\\.\\d+)?)');
     if (amt){ const n = Number(amt.replace(/[,٬]/g, '')); if (n > 0) f.bond_amount = n; }
+    // صيغة رسائل الواتس: «سند الكتروني 30 الف» / «سند ورقي بمبلغ 50,000»
+    if (!f.bond_amount){ const m = /سند[^\n\d]{0,30}?(\d[\d,٬.]*)\s*(ألف|الف|آلاف|الاف|k)?/i.exec(t); if (m){ let n = Number(m[1].replace(/[,٬]/g, '')); if (m[2]) n *= 1000; if (n >= 1000 && n <= 50000000) f.bond_amount = n; } }
     const dt = lab(['تاريخ الإنشاء','تاريخ الانشاء','تاريخ إنشاء السند','تاريخ الإصدار','تاريخ الاصدار','تاريخ السند','تاريخ التحرير'], '([\\d]{1,4}[\\/\\-.][\\d]{1,2}[\\/\\-.][\\d]{1,4})');
     const dd = dt ? toDate(dt) : null; if (dd) f.bond_date = dd;
     const iss = lab(['اسم المدين','المدين','محرر السند','اسم محرر السند'], '([^\\n]{3,70})');
     if (iss && !/\d{5,}/.test(iss)) f.bond_issuer = iss.replace(/[:：]+$/, '').trim();
-    if (/نافذ|إلكتروني|الكتروني/.test(t)) f.bond_type = 'إلكتروني (نافذ)';
+    if (/سند\s*ورقي/.test(t) && /سند\s*(?:إ|ا)لكتروني|نافذ/.test(t)) f.bond_type = 'إلكتروني + ورقي';
+    else if (/سند\s*ورقي/.test(t)) f.bond_type = 'ورقي';
+    else if (/نافذ|إلكتروني|الكتروني/.test(t)) f.bond_type = 'إلكتروني (نافذ)';
     return f;
   }
   // صفوف السند: فارغ ← تعبئة، مختلف ← قرار المستخدم
@@ -93,6 +97,7 @@
     const city = /(?:مدينة الإصدار|مدينة الاصدار|المدينة|المقر الرئيسي)\s*[:：]?\s*([ء-ي]{2,15})/.exec(t); if (city) f.cr_city = city[1];
     const act = /(?:نشاط المنشأة|نشاط المنشاة|النشاط الرئيسي|الأنشطة|الانشطة|النشاط)\s*[:：]?\s*([^\n]{4,70})/.exec(t); if (act) f.activity = act[1].replace(/[^ء-ي0-9 ()\-،,]/g, ' ').replace(/\s+/g, ' ').trim();
     if (f.activity && f.activity.length < 4) delete f.activity;
+    const br = /(?:تابع(?:ين|ة)?\s*(?:ل)?)?فرع\s+(?:مدينة\s+)?([ء-ي]{2,15})/.exec(t); if (br && !/^(?:الشركة|رئيسي|الرئيسي)$/.test(br[1])) f.branch = br[1].replace(/^الاحساء$/, 'الأحساء');
     return f;
   }
   // يشيل البادئات مثل «للمؤسسة :» والرموز الشاذة من الاسم التجاري
