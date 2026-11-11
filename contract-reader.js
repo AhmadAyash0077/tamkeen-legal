@@ -88,9 +88,15 @@
     const cr = /(?:السجل التجاري|رقم السجل|الرقم الموحد|سجل تجاري)[^\d\n]{0,15}(\d{10})/.exec(t);
     if (cr && (!O.validCr || O.validCr(cr[1]))) f.cr_no = cr[1];
     const na = (t.match(/\b[A-Z]{4}\s?\d{4}\b/) || [])[0]; if (na) f.national_address = na.replace(/\s/, '');
-    const tn = /(?:الاسم التجاري|اسم المنشأة|اسم المنشاة)\s*[:：]\s*([^\n]{3,70})/.exec(t); if (tn) f.trade_name = tn[1].trim();
+    const tn = /(?:الاسم التجاري|اسم المنشأة|اسم المنشاة)\s*(?:لل(?:مؤسسة|شركة|منشأة|منشاة))?\s*[:：]?\s*([^\n]{3,70})/.exec(t); if (tn) f.trade_name = cleanName(tn[1]);
+    if (!f.cr_no){ const c2 = /(?:السجل|الموحد|سجل|المنشأة)[^\d\n]{0,40}((?:70|[1-5]\d)\d{8})(?!\d)/.exec(t); if (c2 && (!O.validCr || O.validCr(c2[1]))) f.cr_no = c2[1]; }
+    const city = /(?:مدينة الإصدار|مدينة الاصدار|المدينة|المقر الرئيسي)\s*[:：]?\s*([ء-ي]{2,15})/.exec(t); if (city) f.cr_city = city[1];
+    const act = /(?:نشاط المنشأة|نشاط المنشاة|النشاط الرئيسي|الأنشطة|الانشطة|النشاط)\s*[:：]?\s*([^\n]{4,70})/.exec(t); if (act) f.activity = act[1].replace(/[^ء-ي0-9 ()\-،,]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (f.activity && f.activity.length < 4) delete f.activity;
     return f;
   }
+  // يشيل البادئات مثل «للمؤسسة :» والرموز الشاذة من الاسم التجاري
+  function cleanName(v){ return String(v || '').replace(/^\s*(?:لل(?:مؤسسة|شركة|منشأة|منشاة)|للمنشأة)\s*[:：]?\s*/, '').replace(/^[\s:：\-–|]+/, '').replace(/[^ء-ي0-9A-Za-z ()\-&.]/g, ' ').replace(/\s+/g, ' ').trim(); }
   function genericRows(texts, d){
     const all = {};
     for (const t of texts){ const f = genericFields(t); for (const [k, v] of Object.entries(f)) if (all[k] == null) all[k] = v; }
@@ -105,10 +111,10 @@
   // دمج الصفوف: قراءة البرنامج الأصلية أولًا، ثم ما ينقص من السند والحقول العامة (بدون تكرار)
   function mergeRows(...lists){
     const seen = new Set(), out = [];
-    for (const l of lists) for (const r of l){ if (seen.has(r.fk)) continue; seen.add(r.fk); out.push(r); }
+    for (const l of lists) for (let r of l){ if (seen.has(r.fk)) continue; if (r.fk === 'trade_name' && typeof r.fv === 'string'){ r = {...r, fv: cleanName(r.fv)}; if (!r.fv) continue; } seen.add(r.fk); out.push(r); }
     return out;
   }
-  root.TamkeenContractReader = {bondFields, bondRows, genericFields};
+  root.TamkeenContractReader = {bondFields, bondRows, genericFields, cleanName};
   function setVal(d, k, v){
     if (v && typeof v === 'object'){ d[k] = v; const el = document.getElementById('f_' + k); if (el && el.type === 'date' && v.g){ el.value = v.g; el.dispatchEvent(new Event('input', {bubbles:true})); } return; }
     const el = document.getElementById('f_' + k);
