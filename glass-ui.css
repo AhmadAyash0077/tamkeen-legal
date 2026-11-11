@@ -121,10 +121,10 @@ html[data-ui="glass"] :is(.f input,.f select,.f textarea,input[type=search],sele
 html[data-ui="glass"] .f label{color:var(--g-ink-2)!important;font-weight:650!important}
 
 /* ===== الجداول والشارات والنوافذ ===== */
-html[data-ui="glass"] table th{background:transparent!important;color:var(--g-ink-2)!important;font-weight:650!important;font-size:.82rem!important;border-bottom:1px solid var(--g-line)!important}
-html[data-ui="glass"] table td{border-bottom:1px solid var(--g-line)!important;font-variant-numeric:tabular-nums}
-html[data-ui="glass"] table tbody tr{transition:background-color .2s}
-html[data-ui="glass"] table tbody tr:hover{background:color-mix(in srgb,var(--g-a2) 7%,transparent)!important}
+html[data-ui="glass"] table:not(:is(.a4,.doc-host,.print-sheet) table) th{background:transparent!important;color:var(--g-ink-2)!important;font-weight:650!important;font-size:.82rem!important;border-bottom:1px solid var(--g-line)!important}
+html[data-ui="glass"] table:not(:is(.a4,.doc-host,.print-sheet) table) td{border-bottom:1px solid var(--g-line)!important;font-variant-numeric:tabular-nums}
+html[data-ui="glass"] table:not(:is(.a4,.doc-host,.print-sheet) table) tbody tr{transition:background-color .2s}
+html[data-ui="glass"] table:not(:is(.a4,.doc-host,.print-sheet) table) tbody tr:hover{background:color-mix(in srgb,var(--g-a2) 7%,transparent)!important}
 html[data-ui="glass"] .pill{border-radius:999px!important;font-weight:650!important}
 html[data-ui="glass"] .banner{border-radius:var(--g-r-s)!important}
 html[data-ui="glass"] :is(.tabs .tab,.ux-cttab,.ux-chipf){border-radius:999px!important}
