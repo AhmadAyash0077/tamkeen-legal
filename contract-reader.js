@@ -114,9 +114,11 @@
     return rows;
   }
   // دمج الصفوف: قراءة البرنامج الأصلية أولًا، ثم ما ينقص من السند والحقول العامة (بدون تكرار)
+  // قيمة فيها عناوين خانات أخرى = قراءة خاطئة لخانة فاضية في النموذج (مثل «رقم الجوال البريد الالكتروني…»)
+  const LABELISH = /(?:رقم\s*(?:ال)?جوال|البريد\s*(?:الإ|الا)?ل?كترو|اسم\s*الشخص|نموذج\s*التوقيع|العنوان\s*الوطني|رقم\s*السجل|اسم\s*الموظف|رقم\s*الهوية)/;
   function mergeRows(...lists){
     const seen = new Set(), out = [];
-    for (const l of lists) for (let r of l){ if (seen.has(r.fk)) continue; if (r.fk === 'trade_name' && typeof r.fv === 'string'){ r = {...r, fv: cleanName(r.fv)}; if (!r.fv) continue; } seen.add(r.fk); out.push(r); }
+    for (const l of lists) for (let r of l){ if (seen.has(r.fk)) continue; if (r.fk === 'trade_name' && typeof r.fv === 'string'){ r = {...r, fv: cleanName(r.fv)}; if (!r.fv) continue; } if (typeof r.fv === 'string' && LABELISH.test(r.fv)) continue; seen.add(r.fk); out.push(r); }
     return out;
   }
   root.TamkeenContractReader = {bondFields, bondRows, genericFields, cleanName};
@@ -188,17 +190,18 @@
     };
     // تحديث من رسالة أو بريد (داخل العقد)
     let msgBox = null;
-    if (mode === 'detail'){
+    {
+      const msgOut = root.h('div', {'aria-live':'polite', style:'display:grid;gap:8px'});
       const ta = root.h('textarea', {dir:'auto', rows:4, style:'width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit', 'aria-label':'نص رسالة التحديث',
         placeholder:'الصق رسالة أو بريد التحديث هنا: سجل تجاري جديد، جوال أو عنوان جديد، مفوض جديد، سند جديد (رقم السند، المبلغ، التاريخ)…'});
       const read = root.h('button', {type:'button', class:'btn sm', onclick: () => {
-        out.replaceChildren(); const t = ta.value.trim();
-        if (!t){ out.append(box('warn', 'الصق الرسالة أولًا.')); return; }
-        const d = root.rec('contracts', id); if (!d){ out.append(box('bad', 'العقد غير موجود.')); return; }
+        msgOut.replaceChildren(); const t = ta.value.trim();
+        if (!t){ msgOut.append(box('warn', 'الصق الرسالة أولًا.')); return; }
+        const d = mode === 'new' ? (formData || {}) : root.rec('contracts', id); if (!d){ msgOut.append(box('bad', 'العقد غير موجود.')); return; }
         const rows = mergeRows(contractRows({1: root.uxReadPage(t)}, d), bondRows([t], d), genericRows([t], d));
-        render('detail', id, out, rows, 'الرسالة');
+        render(mode, id, msgOut, rows, 'الرسالة');
       }}, 'قراءة الرسالة');
-      msgBox = root.h('div', {style:'margin-top:12px;display:grid;gap:8px'}, root.h('b', null, '✉️ أو الصق رسالة / بريد التحديث'), ta, root.h('div', {class:'row'}, read));
+      msgBox = root.h('div', {style:'margin-top:12px;display:grid;gap:8px'}, root.h('b', null, mode === 'new' ? '✉️ رسالة المندوب (واتساب): الجوال، السند ومبلغه، الفرع…' : '✉️ أو الصق رسالة / بريد التحديث'), ta, root.h('div', {class:'row'}, read), msgOut);
     }
     return root.h('div', {class:'panel cr-reader'},
       root.h('h2', {style:'margin:0 0 6px;font-size:1.05rem'}, mode === 'new' ? 'قارئ مستندات العميل' : 'تحديث العقد من مستند أو رسالة'),
