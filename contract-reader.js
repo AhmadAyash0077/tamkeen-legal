@@ -20,7 +20,7 @@
       const pages = await root.TamkeenOcr.readFilePages(f, progress, MAX_PAGES);
       for (const pg of pages){
         n++; const t = pg.textWithDigits || pg.text || ''; const x = root.uxReadPage(t);
-        info[n] = x; texts.push(t); types.push({file: f.name, type: x.type, method: pg.method});
+        info[n] = x; texts.push(t); types.push({file: f.name, f, type: x.type, method: pg.method});
         if (n >= MAX_PAGES) break;
       }
       if (n >= MAX_PAGES) break;
@@ -113,6 +113,20 @@
     }
     return rows;
   }
+  // صفوف السجل التجاري من uxCrExtract
+  function crRows(ci, d){
+    const D = g => ({orig:'g', g, h: root.g2h ? root.g2h(g) : '', verified:true});
+    const F = [['trade_name', ci.name], ['cr_no', ci.unified || ci.oldCr], ['cr_city', ci.city], ['cr_entity', ci.entity], ['cr_state', ci.state], ['cr_confirm', ci.confirm && D(ci.confirm)], ['cr_issue', ci.issue && D(ci.issue)]];
+    const rows = [];
+    for (const [k, v] of F){
+      if (!v) continue;
+      if (k === 'cr_issue' && !(typeof MODS !== 'undefined' && MODS.contracts.fields.some(f => f.k === 'cr_issue'))) { if (!d.cr_issue) d.cr_issue = v; continue; }
+      const cur = d[k]; const cs = cur && typeof cur === 'object' ? (cur.g || '') : String(cur ?? '').trim(); const vs = typeof v === 'object' ? v.g : String(v);
+      if (!cs) rows.push({fk:k, fv:v, kind:'empty', alts:[]});
+      else if (cs.replace(/\s/g, '') !== vs.replace(/\s/g, '')) rows.push({fk:k, fv:v, kind:'diff', cur: cs, alts:[]});
+    }
+    return rows;
+  }
   // دمج الصفوف: قراءة البرنامج الأصلية أولًا، ثم ما ينقص من السند والحقول العامة (بدون تكرار)
   // قيمة فيها عناوين خانات أخرى = قراءة خاطئة لخانة فاضية في النموذج (مثل «رقم الجوال البريد الالكتروني…»)
   const LABELISH = /(?:رقم\s*(?:ال)?جوال|البريد\s*(?:الإ|الا)?ل?كترو|اسم\s*الشخص|نموذج\s*التوقيع|العنوان\s*الوطني|رقم\s*السجل|اسم\s*الموظف|رقم\s*الهوية)/;
@@ -180,7 +194,13 @@
         prog.textContent = 'قُرئت ' + pages + ' صفحة.';
         const d = mode === 'new' ? (formData || {}) : root.rec('contracts', id);
         if (!d) throw new Error('العقد غير موجود.');
-        const rows = mergeRows(contractRows(info, d), bondRows(texts, d), genericRows(texts, d));
+        // السجل التجاري: قراءة كاملة (الباركود + الرقم الموحد + الكيان + الحالة + التواريخ) قبل الحفظ
+        let crR = [];
+        const crFile = (types.find(t => t.type === 'cr') || {}).f;
+        if (crFile && typeof root.uxCrExtract === 'function'){
+          try { const {info: ex, qr} = await root.uxCrExtract(crFile, m => { prog.textContent = m; }); const ci = Object.assign({}, ex); if (typeof root.uxCrParse === 'function'){ const crTxt = types.map((t, i) => t.f === crFile ? texts[i] : '').join('\n'); const cp = root.uxCrParse(crTxt); for (const [k, v] of Object.entries(cp)) if (v) ci[k] = v; } crR = crRows(ci, d); if (qr && /^https:\/\/([a-z0-9-]+\.)*(saudibusiness\.gov\.sa|mc\.gov\.sa)\//i.test(qr) && !d.cr_qr) d.cr_qr = qr; prog.textContent = 'قُرئت ' + pages + ' صفحة' + (qr ? ' · وقُرئ باركود السجل' : '') + '.'; } catch (e) {}
+        }
+        const rows = mergeRows(crR, contractRows(info, d), bondRows(texts, d), genericRows(texts, d));
         out.append(root.h('div', {class:'small'}, root.h('b', null, 'المستندات: '), types.map(t => t.file + ' ← ' + (TYPE_AR[t.type] || t.type) + (t.method ? ' (' + t.method + ')' : '')).join(' · ')));
         render(mode, id, out, rows, 'المستند');
         if (mode === 'new'){ pendingFiles = files; out.append(box('info', 'ستُرفق المستندات بالعقد تلقائيًا بعد الحفظ.')); }
