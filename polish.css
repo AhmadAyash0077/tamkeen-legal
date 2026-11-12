@@ -51,7 +51,7 @@ html:root .table-wrap table:not(.a4 table) tbody tr{transition:background .12s}
 html:root .table-wrap table:not(.a4 table) tbody tr:nth-child(even){background:color-mix(in srgb,var(--ink) 2.5%,transparent)}
 html:root .table-wrap table:not(.a4 table) tbody tr:hover{background:color-mix(in srgb,var(--accent) 9%,transparent)}
 td.pl-nw{white-space:nowrap}
-html:root .table-wrap table:not(.a4 table) td:first-child{min-width:170px}
+html:root .table-wrap table:not(.a4 table) td:first-child:not(.ee-sel),html:root .table-wrap table:not(.a4 table) td.ee-sel+td{min-width:170px}
 
 /* ===== عام ===== */
 html:root :is(.btn,a,select,input,textarea,summary):focus-visible{outline:2px solid color-mix(in srgb,var(--accent) 70%,transparent);outline-offset:2px}

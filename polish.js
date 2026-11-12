@@ -29,7 +29,7 @@
   function cells(root){
     var tds=root.querySelectorAll('.table-wrap td:not(.pl-c)');
     for(var i=0;i<tds.length;i++){var td=tds[i];td.classList.add('pl-c');
-      if(td.children.length)continue;var t=(td.textContent||'').trim();
+      if(td.children.length&&!(td.children.length===1&&td.firstElementChild.classList.contains('ee-pen')))continue;var t=(td.textContent||'').replace('✎','').trim();
       if(t&&t.length<=16&&!/\s/.test(t)&&/[\d-]/.test(t))td.classList.add('pl-nw')}
   }
   var queued=false;
