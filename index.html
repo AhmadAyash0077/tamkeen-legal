@@ -2275,7 +2275,9 @@ function showProgramShare(){
   dlg.addEventListener('close',()=>dlg.remove(),{once:true});document.body.append(dlg);dlg.showModal();
 }
 
-function showFatal(msg){$('#view').replaceChildren(h('div',{class:'panel'},ph('تعذر التشغيل','alert','#ff453a'),h('p',null,msg)))}
+function showFatal(msg){const net=/failed to fetch|networkerror|load failed|network request failed/i.test(String(msg||''));let n=0;try{n=+sessionStorage.getItem('tl_boot_retry')||0}catch(e){}
+  if(net&&n<2){try{sessionStorage.setItem('tl_boot_retry',String(n+1))}catch(e){}$('#view').replaceChildren(h('div',{class:'loading'},'انقطع الاتصال لحظة… جارٍ إعادة المحاولة'));setTimeout(()=>location.reload(),2500);return}
+  $('#view').replaceChildren(h('div',{class:'panel pl-fatal'},ph(net?'تعذر الاتصال بالخادم':'تعذر التشغيل','alert','#ff453a'),h('p',null,net?'ما قدر البرنامج يوصل لقاعدة البيانات. تأكد من الإنترنت ثم أعد المحاولة. بياناتك محفوظة ولم يتغير شيء.':msg),h('button',{class:'btn primary',type:'button',onclick:()=>{try{sessionStorage.removeItem('tl_boot_retry')}catch(e){}location.reload()}},'إعادة المحاولة')))}
 const scheduleRender=debounce(()=>{renderNav();if(S.view?.refresh)S.view.refresh();checkAlerts();if(!S.migDone&&!loadingAll())runMigrations()},80);
 
 /* ============ الحفظ والتدقيق والتعارض ============ */
@@ -6520,7 +6522,23 @@ function uxCtCovered(r){const d=contractDocs(r.id);return{full:d.some(x=>x.categ
 function uxCtDocMiss(r){return missingContractItems(r).filter(x=>x!=='بيانات العقد غير مكتملة')}
 if(typeof METRICS!=='undefined'&&METRICS.ct_docs){METRICS.ct_docs.f=r=>ctOpen(r)&&uxCtDocMiss(r).length>0;METRICS.ct_docs.p='غير منتهية أو مؤرشفة، وينقصها مستند (ملف العميل الكامل يغطي العقد والأوراق)'}
 
-boot().then(uxAfterBoot,e=>console.warn(e));
+/* ===== 30) فحص الجودة: صيغ بيانات العقود والمكرر ===== */
+function uxCtFmtIssues(r){const o=[];const idk=['manager_id','e1_id','e2_id'];
+  for(const k of idk){const v=String(r[k]||'').trim();if(v&&!/^[12]\d{9}$/.test(v))o.push('رقم هوية بصيغة غير صحيحة')}
+  for(const k of ['manager_mobile','e1_mobile','e2_mobile']){const v=String(r[k]||'').replace(/[\s-]/g,'');if(v&&!/^(05\d{8}|\+?9665\d{8})$/.test(v))o.push('رقم جوال بصيغة غير صحيحة')}
+  const cr=String(r.cr_no||'').trim();if(cr){if(!/^\d{10}$/.test(cr))o.push('رقم السجل ليس 10 أرقام');else if(idk.some(k=>String(r[k]||'').trim()===cr))o.push('رقم السجل مطابق لرقم هوية');else if(/^(4030049348|7011006009)$/.test(cr))o.push('رقم السجل هو سجل تمكين')}
+  for(const k of ['manager_name','e1_name','e2_name']){const v=String(r[k]||'').trim();if(v&&(/\d/.test(v)||/الجنسية|الهوية|الجوال|التوقيع/.test(v)))o.push('اسم فيه أرقام أو كلمات زائدة')}
+  const na=String(r.national_address||'').trim();if(na&&!/^[A-Z]{4}\d{4}$/.test(na))o.push('العنوان الوطني المختصر بصيغة غير صحيحة');
+  const em=String(r.manager_email||'').trim();if(em&&!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(em))o.push('بريد إلكتروني بصيغة غير صحيحة');
+  if(/[‎‏‪-‮]|[A-Za-z]{2,}\s*[ء-ي]|^لل?مؤسسة\s*:/.test(String(r.trade_name||'')))o.push('الاسم التجاري فيه حروف زائدة من القراءة');
+  const a=dateG(r.start),b=dateG(r.end);if(a&&b&&b<a)o.push('تاريخ الانتهاء قبل البداية');
+  return[...new Set(o)]}
+function uxCtDupRows(){const C=statRecs('contracts');const g={};for(const r of C){for(const k of ['customer_code','cr_no']){const v=String(r[k]||'').trim();if(v)(g[k+v]=g[k+v]||[]).push(r)}}const s=new Set();Object.values(g).forEach(a=>{if(a.length>1)a.forEach(r=>s.add(r))});return[...s]}
+{const _q=uxQualityChecks;uxQualityChecks=function(){const C=_q();try{if(MODS.contracts&&canSee('contracts')&&!uxHidden?.('contracts')){
+  C.push({id:'ct_fmt',mod:'contracts',ic:'alert',t:'عقود فيها بيانات بصيغة غير صحيحة',why:'هوية، جوال، سجل، عنوان وطني أو اسم يحتاج تصحيح',rows:statRecs('contracts').filter(r=>uxCtFmtIssues(r).length)});
+  C.push({id:'ct_dup',mod:'contracts',ic:'list',t:'عقود مكررة (نفس الكود أو السجل)',why:'راجعها وادمج أو احذف المكرر',rows:uxCtDupRows()})}}catch(e){}
+  return C.sort((a,b)=>(b.rows.length>0)-(a.rows.length>0))}}
+boot().then(()=>{if(db)try{sessionStorage.removeItem('tl_boot_retry')}catch(e){}}).then(uxAfterBoot,e=>console.warn(e));
 </script>
 
 <script src="legal-memory-core.js?v=1"></script>
@@ -6536,4 +6554,5 @@ boot().then(uxAfterBoot,e=>console.warn(e));
 <script src="whatsapp-intake.js?v=11"></script>
 <script src="contract-reader.js?v=5"></script>
 <script src="ai-employees.js?v=5"></script>
+<link rel="stylesheet" href="polish.css?v=1"><script src="polish.js?v=1"></script>
 </html>
