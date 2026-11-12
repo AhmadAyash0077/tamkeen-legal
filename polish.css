@@ -88,3 +88,4 @@ tr.ee-picked{background:color-mix(in srgb,var(--accent) 14%,transparent)!importa
 .ee-bar select,.ee-bar input{padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2,var(--surface));color:var(--ink);font:inherit;max-width:230px}
 .ee-confirm{background:#ff9f0a!important;color:#111!important;border-color:#ff9f0a!important}
 @media print{.ee-bar,.ee-overlay,.ee-pen,.ee-paste,.ee-dq{display:none!important}}
+.pl-update{position:fixed;top:14px;inset-inline:0;margin-inline:auto;width:max-content;max-width:calc(100vw - 24px);z-index:400;display:flex;gap:12px;align-items:center;padding:10px 16px;border-radius:999px;background:var(--surface);color:var(--ink);border:1px solid var(--accent);box-shadow:0 18px 50px -12px rgba(0,0,0,.55);font-weight:600}

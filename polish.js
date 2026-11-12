@@ -43,3 +43,30 @@
   document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.pl-more[open]'),function(d){d.open=false})});
   if(document.readyState!=='loading')start();else document.addEventListener('DOMContentLoaded',start);
 })();
+
+/* تنبيه التحديث: إذا نزلت نسخة جديدة من البرنامج والصفحة المفتوحة قديمة، يظهر شريط «حدّث الآن» بدل ما يبقى المستخدم على النسخة القديمة. */
+(function(){
+  'use strict';
+  var sig=function(html){return (html.match(/[\w-]+\.(?:js|css)\?v=\d+/g)||[]).join('|')+'#'+html.length};
+  var mine=null,shown=false;
+  function fresh(){return fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null})}
+  function bar(){
+    if(shown)return;shown=true;
+    var b=document.createElement('div');b.className='pl-update';b.setAttribute('role','status');
+    var t=document.createElement('span');t.textContent='نزل تحديث جديد للبرنامج.';
+    var go=document.createElement('button');go.type='button';go.className='btn primary sm';go.textContent='حدّث الآن';
+    go.onclick=function(){location.replace(location.pathname+'?u='+Date.now()+location.hash)};
+    b.appendChild(t);b.appendChild(go);document.body.appendChild(b);
+  }
+  function check(){
+    fresh().then(function(html){if(!html)return;var s=sig(html);if(mine===null){mine=s;return}if(s!==mine)bar()}).catch(function(){});
+  }
+  // توقيع الصفحة المحمّلة فعلًا (قد تكون من الكاش) مقابل نسخة الخادم
+  function start(){
+    var loaded=(document.documentElement.outerHTML.match(/[\w-]+\.(?:js|css)\?v=\d+/g)||[]).join('|');
+    fresh().then(function(html){if(!html)return;mine=sig(html);var srv=mine.split('#')[0];if(loaded&&srv&&loaded!==srv)bar()}).catch(function(){});
+    setInterval(check,5*60*1000);
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)check()});
+  }
+  if(document.readyState!=='loading')start();else document.addEventListener('DOMContentLoaded',start);
+})();
