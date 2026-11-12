@@ -9,15 +9,14 @@
 (function(root){
   'use strict';
   const EE = root.__ee = {prefill:null, again:null, noSticky:false, pendingFile:null, forms:new WeakSet(), lastForm:null};
-  const h = (...a) => root.h(...a);
   const LSg = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } };
   const LSs = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
-  const nd = s => root.normDigits ? root.normDigits(s) : String(s ?? '');
-  const today = () => root.todayISO();
+  const nd = s => normDigits(s);
+  const today = () => todayISO();
   const iso = d => d.toISOString().slice(0, 10);
   const addDays = (g, n) => { const d = new Date(g + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
   const addMonths = (g, n) => { const d = new Date(g + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n); return iso(d); };
-  const dv = g => ({orig:'g', g, h: root.g2h(g) || '', verified:true});
+  const dv = g => ({orig:'g', g, h: g2h(g) || '', verified:true});
   const filled = v => !(v == null || v === '' || (typeof v === 'object' && !Array.isArray(v) && !v.g && !v.h));
   const newMod = () => { const m = /^#new-([a-z]+)$/.exec(location.hash); return m && MODS[m[1]] ? m[1] : null; };
   const pad = n => String(n).padStart(2, '0');
@@ -46,7 +45,7 @@
     else return null;
     if (y == null || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
     if (hij || (y >= 1300 && y <= 1600)){
-      const hs = `${y}-${pad(mo)}-${pad(d)}`; const g = root.h2g(hs); if (!g) return null;
+      const hs = `${y}-${pad(mo)}-${pad(d)}`; const g = h2g(hs); if (!g) return null;
       return {orig:'h', h:hs, g, verified:false};
     }
     if (y < 1900 || y > 2100) return null;
@@ -103,7 +102,7 @@
       const f = M.fields.find(x => x.k === k); if (!f) continue;
       const v = labelValue(text, labels); if (!v) continue;
       if (f.t === 'date'){ const d = findDate(v); if (d) out[k] = d; }
-      else if (f.t === 'money' || f.t === 'int'){ const m = /(\d[\d,٬]*(?:[.٫]\d+)?)/.exec(v); if (m){ const n = root.parseNum(m[1]); if (n != null && !Number.isNaN(n) && n > 0) out[k] = n; } }
+      else if (f.t === 'money' || f.t === 'int'){ const m = /(\d[\d,٬]*(?:[.٫]\d+)?)/.exec(v); if (m){ const n = parseNum(m[1]); if (n != null && !Number.isNaN(n) && n > 0) out[k] = n; } }
       else if (f.t === 'ltr'){ const m = /([A-Za-z0-9][A-Za-z0-9\-\/]{2,40})/.exec(v); if (m) out[k] = m[1]; }
       else if (f.t === 'select'){ const o = (f.o || []).find(x => v.includes(x)); if (o) out[k] = o; }
       else out[k] = v.slice(0, 120);
@@ -113,7 +112,7 @@
       const tm = findTime(text); if (tm) out.time = tm;
       const url = /(https?:\/\/[^\s<>"']+)/.exec(text); if (url) out.link = url[1];
       const nums = text.match(/\d{8,12}/g) || [];
-      const c = root.statRecs('cases').find(c => c.caseNo && nums.includes(String(c.caseNo).trim()));
+      const c = statRecs('cases').find(c => c.caseNo && nums.includes(String(c.caseNo).trim()));
       if (c) out.caseId = c.id;
     }
     return out;
@@ -130,14 +129,14 @@
     for (const [k, v] of Object.entries(cur)) if (filled(v)) merged[k] = v;
     for (const [k, v] of Object.entries(vals)){ if (!filled(merged[k]) || (EE.lastForm && EE.lastForm.sticky && EE.lastForm.sticky.includes(k))){ merged[k] = v; used.push(k); } }
     EE.prefill = {mod, vals:merged, exact:true}; EE.noSticky = true;
-    if (location.hash === '#new-' + mod) root.route(); else location.hash = '#new-' + mod;
-    if (note !== false) root.toast(used.length ? 'عبّيت ' + used.length + ' خانة: ' + used.map(k => fieldLabel(mod, k)).join('، ') : 'ما لقيت بيانات بتسميات واضحة في النص — ما عبّيت شي', 5200);
+    if (location.hash === '#new-' + mod) route(); else location.hash = '#new-' + mod;
+    if (note !== false) toast(used.length ? 'عبّيت ' + used.length + ' خانة: ' + used.map(k => fieldLabel(mod, k)).join('، ') : 'ما لقيت بيانات بتسميات واضحة في النص — ما عبّيت شي', 5200);
     return used;
   }
   function pasteBox(mod){
     const ta = h('textarea', {dir:'auto', rows:4, placeholder:'الصق هنا ' + (PASTE_TIP[mod] || 'النص') + '…', 'aria-label':'نص للصق'});
     const go = h('button', {type:'button', class:'btn primary sm', onclick:() => {
-      if (!ta.value.trim()){ root.toast('الصق النص أول'); return; }
+      if (!ta.value.trim()){ toast('الصق النص أول'); return; }
       applyToForm(mod, parsePaste(mod, ta.value));
     }}, 'وزّع على الخانات');
     return h('details', {class:'more ee-paste', open: LSg('ee_paste_open', true) || null, ontoggle:e => LSs('ee_paste_open', e.target.open)},
@@ -170,7 +169,7 @@
             const last = LSg('ee_last_' + mod, null);
             if (last) for (const [k, v] of Object.entries(last)){
               const fd = MODS[mod].fields.find(x => x.k === k); if (!fd || filled(data[k])) continue;
-              if (fd.t === 'ref' && !root.rec(fd.ref, v)) continue;
+              if (fd.t === 'ref' && !rec(fd.ref, v)) continue;
               if (fd.t === 'select' && !(fd.o || []).includes(v)) continue;
               data[k] = v; info.sticky.push(k);
             }
@@ -192,7 +191,7 @@
         const chip = (l, fn) => h('button', {type:'button', class:'ee-chip', tabindex:-1, onclick:() => set(dv(fn()), true)}, l);
         const base = () => { const i = node.querySelector('input[type=date]'); return (i && i.value) || (val && typeof val === 'object' && val.g) || today(); };
         const txt = h('input', {type:'text', class:'ee-dtxt', dir:'auto', placeholder:'اكتب: 18/11 أو بعد 10 أيام أو 1448/6/1', 'aria-label':'كتابة سريعة للتاريخ',
-          onkeydown:e => { if (e.key === 'Enter'){ if (!txt.value.trim()) return; e.preventDefault(); const v = parseDate(txt.value); if (v) set(v); else { txt.classList.add('bad-in'); root.toast('ما فهمت التاريخ. أمثلة: 18/11 — 18/11/2026 — بعد أسبوع — 1448/6/1'); } } },
+          onkeydown:e => { if (e.key === 'Enter'){ if (!txt.value.trim()) return; e.preventDefault(); const v = parseDate(txt.value); if (v) set(v); else { txt.classList.add('bad-in'); toast('ما فهمت التاريخ. أمثلة: 18/11 — 18/11/2026 — بعد أسبوع — 1448/6/1'); } } },
           oninput:() => txt.classList.remove('bad-in')});
         node.append(h('div', {class:'ee-dq'}, chip('اليوم', today), chip('بكرة', () => addDays(today(), 1)), chip('+أسبوع', () => addDays(base(), 7)), chip('+شهر', () => addMonths(base(), 1)), txt));
         return node;
@@ -232,8 +231,8 @@
     // آخر الاختيارات
     if (info && info.sticky.length)
       panel.before(h('div', {class:'banner info ee-note'}, 'عبّيت من آخر إدخال: ' + info.sticky.map(k => fieldLabel(mod, k)).join('، ') + '. ',
-        h('button', {type:'button', class:'btn sm ghost', onclick:() => { const keep = {}; for (const [k, x] of Object.entries(info.data)) if (filled(x) && !info.sticky.includes(k)) keep[k] = x; EE.prefill = {mod, vals:keep, exact:true}; EE.noSticky = true; root.route(); }}, 'امسحها'),
-        h('button', {type:'button', class:'btn sm ghost', onclick:() => { LSs('ee_sticky_on', false); EE.noSticky = true; root.route(); root.toast('وقّفت التذكّر. ترجّعه من الإعدادات > إدخال أسهل'); }}, 'لا تتذكر')));
+        h('button', {type:'button', class:'btn sm ghost', onclick:() => { const keep = {}; for (const [k, x] of Object.entries(info.data)) if (filled(x) && !info.sticky.includes(k)) keep[k] = x; EE.prefill = {mod, vals:keep, exact:true}; EE.noSticky = true; route(); }}, 'امسحها'),
+        h('button', {type:'button', class:'btn sm ghost', onclick:() => { LSs('ee_sticky_on', false); EE.noSticky = true; route(); toast('وقّفت التذكّر. ترجّعه من الإعدادات > إدخال أسهل'); }}, 'لا تتذكر')));
     // حفظ وإضافة آخر
     const save = [...panel.querySelectorAll('button.btn.primary')].find(b => /^حفظ$/.test((b.textContent || '').trim()));
     if (save && !panel.querySelector('.ee-again')){
@@ -246,10 +245,10 @@
     if (!v || !v.el || !S.canWrite || !MODS[mod] || mod === 'contracts') return;
     const head = v.el.querySelector('.page-head'); if (!head || head.querySelector('.ee-dup')) return;
     const btn = h('button', {type:'button', class:'btn ee-dup', title:'يفتح نموذجًا جديدًا بنفس البيانات العامة (بدون الأرقام والتواريخ)', onclick:() => {
-      const r = root.rec(mod, id); if (!r) return; const vals = {};
+      const r = rec(mod, id); if (!r) return; const vals = {};
       for (const f of MODS[mod].fields){ if (NO_COPY.test(f.k) || f.t === 'date' || f.t === 'area') continue; if (filled(r[f.k])) vals[f.k] = r[f.k]; }
       EE.prefill = {mod, vals, exact:true}; EE.noSticky = true; location.hash = '#new-' + mod;
-      root.toast('نسخت البيانات العامة. عبّي الأرقام والتواريخ الجديدة.', 4200);
+      toast('نسخت البيانات العامة. عبّي الأرقام والتواريخ الجديدة.', 4200);
     }}, 'تكرار السجل');
     const row = head.querySelector(':scope>.row'); if (row) row.append(btn); else head.append(h('div', {class:'row'}, btn));
   }
@@ -262,13 +261,13 @@
     const n = new RegExp('^#' + mod + '-(.+)$').exec(location.hash); if (!n) { if (EE.again && EE.again.mod === mod && location.hash !== was) EE.again = null; return; }
     const id = decodeURIComponent(n[1]);
     if (EE.lastForm && EE.lastForm.mod === mod) rememberLast(mod, EE.lastForm.data);
-    if (EE.pendingFile && EE.pendingFile.mod === mod && typeof root.uploadFiles === 'function'){
+    if (EE.pendingFile && EE.pendingFile.mod === mod && typeof uploadFiles === 'function'){
       const pf = EE.pendingFile; EE.pendingFile = null;
-      root.uploadFiles([pf.file], [mod + ':' + id], (msg, cl) => { if (cl === 'bad') root.toast(typeof msg === 'string' ? msg : 'تعذر إرفاق الملف'); })
-        .then(() => root.toast('تم إرفاق «' + pf.file.name + '» بالسجل'), () => root.toast('تعذر إرفاق الملف — ارفعه يدويًا من صفحة السجل'));
+      uploadFiles([pf.file], [mod + ':' + id], (msg, cl) => { if (cl === 'bad') toast(typeof msg === 'string' ? msg : 'تعذر إرفاق الملف'); })
+        .then(() => toast('تم إرفاق «' + pf.file.name + '» بالسجل'), () => toast('تعذر إرفاق الملف — ارفعه يدويًا من صفحة السجل'));
     }
     if (EE.again && EE.again.mod === mod && Date.now() - EE.again.at < 60000){
-      EE.again = null; root.toast('تم الحفظ ✓ — أضف التالي', 2600);
+      EE.again = null; toast('تم الحفظ ✓ — أضف التالي', 2600);
       setTimeout(() => { location.replace('#new-' + mod); }, 60);
     }
   });
@@ -295,11 +294,11 @@
     return (pages || []).map(p => p.textWithDigits || p.text || '').join('\n');
   }
   function chooseDialog(file, text){
-    const g = GUESS.filter(x => x[2].test(text) && MODS[x[0]] && root.canSee(x[0]));
+    const g = GUESS.filter(x => x[2].test(text) && MODS[x[0]] && canSee(x[0]));
     const best = g[0] ? g[0][0] : null;
     const dlg = h('dialog', {class:'ee-dlg'});
     const pick = mod => { dlg.close(); dlg.remove(); openWith(mod, file, text); };
-    const btns = GUESS.filter(x => MODS[x[0]] && root.canSee(x[0])).map(x => h('button', {type:'button', class:'btn' + (x[0] === best ? ' primary' : ''), onclick:() => pick(x[0])}, x[1]));
+    const btns = GUESS.filter(x => MODS[x[0]] && canSee(x[0])).map(x => h('button', {type:'button', class:'btn' + (x[0] === best ? ' primary' : ''), onclick:() => pick(x[0])}, x[1]));
     dlg.append(h('h3', {style:'margin:0 0 6px'}, 'قريت «' + file.name + '»'),
       h('p', {class:'small muted', style:'margin:0 0 12px'}, text.trim() ? (best ? 'يبدو أنه ' + g[0][1] + '. اختر وين أفتحه:' : 'ما عرفت نوعه بثقة. اختر وين أفتحه:') : 'ما قدرت أقرا نص من الملف، لكن أقدر أفتح لك النموذج وأرفقه بعد الحفظ. اختر النوع:'),
       h('div', {class:'row'}, btns), h('div', {class:'row', style:'margin-top:12px'}, h('button', {type:'button', class:'btn ghost sm', onclick:() => { dlg.close(); dlg.remove(); }}, 'إلغاء')));
@@ -313,7 +312,7 @@
         if (inp || ++tries > 40){ clearInterval(t);
           let ok = false;
           if (inp){ try { const dt = new DataTransfer(); dt.items.add(file); inp.files = dt.files; inp.dispatchEvent(new Event('change', {bubbles:true})); ok = true; } catch(e){} }
-          root.toast(ok ? 'سلّمت الملف لقارئ المستندات في النموذج' : 'ارفع الملف من خانة قراءة المستندات في النموذج', 4200); }
+          toast(ok ? 'سلّمت الملف لقارئ المستندات في النموذج' : 'ارفع الملف من خانة قراءة المستندات في النموذج', 4200); }
       }, 150);
       return;
     }
@@ -322,8 +321,8 @@
     applyToForm(mod, vals);
   }
   async function handleDrop(file){
-    if (file.size > 25 * 1024 * 1024){ root.toast('الملف أكبر من 25 ميجا'); return; }
-    if (!/\.(pdf|png|jpe?g|webp|tiff?|bmp)$/i.test(file.name) && !/^(image\/|application\/pdf)/.test(file.type || '')){ root.toast('أقرا ملفات PDF والصور فقط'); return; }
+    if (file.size > 25 * 1024 * 1024){ toast('الملف أكبر من 25 ميجا'); return; }
+    if (!/\.(pdf|png|jpe?g|webp|tiff?|bmp)$/i.test(file.name) && !/^(image\/|application\/pdf)/.test(file.type || '')){ toast('أقرا ملفات PDF والصور فقط'); return; }
     const st = h('div', {class:'toast ee-reading', role:'status'}, 'جارٍ قراءة «' + file.name + '»…'); document.body.append(st);
     let text = '';
     try { text = await readDropped(file, m => { st.textContent = 'جارٍ قراءة «' + file.name + '»… ' + m; }); }
@@ -349,36 +348,36 @@
   }
   function editorFor(mod, f, cur){
     if (f.t === 'select'){ const s = h('select', null, f.k === 'status' ? null : h('option', {value:''}, '—'), (f.o || []).map(o => h('option', {value:o}, o))); s.value = cur || ''; return s; }
-    if (f.t === 'ref'){ const s = h('select', null, h('option', {value:''}, '— اختر —'), root.recs(f.ref).map(r => h('option', {value:r.id}, root.titleOf(f.ref, r)))); s.value = cur || ''; return s; }
+    if (f.t === 'ref'){ const s = h('select', null, h('option', {value:''}, '— اختر —'), recs(f.ref).map(r => h('option', {value:r.id}, titleOf(f.ref, r)))); s.value = cur || ''; return s; }
     if (f.t === 'time') return h('input', {type:'time', value:cur || ''});
     return h('input', {type:'text', dir:f.t === 'ltr' || f.t === 'money' || f.t === 'int' ? 'ltr' : 'auto', value:cur == null ? '' : String(cur)});
   }
   function readEditor(f, el){
     const v = el.value;
-    if (f.t === 'money' || f.t === 'int'){ if (String(v).trim() === '') return {ok:true, v:null}; const n = root.parseNum(v); return Number.isNaN(n) ? {ok:false} : {ok:true, v:n}; }
+    if (f.t === 'money' || f.t === 'int'){ if (String(v).trim() === '') return {ok:true, v:null}; const n = parseNum(v); return Number.isNaN(n) ? {ok:false} : {ok:true, v:n}; }
     return {ok:true, v: typeof v === 'string' ? v.trim() : v};
   }
   async function saveField(mod, id, f, v){
-    const r = root.rec(mod, id); if (!r) return false;
+    const r = rec(mod, id); if (!r) return false;
     if (f.k === 'status' && !v) return false;
-    if (f.req && (v == null || v === '')){ root.toast('«' + f.l + '» خانة إلزامية'); return false; }
+    if (f.req && (v == null || v === '')){ toast('«' + f.l + '» خانة إلزامية'); return false; }
     if ((r[f.k] ?? '') === (v ?? '')) return true;
-    const res = await root.writeDoc(mod, id, {[f.k]: v === '' ? null : v}, r.rev);
-    if (res && res.ok){ try { root.audit('تعديل', mod, id, root.titleOf(mod, r)); } catch(e){} return true; }
+    const res = await writeDoc(mod, id, {[f.k]: v === '' ? null : v}, r.rev);
+    if (res && res.ok){ try { audit('تعديل', mod, id, titleOf(mod, r)); } catch(e){} return true; }
     return false;
   }
   function inlineEdit(td, mod, id, f){
     if (td.querySelector('.ee-ed')) return;
-    const r = root.rec(mod, id); if (!r) return;
+    const r = rec(mod, id); if (!r) return;
     const ed = editorFor(mod, f, r[f.k]); ed.classList.add('ee-ed');
     const old = [...td.childNodes]; td.replaceChildren(ed); td.classList.add('ee-editing'); ed.focus(); if (ed.select) try { ed.select(); } catch(e){}
     let done = false;
     const cancel = () => { if (done) return; done = true; td.classList.remove('ee-editing'); td.replaceChildren(...old); };
-    const commit = async () => { if (done) return; const x = readEditor(f, ed); if (!x.ok){ ed.classList.add('bad-in'); root.toast('رقم غير صالح'); return; }
+    const commit = async () => { if (done) return; const x = readEditor(f, ed); if (!x.ok){ ed.classList.add('bad-in'); toast('رقم غير صالح'); return; }
       done = true; td.classList.remove('ee-editing'); ed.disabled = true;
       const ok = await saveField(mod, id, f, x.v);
-      if (!ok){ root.toast('ما انحفظ التعديل — جرّب من صفحة السجل'); td.replaceChildren(...old); }
-      else { root.toast('تم الحفظ ✓', 1500); if (td.isConnected && td.contains(ed)) td.replaceChildren(...old); } };
+      if (!ok){ toast('ما انحفظ التعديل — جرّب من صفحة السجل'); td.replaceChildren(...old); }
+      else { toast('تم الحفظ ✓', 1500); if (td.isConnected && td.contains(ed)) td.replaceChildren(...old); } };
     ed.addEventListener('click', e => e.stopPropagation());
     ed.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter'){ e.preventDefault(); commit(); } else if (e.key === 'Escape'){ e.preventDefault(); cancel(); } });
     if (ed.tagName === 'SELECT') ed.addEventListener('change', commit);
@@ -424,11 +423,11 @@
     const ed = editorFor(mod, f, ''); ed.setAttribute('aria-label', 'القيمة الجديدة'); if (f.t === 'text') ed.placeholder = 'القيمة الجديدة';
     const n = B.ids.size;
     const go = h('button', {type:'button', class:'btn primary sm', disabled: !n || null, onclick:async () => {
-      const x = readEditor(f, ed); if (!x.ok || x.v === '' || x.v == null){ root.toast('اختر القيمة الجديدة'); return; }
+      const x = readEditor(f, ed); if (!x.ok || x.v === '' || x.v == null){ toast('اختر القيمة الجديدة'); return; }
       if (!B.confirm){ B.confirm = true; go.textContent = 'تأكيد: تغيير «' + f.l + '» في ' + n + ' سجل'; go.classList.add('ee-confirm'); setTimeout(() => { if (go.isConnected){ B.confirm = false; go.textContent = 'طبّق'; go.classList.remove('ee-confirm'); } }, 6000); return; }
       B.confirm = false; go.disabled = true; let ok = 0, bad = 0;
       for (const id of [...B.ids]){ go.textContent = 'جارٍ الحفظ ' + (ok + bad + 1) + '/' + n; (await saveField(mod, id, f, x.v)) ? ok++ : bad++; }
-      root.toast('تم تعديل ' + ok + ' سجل' + (bad ? ' — ' + bad + ' ما انحفظ (جرّبه من صفحته)' : ''), 5000);
+      toast('تم تعديل ' + ok + ' سجل' + (bad ? ' — ' + bad + ' ما انحفظ (جرّبه من صفحته)' : ''), 5000);
       B.ids.clear(); paintBulk(); decorateTable();
     }}, 'طبّق');
     B.bar.replaceChildren(h('b', null, 'محدد: ' + n), h('span', {class:'small'}, 'غيّر'), fs, h('span', {class:'small'}, 'إلى'), ed, go,
