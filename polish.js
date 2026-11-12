@@ -35,7 +35,7 @@
   var queued=false;
   function run(){queued=false;var v=document.getElementById('view');if(!v)return;
     try{[].forEach.call(v.querySelectorAll('.page-head>.row'),fold);cells(v)}catch(e){console.warn('polish',e)}}
-  function queue(){if(queued)return;queued=true;requestAnimationFrame(run)}
+  function queue(){if(queued)return;queued=true;setTimeout(run,30)}
   function start(){var v=document.getElementById('view');if(!v)return;
     new MutationObserver(queue).observe(v,{childList:true,subtree:true});queue()}
   document.addEventListener('click',function(e){

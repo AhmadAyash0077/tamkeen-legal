@@ -436,7 +436,7 @@
 
   /* ---------- تشغيل ---------- */
   let queued = false;
-  const queue = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; try { decorateTable(); } catch(e){ console.warn('easy-entry table', e); } }); };
+  const queue = () => { if (queued) return; queued = true; setTimeout(() => { queued = false; try { decorateTable(); } catch(e){ console.warn("easy-entry table", e); } }, 30); };
   function start(){
     hookForms();
     // نموذج مختصر للأقسام التي كانت تعرض كل الخانات
