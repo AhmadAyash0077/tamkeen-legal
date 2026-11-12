@@ -439,6 +439,10 @@
   const queue = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; try { decorateTable(); } catch(e){ console.warn('easy-entry table', e); } }); };
   function start(){
     hookForms();
+    // نموذج مختصر للأقسام التي كانت تعرض كل الخانات
+    try { if (!CORE.executions) CORE.executions = ['respondent','applicant','reqNo','claimAmount','filed','branch'];
+      if (!CORE.taradi) CORE.taradi = ['reqNo','plaintiff','defendant','subject','date','time','attendee'];
+      if (CORE.violations && !CORE.violations.includes('date')) CORE.violations = ['date','branch', ...CORE.violations]; } catch(e){}
     const v = document.getElementById('view'); if (v) new MutationObserver(queue).observe(v, {childList:true, subtree:true});
     root.addEventListener('hashchange', () => { if (B.on){ B.on = false; B.ids.clear(); paintBulk(); } });
     // خيار التذكّر في الإعدادات
