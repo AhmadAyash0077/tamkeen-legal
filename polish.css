@@ -59,3 +59,32 @@ html:root *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--ink) 25
 .pl-fatal{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 .pl-fatal p{margin:0;line-height:1.8}
 }
+
+/* ===== إدخال أسهل (easy-entry.js) ===== */
+.ee-paste{border:1px dashed color-mix(in srgb,var(--accent) 45%,transparent);border-radius:16px;padding:10px 14px;background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.ee-paste>summary{cursor:pointer;font-weight:650}
+.ee-paste-body{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.ee-paste textarea{width:100%;min-height:92px;border-radius:12px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit}
+.ee-note{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ee-dq{display:none;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.ee-df:focus-within .ee-dq{display:flex}
+.ee-chip{border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 5%,transparent);color:var(--ink);border-radius:999px;padding:3px 11px;font:inherit;font-size:.8rem;cursor:pointer}
+.ee-chip:hover{background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:var(--accent)}
+.ee-dtxt{flex:1 1 170px;min-width:150px;font-size:.82rem!important;padding:5px 10px!important;min-height:0!important;border-radius:999px!important}
+.ee-overlay{position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(6px);pointer-events:none}
+.ee-overlay-box{display:flex;flex-direction:column;gap:6px;align-items:center;padding:34px 46px;border-radius:26px;border:2px dashed var(--accent);background:var(--surface);color:var(--ink);font-size:1.05rem;box-shadow:0 30px 80px -20px rgba(0,0,0,.5)}
+.ee-overlay-box b{font-size:1.4rem}
+.ee-dlg{border:1px solid var(--line);border-radius:20px;padding:20px 22px;background:var(--surface);color:var(--ink);max-width:min(520px,92vw);box-shadow:0 30px 80px -20px rgba(0,0,0,.55)}
+.ee-dlg::backdrop{background:rgba(0,0,0,.45);backdrop-filter:blur(3px)}
+td.ee-can{position:relative}
+.ee-pen{position:absolute;inset-inline-end:2px;top:50%;transform:translateY(-50%);opacity:0;border:0;border-radius:8px;width:26px;height:26px;cursor:pointer;background:var(--surface);color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:14px;line-height:1;transition:opacity .12s}
+td.ee-can:hover .ee-pen,.ee-pen:focus-visible{opacity:1}
+td.ee-editing .ee-pen{display:none}
+.ee-ed{width:100%;min-width:120px;padding:6px 8px;border-radius:8px;border:1.5px solid var(--accent);background:var(--surface);color:var(--ink);font:inherit}
+td.ee-sel,th.ee-th{width:34px;text-align:center!important;min-width:0!important}
+td.ee-sel input,th.ee-th input{width:17px;height:17px;cursor:pointer}
+tr.ee-picked{background:color-mix(in srgb,var(--accent) 14%,transparent)!important}
+.ee-bar{position:fixed;inset-inline:0;bottom:16px;margin-inline:auto;width:max-content;max-width:calc(100vw - 24px);z-index:120;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-radius:18px;background:var(--surface);color:var(--ink);border:1px solid var(--accent);box-shadow:0 20px 60px -15px rgba(0,0,0,.6)}
+.ee-bar select,.ee-bar input{padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2,var(--surface));color:var(--ink);font:inherit;max-width:230px}
+.ee-confirm{background:#ff9f0a!important;color:#111!important;border-color:#ff9f0a!important}
+@media print{.ee-bar,.ee-overlay,.ee-pen,.ee-paste,.ee-dq{display:none!important}}
