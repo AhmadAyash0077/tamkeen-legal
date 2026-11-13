@@ -20,7 +20,7 @@
       const pages = await root.TamkeenOcr.readFilePages(f, progress, MAX_PAGES);
       for (const pg of pages){
         n++; const t = pg.textWithDigits || pg.text || ''; const x = root.uxReadPage(t);
-        info[n] = x; texts.push(t); types.push({file: f.name, type: x.type, method: pg.method});
+        info[n] = x; texts.push(t); types.push({file: f.name, f, type: x.type, method: pg.method});
         if (n >= MAX_PAGES) break;
       }
       if (n >= MAX_PAGES) break;
@@ -52,16 +52,20 @@
   }
   function bondFields(text){
     const t = dig(text), f = {};
-    if (!/(?:سند\s*لأمر|سند\s*لامر|السند|نافذ)/.test(t)) return f;
+    if (!/(?:سند\s*لأمر|سند\s*لامر|السند|نافذ|(?:^|[\s،,و])سند)/.test(t)) return f;
     const lab = (labels, re) => { for (const l of labels){ const m = new RegExp('(?:' + l + ')\\s*[:：\\-]?\\s*' + re).exec(t); if (m) return m[1].trim(); } return ''; };
     const no = lab(['رقم السند','رقم سند الأمر','رقم سند لأمر'], '([\\d\\-]{4,30})'); if (no) f.bond_no = no;
     const amt = lab(['قيمة السند','مبلغ السند','المبلغ المستحق','المبلغ','قيمة'], '([\\d,٬]+(?:\\.\\d+)?)');
     if (amt){ const n = Number(amt.replace(/[,٬]/g, '')); if (n > 0) f.bond_amount = n; }
+    // صيغة رسائل الواتس: «سند الكتروني 30 الف» / «سند ورقي بمبلغ 50,000»
+    if (!f.bond_amount){ const m = /سند[^\n\d]{0,30}?(\d[\d,٬.]*)\s*(ألف|الف|آلاف|الاف|k)?/i.exec(t); if (m){ let n = Number(m[1].replace(/[,٬]/g, '')); if (m[2]) n *= 1000; if (n >= 1000 && n <= 50000000) f.bond_amount = n; } }
     const dt = lab(['تاريخ الإنشاء','تاريخ الانشاء','تاريخ إنشاء السند','تاريخ الإصدار','تاريخ الاصدار','تاريخ السند','تاريخ التحرير'], '([\\d]{1,4}[\\/\\-.][\\d]{1,2}[\\/\\-.][\\d]{1,4})');
     const dd = dt ? toDate(dt) : null; if (dd) f.bond_date = dd;
     const iss = lab(['اسم المدين','المدين','محرر السند','اسم محرر السند'], '([^\\n]{3,70})');
     if (iss && !/\d{5,}/.test(iss)) f.bond_issuer = iss.replace(/[:：]+$/, '').trim();
-    if (/نافذ|إلكتروني|الكتروني/.test(t)) f.bond_type = 'إلكتروني (نافذ)';
+    if (/سند\s*ورقي/.test(t) && /سند\s*(?:إ|ا)لكتروني|نافذ/.test(t)) f.bond_type = 'إلكتروني + ورقي';
+    else if (/سند\s*ورقي/.test(t)) f.bond_type = 'ورقي';
+    else if (/نافذ|إلكتروني|الكتروني/.test(t)) f.bond_type = 'إلكتروني (نافذ)';
     return f;
   }
   // صفوف السند: فارغ ← تعبئة، مختلف ← قرار المستخدم
@@ -87,13 +91,23 @@
     if (mob && O.normMobile) f.manager_mobile = O.normMobile(mob);
     const cr = /(?:السجل التجاري|رقم السجل|الرقم الموحد|سجل تجاري)[^\d\n]{0,15}(\d{10})/.exec(t);
     if (cr && (!O.validCr || O.validCr(cr[1]))) f.cr_no = cr[1];
-    const na = (t.match(/\b[A-Z]{4}\s?\d{4}\b/) || [])[0]; if (na) f.national_address = na.replace(/\s/, '');
+    const na = shortAddr(t); if (na) f.national_address = na;
     const tn = /(?:الاسم التجاري|اسم المنشأة|اسم المنشاة)\s*(?:لل(?:مؤسسة|شركة|منشأة|منشاة))?\s*[:：]?\s*([^\n]{3,70})/.exec(t); if (tn) f.trade_name = cleanName(tn[1]);
     if (!f.cr_no){ const c2 = /(?:السجل|الموحد|سجل|المنشأة)[^\d\n]{0,40}((?:70|[1-5]\d)\d{8})(?!\d)/.exec(t); if (c2 && (!O.validCr || O.validCr(c2[1]))) f.cr_no = c2[1]; }
     const city = /(?:مدينة الإصدار|مدينة الاصدار|المدينة|المقر الرئيسي)\s*[:：]?\s*([ء-ي]{2,15})/.exec(t); if (city) f.cr_city = city[1];
     const act = /(?:نشاط المنشأة|نشاط المنشاة|النشاط الرئيسي|الأنشطة|الانشطة|النشاط)\s*[:：]?\s*([^\n]{4,70})/.exec(t); if (act) f.activity = act[1].replace(/[^ء-ي0-9 ()\-،,]/g, ' ').replace(/\s+/g, ' ').trim();
     if (f.activity && f.activity.length < 4) delete f.activity;
+    const br = /(?:تابع(?:ين|ة)?\s*(?:ل)?)?فرع\s+(?:مدينة\s+)?([ء-ي]{2,15})/.exec(t); if (br && !/^(?:الشركة|رئيسي|الرئيسي)$/.test(br[1])) f.branch = br[1].replace(/^الاحساء$/, 'الأحساء');
     return f;
+  }
+  // العنوان المختصر: 4 حروف + 4 أرقام، حتى لو جاء في مربعات منفصلة «F H G H 4 2 7 5» أو معكوسًا «5 7 2 4 H G H F»
+  function shortAddr(text){
+    const t = String(text || '').toUpperCase();
+    let m = /(?<![A-Z0-9])([A-Z])[\s|]*([A-Z])[\s|]*([A-Z])[\s|]*([A-Z])[\s|]*(\d)[\s|]*(\d)[\s|]*(\d)[\s|]*(\d)(?![A-Z0-9])/.exec(t);
+    if (m) return m.slice(1, 9).join('');
+    m = /(?<![A-Z0-9])(\d)[\s|]*(\d)[\s|]*(\d)[\s|]*(\d)[\s|]*([A-Z])[\s|]*([A-Z])[\s|]*([A-Z])[\s|]*([A-Z])(?![A-Z0-9])/.exec(t);
+    if (m && /العنوان\s*المختصر|Short\s*Address|National\s*Address|العنوان\s*الوطني/i.test(text)) return m.slice(1, 9).reverse().join('');
+    return '';
   }
   // يشيل البادئات مثل «للمؤسسة :» والرموز الشاذة من الاسم التجاري
   function cleanName(v){ return String(v || '').replace(/^\s*(?:لل(?:مؤسسة|شركة|منشأة|منشاة)|للمنشأة)\s*[:：]?\s*/, '').replace(/^[\s:：\-–|]+/, '').replace(/[^ء-ي0-9A-Za-z ()\-&.]/g, ' ').replace(/\s+/g, ' ').trim(); }
@@ -108,13 +122,42 @@
     }
     return rows;
   }
-  // دمج الصفوف: قراءة البرنامج الأصلية أولًا، ثم ما ينقص من السند والحقول العامة (بدون تكرار)
-  function mergeRows(...lists){
-    const seen = new Set(), out = [];
-    for (const l of lists) for (let r of l){ if (seen.has(r.fk)) continue; if (r.fk === 'trade_name' && typeof r.fv === 'string'){ r = {...r, fv: cleanName(r.fv)}; if (!r.fv) continue; } seen.add(r.fk); out.push(r); }
+  // صفوف السجل التجاري من uxCrExtract
+  function crRows(ci, d){
+    const D = g => ({orig:'g', g, h: root.g2h ? root.g2h(g) : '', verified:true});
+    const F = [['trade_name', ci.name], ['cr_no', ci.unified || ci.oldCr], ['cr_city', ci.city], ['cr_entity', ci.entity], ['cr_state', ci.state], ['cr_confirm', ci.confirm && D(ci.confirm)], ['cr_issue', ci.issue && D(ci.issue)]];
+    const rows = [];
+    for (const [k, v] of F){
+      if (!v) continue;
+      if (k === 'cr_issue' && !(typeof MODS !== 'undefined' && MODS.contracts.fields.some(f => f.k === 'cr_issue'))) { if (!d.cr_issue) d.cr_issue = v; continue; }
+      const cur = d[k]; const cs = cur && typeof cur === 'object' ? (cur.g || '') : String(cur ?? '').trim(); const vs = typeof v === 'object' ? v.g : String(v);
+      if (!cs) rows.push({fk:k, fv:v, kind:'empty', alts:[]});
+      else if (cs.replace(/\s/g, '') !== vs.replace(/\s/g, '')) rows.push({fk:k, fv:v, kind:'diff', cur: cs, alts:[]});
+    }
+    return rows;
+  }
+  // السند: تاريخه = تاريخ إنشاء العقد، ومحرره = العميل (الاسم التجاري) إذا كانت فاضية
+  function bondDefaults(rows, d){
+    const has = k => rows.some(r => r.fk === k);
+    const val = k => { const r = rows.find(x => x.fk === k); return r ? r.fv : d[k]; };
+    const bondKnown = ['bond_type', 'bond_amount', 'bond_no'].some(k => has(k) || (d[k] && d[k] !== 'ما فيه سند'));
+    if (!bondKnown || val('bond_type') === 'ما فيه سند') return rows;
+    const out = rows.slice();
+    const cd = d.date && (d.date.g || (typeof d.date === 'string' ? d.date : ''));
+    if (!has('bond_date') && !(d.bond_date && d.bond_date.g) && cd) out.push({fk:'bond_date', fv:{orig:'g', g:cd, h: root.g2h ? root.g2h(cd) : '', verified:true}, kind:'empty', alts:[]});
+    const tn = val('trade_name');
+    if (!has('bond_issuer') && !String(d.bond_issuer || '').trim() && tn) out.push({fk:'bond_issuer', fv: String(tn), kind:'empty', alts:[]});
     return out;
   }
-  root.TamkeenContractReader = {bondFields, bondRows, genericFields, cleanName};
+  // دمج الصفوف: قراءة البرنامج الأصلية أولًا، ثم ما ينقص من السند والحقول العامة (بدون تكرار)
+  // قيمة فيها عناوين خانات أخرى = قراءة خاطئة لخانة فاضية في النموذج (مثل «رقم الجوال البريد الالكتروني…»)
+  const LABELISH = /(?:رقم\s*(?:ال)?جوال|البريد\s*(?:الإ|الا)?ل?كترو|اسم\s*الشخص|نموذج\s*التوقيع|العنوان\s*الوطني|رقم\s*السجل|اسم\s*الموظف|رقم\s*الهوية)/;
+  function mergeRows(...lists){
+    const seen = new Set(), out = [];
+    for (const l of lists) for (let r of l){ if (seen.has(r.fk)) continue; if (r.fk === 'trade_name' && typeof r.fv === 'string'){ r = {...r, fv: cleanName(r.fv)}; if (!r.fv) continue; } if (typeof r.fv === 'string' && LABELISH.test(r.fv)) continue; seen.add(r.fk); out.push(r); }
+    return out;
+  }
+  root.TamkeenContractReader = {bondFields, bondRows, genericFields, cleanName, shortAddr, bondDefaults};
   function setVal(d, k, v){
     if (v && typeof v === 'object'){ d[k] = v; const el = document.getElementById('f_' + k); if (el && el.type === 'date' && v.g){ el.value = v.g; el.dispatchEvent(new Event('input', {bubbles:true})); } return; }
     const el = document.getElementById('f_' + k);
@@ -173,7 +216,13 @@
         prog.textContent = 'قُرئت ' + pages + ' صفحة.';
         const d = mode === 'new' ? (formData || {}) : root.rec('contracts', id);
         if (!d) throw new Error('العقد غير موجود.');
-        const rows = mergeRows(contractRows(info, d), bondRows(texts, d), genericRows(texts, d));
+        // السجل التجاري: قراءة كاملة (الباركود + الرقم الموحد + الكيان + الحالة + التواريخ) قبل الحفظ
+        let crR = [];
+        const crFile = (types.find(t => t.type === 'cr') || {}).f;
+        if (crFile && typeof root.uxCrExtract === 'function'){
+          try { const {info: ex, qr} = await root.uxCrExtract(crFile, m => { prog.textContent = m; }); const ci = Object.assign({}, ex); if (typeof root.uxCrParse === 'function'){ const crTxt = types.map((t, i) => t.f === crFile ? texts[i] : '').join('\n'); const cp = root.uxCrParse(crTxt); for (const [k, v] of Object.entries(cp)) if (v) ci[k] = v; } crR = crRows(ci, d); if (qr && /^https:\/\/([a-z0-9-]+\.)*(saudibusiness\.gov\.sa|mc\.gov\.sa)\//i.test(qr) && !d.cr_qr) d.cr_qr = qr; prog.textContent = 'قُرئت ' + pages + ' صفحة' + (qr ? ' · وقُرئ باركود السجل' : '') + '.'; } catch (e) {}
+        }
+        const rows = bondDefaults(mergeRows(crR, contractRows(info, d), bondRows(texts, d), genericRows(texts, d)), d);
         out.append(root.h('div', {class:'small'}, root.h('b', null, 'المستندات: '), types.map(t => t.file + ' ← ' + (TYPE_AR[t.type] || t.type) + (t.method ? ' (' + t.method + ')' : '')).join(' · ')));
         render(mode, id, out, rows, 'المستند');
         if (mode === 'new'){ pendingFiles = files; out.append(box('info', 'ستُرفق المستندات بالعقد تلقائيًا بعد الحفظ.')); }
@@ -183,17 +232,18 @@
     };
     // تحديث من رسالة أو بريد (داخل العقد)
     let msgBox = null;
-    if (mode === 'detail'){
+    {
+      const msgOut = root.h('div', {'aria-live':'polite', style:'display:grid;gap:8px'});
       const ta = root.h('textarea', {dir:'auto', rows:4, style:'width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit', 'aria-label':'نص رسالة التحديث',
         placeholder:'الصق رسالة أو بريد التحديث هنا: سجل تجاري جديد، جوال أو عنوان جديد، مفوض جديد، سند جديد (رقم السند، المبلغ، التاريخ)…'});
       const read = root.h('button', {type:'button', class:'btn sm', onclick: () => {
-        out.replaceChildren(); const t = ta.value.trim();
-        if (!t){ out.append(box('warn', 'الصق الرسالة أولًا.')); return; }
-        const d = root.rec('contracts', id); if (!d){ out.append(box('bad', 'العقد غير موجود.')); return; }
-        const rows = mergeRows(contractRows({1: root.uxReadPage(t)}, d), bondRows([t], d), genericRows([t], d));
-        render('detail', id, out, rows, 'الرسالة');
+        msgOut.replaceChildren(); const t = ta.value.trim();
+        if (!t){ msgOut.append(box('warn', 'الصق الرسالة أولًا.')); return; }
+        const d = mode === 'new' ? (formData || {}) : root.rec('contracts', id); if (!d){ msgOut.append(box('bad', 'العقد غير موجود.')); return; }
+        const rows = bondDefaults(mergeRows(contractRows({1: root.uxReadPage(t)}, d), bondRows([t], d), genericRows([t], d)), d);
+        render(mode, id, msgOut, rows, 'الرسالة');
       }}, 'قراءة الرسالة');
-      msgBox = root.h('div', {style:'margin-top:12px;display:grid;gap:8px'}, root.h('b', null, '✉️ أو الصق رسالة / بريد التحديث'), ta, root.h('div', {class:'row'}, read));
+      msgBox = root.h('div', {style:'margin-top:12px;display:grid;gap:8px'}, root.h('b', null, mode === 'new' ? '✉️ رسالة المندوب (واتساب): الجوال، السند ومبلغه، الفرع…' : '✉️ أو الصق رسالة / بريد التحديث'), ta, root.h('div', {class:'row'}, read), msgOut);
     }
     return root.h('div', {class:'panel cr-reader'},
       root.h('h2', {style:'margin:0 0 6px;font-size:1.05rem'}, mode === 'new' ? 'قارئ مستندات العميل' : 'تحديث العقد من مستند أو رسالة'),

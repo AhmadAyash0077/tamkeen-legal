@@ -2163,7 +2163,7 @@ const MODS={
     st:['مجدولة','منعقدة','مؤجلة','ملغاة'],closed:['منعقدة','ملغاة'],cols:['caseId','date','time','attendee','place']},
   contracts:{t:'العقود',one:'عقد',grp:'العقود والسندات',main:'end',fields:[{k:'fileKind',l:'نوع الملف',t:'select',o:['جملة','تركيب'],sec:'النموذج',hint:'ملفات الجملة (حسابات توريد البضاعة) أو ملفات التركيب'},
     {k:'ref_no',l:'الرقم',t:'ltr',sec:'النموذج'},{k:'date',l:'التاريخ',t:'date',req:1,sec:'النموذج',hint:'يُكتب في الملف بالميلادي والهجري (أم القرى) ولا يتغير عند فتح الملف'},{k:'customer_code',l:'كود العميل',t:'ltr',sec:'النموذج'},
-    {k:'trade_name',l:'الاسم التجاري',t:'text',req:1,sec:'بيانات العميل'},{k:'cr_no',l:'رقم السجل التجاري',t:'ltr',sec:'بيانات العميل',chk:'cr'},{k:'cr_city',l:'مدينة الإصدار',t:'text',sec:'بيانات العميل',list:CITIES},
+    {k:'trade_name',l:'الاسم التجاري',t:'text',req:1,sec:'بيانات العميل'},{k:'cr_no',l:'رقم السجل التجاري',t:'ltr',sec:'بيانات العميل',chk:'cr'},{k:'cr_city',l:'مدينة الإصدار',t:'text',sec:'بيانات العميل',list:CITIES},{k:'branch',l:'الفرع التابع له',t:'text',sec:'بيانات العميل',list:CITIES},
     {k:'cr_confirm',l:'تاريخ التأكيد السنوي للسجل',t:'date',sec:'بيانات العميل'},{k:'cr_entity',l:'نوع الكيان',t:'text',sec:'بيانات العميل'},{k:'cr_state',l:'حالة السجل',t:'text',sec:'بيانات العميل'},{k:'bond_type',l:'نوع السند',t:'select',o:['إلكتروني (نافذ)','ورقي','إلكتروني + ورقي','ما فيه سند'],sec:'السند'},{k:'bond_amount',l:'مبلغ السند',t:'money',sec:'السند'},{k:'bond_date',l:'تاريخ السند',t:'date',sec:'السند'},{k:'bond_issuer',l:'محرر السند',t:'text',sec:'السند'},{k:'bond_import_note',l:'ملاحظات السند من ملف Excel',t:'area',sec:'السند',w:1},{k:'bond_no',l:'رقم السند في نافذ',t:'ltr',sec:'السند'},{k:'activity',l:'نشاط المنشأة',t:'text',sec:'بيانات العميل',list:ACTS},{k:'national_address',l:'العنوان الوطني',t:'text',sec:'بيانات العميل',hint:'المدينة، الحي، رقم المبنى أو الرمز المختصر'},
     {k:'manager_name',l:'اسم الشخص المسؤول',t:'text',sec:'الشخص المسؤول'},{k:'manager_title',l:'الوظيفة',t:'text',sec:'الشخص المسؤول',list:TITLES},{k:'manager_mobile',l:'رقم الجوال',t:'ltr',sec:'الشخص المسؤول',chk:'mobile'},{k:'manager_email',l:'البريد الإلكتروني',t:'ltr',sec:'الشخص المسؤول'},{k:'inst_region',l:'منطقة التركيب',t:'text',sec:'بيانات التركيب',list:CITIES,hint:'تُكتب في التمهيد والبنود: مثال جدة'},{k:'ins_amount',l:'مبلغ التأمين (ريال)',t:'money',sec:'بيانات التركيب',hint:'مبلغ التأمين المودع قبل بدء العمل حسب العقد'},{k:'manager_nat',l:'جنسية ممثل الطرف الثاني',t:'text',sec:'بيانات التركيب',list:NATS},{k:'manager_id',l:'رقم الهوية / السجل المدني للممثل',t:'ltr',sec:'بيانات التركيب',chk:'id'},{k:'inst_final',l:'تاريخ انتهاء العقد عند عدم التجديد',t:'date',sec:'بيانات التركيب',hint:'يُكتب في بند «فينتهي هذا العقد بتاريخ». إن تُرك فارغًا يُستخدم تاريخ نهاية العقد'},
     {k:'e1_name',l:'اسم الموظف المفوض',t:'text',req:1,sec:'المفوض الأول'},{k:'e1_nat',l:'الجنسية',t:'text',sec:'المفوض الأول',list:NATS},{k:'e1_id',l:'رقم الهوية أو الإقامة',t:'ltr',sec:'المفوض الأول',chk:'id'},{k:'e1_title',l:'الوظيفة',t:'text',sec:'المفوض الأول',list:TITLES},{k:'e1_mobile',l:'رقم الجوال',t:'ltr',sec:'المفوض الأول',chk:'mobile'},
@@ -3753,7 +3753,7 @@ function hearingNoticePanel(mod='hearings'){
 
 /* ============ إنشاء سجل ============ */
 function viewNew(mod){
-  const M=MODS[mod];const d={status:M.st[0]};for(const f of M.fields){if(f.k==='currency')d.currency='ريال سعودي';if(f.k==='priority')d.priority='عادية';if(mod==='bonds'&&f.k==='kind')d.kind='سند لأمر'}if(mod==='contracts'){d.fileKind=(()=>{const k=LS.get('ctKind','');return k==='تركيب'?'تركيب':'جملة'})();d.activity='البيع بالتجزئة للأجهزة المنزلية';d.date={orig:'g',g:todayISO(),h:g2h(todayISO()),verified:true};d.e1_nat='';const y=todayISO().slice(0,4);d.ref_no=`ع/${y}/${String(recs('contracts',true).length+1).padStart(3,'0')}`}
+  const M=MODS[mod];const d={status:M.st[0]};for(const f of M.fields){if(f.k==='currency')d.currency='ريال سعودي';if(f.k==='priority')d.priority='عادية';if(mod==='bonds'&&f.k==='kind')d.kind='سند لأمر'}if(mod==='contracts'){d.fileKind=(()=>{const k=LS.get('ctKind','');return k==='تركيب'?'تركيب':'جملة'})();d.activity='البيع بالتجزئة للأجهزة المنزلية';d.date={orig:'g',g:todayISO(),h:g2h(todayISO()),verified:true};d.e1_nat='';const y=todayISO().slice(0,4);d.ref_no=uxNextRef(d.fileKind,y)}
   if(mod==='hearings'&&S.prefill?.caseId){d.caseId=S.prefill.caseId}
   const linkTo=S.prefill?.link||null;S.prefill=null;
   const err=h('div');
@@ -3776,7 +3776,7 @@ function viewNew(mod){
     const res=await writeDoc(mod,id,{...d,source:'إدخال يدوي'},null,{create:true});
     btn.disabled=false;
     if(res.exists){err.append(h('div',{class:'banner bad'},'سجل بالمعرف نفسه موجود (سند مكرر).'));return}
-    if(res.ok){audit('إنشاء',mod,id,titleOf(mod,d));
+    if(res.ok){audit('إنشاء',mod,id,titleOf(mod,d));if(mod==='contracts')uxRefRemember(d);
       if(mod==='attest'&&assets){for(const[c,fs]of Object.entries(attPend)){if(fs&&fs.length){btn.disabled=true;await uploadFiles(fs,['attest:'+id],(m,cl)=>{if(cl==='bad')toast(typeof m==='string'?m:'تعذر رفع ملف')},c)}}btn.disabled=false}
       location.hash=`${mod}-${id}`}
     else err.append(h('div',{class:'banner bad'},'لم يُحفظ السجل. '+(res.e?errMsg(res.e):'')));
@@ -6538,7 +6538,16 @@ function uxCtDupRows(){const C=statRecs('contracts');const g={};for(const r of C
   C.push({id:'ct_fmt',mod:'contracts',ic:'alert',t:'عقود فيها بيانات بصيغة غير صحيحة',why:'هوية، جوال، سجل، عنوان وطني أو اسم يحتاج تصحيح',rows:statRecs('contracts').filter(r=>uxCtFmtIssues(r).length)});
   C.push({id:'ct_dup',mod:'contracts',ic:'list',t:'عقود مكررة (نفس الكود أو السجل)',why:'راجعها وادمج أو احذف المكرر',rows:uxCtDupRows()})}}catch(e){}
   return C.sort((a,b)=>(b.rows.length>0)-(a.rows.length>0))}}
+/* ===== 31) رقم العقد التلقائي: آخر رقم مكتوب + 1 (لنفس نوع الملف) ===== */
+function uxRefSeq(ref){const t=normDigits(String(ref||''));const m=t.match(/^\s*[ء-ي]*\s*\/?\s*(\d{4})\s*\/\s*(\d{1,6})\s*$/)||t.match(/^\s*[ء-ي]*\s*\/?\s*(\d{1,6})\s*\/\s*(\d{4})\s*$/);if(m){const a=+m[1],b=+m[2];return /^\d{4}$/.test(m[1])&&(a>1900||a>1400&&a<1500)&&!(/^\d{4}$/.test(m[2])&&b>1900)?{n:b,w:m[2].length}:{n:a,w:m[1].length}}const one=t.match(/^\s*[ء-ي]*\s*\/?\s*(\d{1,6})\s*$/);return one?{n:+one[1],w:one[1].length}:null}
+function uxBumpRef(ref,y){const t=normDigits(String(ref||'').trim());const q=uxRefSeq(t);if(!q)return '';const nx=String(q.n+1).padStart(q.w,'0');if(/^\d+$/.test(t))return nx;const pre=(t.match(/^\s*([ء-ي]+)/)||[])[1]||'ع';return `${pre}/${y}/${nx}`}
+function uxNextRef(kind,y){const k=kind||'جملة';const saved=(S.settings&&S.settings.refLast||{})[k];if(saved){const nx=uxBumpRef(saved,y);if(nx)return nx}
+  const all=recs('contracts',true).filter(c=>!c.deleted&&(c.fileKind||'جملة')===k&&String(c.ref_no||'').trim()).sort((a,b)=>String(b.createdAt||b.updatedAt||'').localeCompare(String(a.createdAt||a.updatedAt||'')));
+  for(const c of all){const nx=uxBumpRef(c.ref_no,y);if(nx)return nx}
+  return k==='تركيب'?'001':`ع/${y}/${String(recs('contracts',true).length+1).padStart(3,'0')}`}
+async function uxRefRemember(d){try{const ref=String(d.ref_no||'').trim();if(!ref||!uxRefSeq(ref))return;const k=d.fileKind||'جملة';const cur=S.settings||{};if((cur.refLast||{})[k]===ref)return;await writeDoc('meta','settings',{...cur,refLast:{...(cur.refLast||{}),[k]:ref}},cur.rev,{force:true})}catch(e){console.warn('refLast',e)}}
 boot().then(()=>{if(db)try{sessionStorage.removeItem('tl_boot_retry')}catch(e){}}).then(uxAfterBoot,e=>console.warn(e));
+
 </script>
 
 <script src="legal-memory-core.js?v=1"></script>
@@ -6552,8 +6561,8 @@ boot().then(()=>{if(db)try{sessionStorage.removeItem('tl_boot_retry')}catch(e){}
 <script src="ocr-boost.js?v=4"></script>
 <script src="entry-ux.js?v=1"></script>
 <script src="whatsapp-intake.js?v=11"></script>
-<script src="contract-reader.js?v=5"></script>
+<script src="contract-reader.js?v=9"></script>
 <script src="ai-employees.js?v=5"></script>
-<link rel="stylesheet" href="polish.css?v=4"><script src="polish.js?v=4"></script>
+<link rel="stylesheet" href="polish.css?v=8"><script src="polish.js?v=4"></script>
 <script src="easy-entry.js?v=2"></script>
 </html>
