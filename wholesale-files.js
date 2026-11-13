@@ -199,13 +199,16 @@
           btn('إزالة المرفق',()=>{attachments.splice(index,1);renew();renderAttachments();},'btn sm ghost'))));
         if(!attachments.length)selected.append(h('li',{class:'muted'},'لم تختر أوراقًا بعد.'));
       };
+      const attachListeners=[];
       files.addEventListener('change',()=>{
-        attachments.push(...files.files);files.value='';renew();renderAttachments();
+        const added=[...files.files];
+        attachments.push(...added);files.value='';renew();renderAttachments();
+        for(const listener of attachListeners)listener(added);
       });
       text.addEventListener('input',renew);
       renderAttachments();
-      const hasProfile=Object.keys(profile).length>0;
-      return {heading:hasProfile?'حفظ ملف العميل وأوراقه':'استقبال طلب واتساب',profile,
+      const startedWithProfile=Object.keys(profile).length>0;
+      return {onAttach:listener=>attachListeners.push(listener),heading:startedWithProfile?'حفظ ملف العميل وأوراقه':'استقبال طلب واتساب',profile,
         node:h('div',null,grid(field('رسالة واتساب',text),field('مرفقات الطلب · حتى 12 ورقة، 5 ميجابايت لكل ملف',files)),
           selected,h('p',{class:'muted'},'يمكن حفظ حتى 16 ميجابايت في الدفعة الواحدة، وإضافة دفعات أخرى إلى الملف نفسه.')),
         data:async(base)=>{
@@ -215,7 +218,7 @@
           if(batch.length>attachmentLimit||(!message.trim()&&!batch.length))throw Error('invalid_intake');
           if(batch.reduce((total,file)=>total+file.size,0)>batchBytes)throw Error('intake_size_limit');
           return {receipt:requestId,channel:'whatsapp',message,files:await Promise.all(batch.map(encode)),
-            ...(hasProfile?{profile,profile_reviewed:true,...(base?{profile_base:base}:{})}:{})};
+            ...(Object.keys(profile).length>0?{profile,profile_reviewed:true,...(base?{profile_base:base}:{})}:{})};
         }};
     }
     function mailIntake(){
@@ -285,9 +288,49 @@
             feedback('حُفظ ملف العميل والبيانات والأوراق المرفقة.');
           }),'btn primary'));
       });
+      // قراءة تلقائية: عند إرفاق ملف يُستخرج الاسم ورقم السجل وباقي الخانات بدون كتابة. لا يُكتب فوق ما أدخله المستخدم.
+      const autoStatus=h('p',{class:'muted',role:'status','aria-live':'polite'});
+      const profileBox=h('div');
+      const renderProfile=(open)=>profileBox.replaceChildren(...(intake.profile&&profileRows(intake.profile).length?
+        [h('details',open?{open:''}:null,h('summary',null,'الخانات التي ستُحفظ مع الملف — راجعها'),profileFields(intake.profile))]:[]));
+      renderProfile(false);
+      const nameFromFile=files=>{for(const file of files){
+        const base=String(file.name||'').replace(/\.[a-z0-9]{2,5}$/i,'').replace(/[_]+/g,' ').replace(/\s+/g,' ').trim();
+        if(/^(مؤسسة|مؤسسه|شركة|شركه|مصنع|مجموعة|محل|معرض|مكتب)\s+\S+/.test(base)&&!/\d{4,}/.test(base)&&base.length<=120)return base;}return ''};
+      let reading=0;
+      const autoRead=async files=>{
+        const readable=files.filter(file=>/\.(pdf|png|jpe?g|webp)$/i.test(file.name)||/^(application\/pdf|image\/(png|jpeg|webp))$/.test(file.type));
+        const filled=[];const turn=++reading;
+        const useFileName=()=>{if(!name.value.trim()){const guess=nameFromFile(files);if(guess){name.value=guess;filled.push('الاسم التجاري (من اسم الملف)');}}};
+        if(!readable.length||!window.tamkeenWholesaleReader){useFileName();if(filled.length){result.replaceChildren();autoStatus.textContent='عبّيت: '+filled.join('، ')+'. راجعها قبل الحفظ.';}return;}
+        autoStatus.textContent='جارٍ قراءة الملف واستخراج البيانات…';
+        try{
+          const report=await window.tamkeenWholesaleReader.scan(readable,value=>{if(turn===reading)autoStatus.textContent='جارٍ قراءة الملف… '+value;});
+          const one=key=>{const row=report.rows.find(item=>item.key===key);return row&&row.candidates.length===1?String(row.candidates[0].value||'').trim():'';};
+          const conflicts=report.rows.filter(row=>row.candidates.length>1).map(row=>row.label);
+          const readName=one('trade_name');
+          if(!name.value.trim()&&readName){name.value=readName;filled.push('الاسم التجاري');}
+          useFileName();
+          const registration=digit(one('unified'))||digit(one('old_registration'));
+          if(!number.value.trim()&&!number.readOnly&&/^\d{10}$/.test(registration)){number.value=registration;filled.push('رقم السجل');}
+          let extra=0;
+          if(intake.profile)for(const row of report.rows){
+            if(row.key==='trade_name'||row.candidates.length!==1||intake.profile[row.key])continue;
+            const value=row.key==='unified'?digit(row.candidates[0].value):String(row.candidates[0].value||'').trim();
+            if(value){intake.profile[row.key]=value;extra++;}
+          }
+          if(extra)renderProfile(true);
+          if(filled.length||extra)result.replaceChildren();
+          autoStatus.textContent=(filled.length||extra?'قريت الملف وعبّيت: '+[...filled,extra?extra+' خانة إضافية (تحت)':''].filter(Boolean).join('، ')+'. راجعها قبل الحفظ.'
+            :'قريت الملف وما لقيت بيانات واضحة — أدخل الاسم ورقم السجل يدويًا.')
+            +(conflicts.length?' قراءات متعارضة ما عبّيتها: '+conflicts.join('، ')+'.':'')
+            +(!number.value.trim()?' رقم السجل ما انقرأ بثقة، أدخله يدويًا.':'');
+        }catch(error){useFileName();autoStatus.textContent='تعذرت قراءة الملف تلقائيًا — أدخل البيانات يدويًا.'+(filled.length?' (أخذت الاسم من اسم الملف)':'');}
+      };
+      if(typeof intake.onAttach==='function')intake.onAttach(files=>{autoRead(files);});
       body.replaceChildren(panel(intake.heading,btn('العودة إلى القائمة',run(list),'btn ghost'),
-        intake.node,grid(field('الاسم التجاري',name),field('رقم السجل التجاري أو الرقم الموحد',number)),
-        profileRows(intake.profile).length?h('details',null,h('summary',null,'الخانات التي ستُحفظ مع الملف'),profileFields(intake.profile)):null,
+        intake.node,autoStatus,grid(field('الاسم التجاري',name),field('رقم السجل التجاري أو الرقم الموحد',number)),
+        profileBox,
         btn('التحقق من التكرار',verify,'btn primary'),result));
       name.focus();
     }
