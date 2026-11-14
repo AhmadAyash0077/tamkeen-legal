@@ -235,6 +235,31 @@
       h('small', null, 'النواة · ' + countWord(EMPS.length - 1) + ' حولها')));
     return O;
   }
+  // المهام التي تعدّل السجلات لا تُنفَّذ من شريط الأوامر مباشرة: تُجهَّز وينتظر الموظف ضغطة «نفّذ»
+  const WRITE_TASKS = new Set(['تجهيز تجديدات عقود التركيب', 'مطابقة ملفات الجملة مع طلبات التنفيذ']);
+  const QUICK_CMDS = ['ملخص اليوم على واتساب', 'الجلسات والمهل القادمة', 'طلبات التنفيذ المتوقفة', 'البيانات الناقصة', 'تقرير القضايا المفتوحة'];
+  // توجيه الطلب المكتوب إلى موظف ومهمة بالكلمات المفتاحية. يرجع null إذا لم يُفهم الطلب.
+  function routeCommand(text){
+    const t = String(text || '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+    const has = (...w) => w.some(x => t.includes(x));
+    const R = (task) => ({emp: Object.prototype.hasOwnProperty.call(REPORTS, task) ? 'reports' : 'data', task});
+    if (has('واتس', 'whatsapp')) return R('ملخص اليوم على واتساب');
+    if (has('تقرير', 'كشف')){
+      if (has('قضاي', 'قضيه')) return R('تقرير القضايا المفتوحة');
+      if (has('عقد', 'عقود')) return R('تقرير العقود');
+      if (has('مخالف')) return R('تقرير المخالفات');
+      if (has('تنفيذ')) return R('تقرير طلبات التنفيذ');
+    }
+    if (has('جلس', 'مهل', 'موعد', 'مواعيد')) return R('الجلسات والمهل خلال 14 يومًا');
+    if (has('متوقف', 'تحصيل', 'متاخر')) return R('طلبات التنفيذ المتوقفة');
+    if (has('ناقص', 'نواقص', 'جوده', 'اكمال')) return R('فحص البيانات الناقصة في كل الأقسام');
+    if (has('افلاس')) return R('فحص العملاء في قائمة الإفلاس');
+    if (has('تجديد', 'جدد')) return R('تجهيز تجديدات عقود التركيب');
+    if (has('مطابق', 'الجمله')) return R('مطابقة ملفات الجملة مع طلبات التنفيذ');
+    if (has('ملخص', 'موجز', 'يومي')) return R('ملخص اليوم على واتساب');
+    return null;
+  }
+  root.aiRouteCommand = routeCommand;
   function desk(){
     const out = h('div', {'aria-live':'polite', style:'margin-top:12px'});
     let cur = EMPS[0];
@@ -268,11 +293,28 @@
         body.replaceChildren(h('p', {class:'small muted', style:'margin:0 0 8px'}, h('b', null, cur.icon + ' ' + cur.name + ': '), cur.desc), h('div', {class:'row', style:'gap:8px;flex-wrap:wrap;align-items:end'}, field('المهمة', taskSel), run));
       } else body.replaceChildren(h('p', {class:'small muted', style:'margin:0 0 8px'}, h('b', null, cur.icon + ' ' + cur.name + ': '), cur.desc + '. يجهّز الطلب كاملًا من بيانات السجل ويفتحه في حسابك على Claude (مجانًا).'), drafterForm(out));
     };
+    /* ===== شريط الأوامر: تكتب طلبك فيستلمه الموظف المناسب (قواعد ثابتة، مجانًا) ===== */
+    const cmdIn = h('input', {id:'aiCmd', type:'text', autocomplete:'off', 'aria-label':'اطلب من الفريق', placeholder:'اطلب من الفريق… مثال: أرسل ملخص اليوم على واتساب'});
+    const cmdMsg = h('div', {class:'small', 'aria-live':'polite'});
+    const runCmd = async text => {
+      const t = String(text || '').trim(); if (!t) return;
+      const hit = routeCommand(t);
+      if (!hit){ cmdMsg.replaceChildren(box('warn', 'ما فهمت الطلب. جرّب أحد الأوامر الجاهزة تحت، أو اختر الموظف بنفسك.')); return; }
+      const e = empById(hit.emp); if (!e || !e.tasks || !e.tasks[hit.task]){ cmdMsg.replaceChildren(box('bad', 'المهمة غير متاحة الآن.')); return; }
+      cur = e; dept = null; paint(); taskSel.value = hit.task;
+      if (WRITE_TASKS.has(hit.task)){ cmdMsg.replaceChildren(box('info', e.icon + ' ' + e.name + ' جهّز مهمة «' + hit.task + '». هذه المهمة تعدّل السجلات، فاضغط «▶ نفّذ» تحت إذا تبي تنفّذها.')); out.replaceChildren(); return; }
+      cmdMsg.replaceChildren(box('ok', e.icon + ' ' + e.name + ' استلم المهمة: ' + hit.task));
+      out.replaceChildren(box('info', e.name + ' يشتغل على: ' + hit.task + '…'));
+      try { const r = await e.tasks[hit.task](); out.replaceChildren(r); log(e.name, hit.task); paintHist(); }
+      catch(err){ out.replaceChildren(box('bad', 'تعذر تنفيذ المهمة: ' + (err.message || err))); }
+    };
+    const cmdForm = h('form', {class:'ai-cmd', onsubmit: ev => { ev.preventDefault(); const v = cmdIn.value; cmdIn.value = ''; runCmd(v); }}, cmdIn, h('button', {type:'submit', class:'btn primary'}, '▶ أرسل'));
+    const chips = h('div', {class:'ai-chips'}, QUICK_CMDS.map(q => h('button', {type:'button', class:'btn sm', onclick: () => runCmd(q)}, q)));
     paint(); paintHist();
     return h('section', {class:'panel ai-desk'},
       h('div', {class:'row', style:'justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap'}, h('h2', {style:'margin:0;font-size:1.25rem'}, '🤖 الموظفون الإلكترونيون'), sw),
-      h('p', {class:'small muted', style:'margin:4px 0 0'}, 'اضغط أي قسم لترى موظفيه، أو النواة لتعطي موظف التقارير مهمة. الرقم الأحمر = ما ينتظر المتابعة.'),
-      tabs, body, out, histBox);
+      h('p', {class:'small muted', style:'margin:4px 0 0'}, 'اكتب طلبك فيستلمه الموظف المناسب، أو اضغط أي قسم لترى موظفيه. الرقم الأحمر = ما ينتظر المتابعة.'),
+      cmdForm, chips, cmdMsg, tabs, body, out, histBox);
   }
 
   const css = document.createElement('style');
@@ -281,6 +323,8 @@
     + '.ai-emp:hover{transform:translateY(-2px);box-shadow:0 10px 24px -16px rgba(0,0,0,.45)}.ai-emp.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}'
     + '.ai-emp-ic{grid-row:1/4;font-size:1.6rem;line-height:1}.ai-emp b{font-size:.98rem}.ai-emp small{color:var(--ink-2);font-size:.8rem;line-height:1.5}'
     + '.ai-viewsw{display:flex;gap:6px}'
+    + '.ai-cmd{display:flex;gap:8px;margin-top:12px}.ai-cmd input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit}.ai-cmd input:focus{outline:2px solid var(--accent);outline-offset:1px}'
+    + '.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}'
     + '.ai-orbit{position:relative;width:100%;max-width:560px;aspect-ratio:1/1;margin:8px auto 4px;color:var(--ink)}.ai-orbit svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}'
     + '.ai-node{position:absolute;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:3px;width:min(32%,150px);padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:center;cursor:pointer}'
     + '.ai-node b{font-size:clamp(11px,2.5vw,13.5px);line-height:1.3}.ai-node small{font-size:clamp(10px,2vw,11.5px);color:var(--ink-2);line-height:1.25}'
