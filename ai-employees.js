@@ -194,22 +194,69 @@
     {id:'bkr', icon:'⚖️', name:'موظف الإفلاس', desc:'يتأكد إن عملاءك مو عليهم إجراءات إفلاس', href:'#team~bkr', stat: () => { const n = root.uxBkrMatches().length; return n ? n + ' تطابق يحتاج مراجعة' : 'لا تطابق'; }},
     {id:'library', icon:'📚', name:'أمين المكتبة', desc:'يتابع الأنظمة واللوائح السارية', href:'#team~library'}
   ];
+  /* ===== مركز القيادة: الأقسام حول النواة (عرض فقط، نفس الموظفين ونفس سلوكهم) ===== */
+  const DEPTS = [
+    {id:'lead', name:'القيادة والمتابعة', icon:'☀️', c:'#ffd60a', emps:['morning']},
+    {id:'data', name:'البيانات', icon:'🗂️', c:'#64d2ff', emps:['data', 'quality', 'ocr', 'match']},
+    {id:'collect', name:'التحصيل والتنفيذ', icon:'💰', c:'#30d158', emps:['collect', 'bkr']},
+    {id:'renew', name:'العقود والتجديد', icon:'🔁', c:'#ff9f0a', emps:['renew']},
+    {id:'know', name:'المعرفة والصياغة', icon:'📚', c:'#bf5af2', emps:['drafter', 'library']}
+  ];
+  const HUB = 'reports';
+  const VIEWK = 'tl_team_view';
+  const getView = () => { try { return localStorage.getItem(VIEWK) === 'grid' ? 'grid' : 'orbit'; } catch(e){ return 'orbit'; } };
+  const setView = v => { try { localStorage.setItem(VIEWK, v); } catch(e){} };
+  const empById = id => EMPS.find(e => e.id === id);
+  const statOf = e => { let st = e.href ? 'يعمل تلقائيًا' : 'أعطه مهمة'; if (e.stat){ try { st = e.stat(); } catch(_){} } return st; };
+  // أول رقم في حالة الموظف = عدد ما ينتظر المتابعة (مثل «143 طلب بانتظار المتابعة»)
+  const leadNum = s => { const m = String(s).match(/^\s*(\d+)/); return m ? Number(m[1]) : 0; };
+  const countWord = n => n === 1 ? 'موظف واحد' : n === 2 ? 'موظفان' : n + ' موظفين';
+  function orbitView(onDept, onEmp){
+    const O = h('div', {class:'ai-orbit'});
+    const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('aria-hidden', 'true');
+    const C = {x:50, y:52}, R = 36, n = DEPTS.length;
+    const pos = i => { const a = (-90 + 360 / n * i) * Math.PI / 180; return {x: C.x + R * Math.cos(a), y: C.y + R * Math.sin(a)}; };
+    const el = (tag, attrs) => { const x = document.createElementNS(NS, tag); for (const k in attrs) x.setAttribute(k, attrs[k]); svg.append(x); };
+    el('circle', {cx:C.x, cy:C.y, r:R, fill:'none', stroke:'currentColor', 'stroke-opacity':'.18', 'stroke-width':'.3', 'stroke-dasharray':'.6 1.4'});
+    O.append(svg);
+    DEPTS.forEach((d, i) => {
+      const p = pos(i);
+      el('line', {x1:C.x, y1:C.y, x2:p.x, y2:p.y, stroke:d.c, 'stroke-width':'.35', 'stroke-opacity':'.75', 'stroke-dasharray':'1 1.2'});
+      const emps = d.emps.map(empById).filter(Boolean);
+      const badge = emps.reduce((s, e) => s + (e.stat ? leadNum(statOf(e)) : 0), 0);
+      O.append(h('button', {type:'button', class:'ai-node', style:'left:' + p.x + '%;top:' + p.y + '%;--c:' + d.c, 'aria-label': d.name + ': ' + countWord(emps.length) + (badge ? '، ' + badge + ' بانتظار المتابعة' : ''), onclick: () => onDept(d)},
+        h('span', {class:'ai-disc', 'aria-hidden':'true'}, d.icon, badge ? h('span', {class:'ai-badge'}, N(badge)) : null),
+        h('b', null, d.name), h('small', null, countWord(emps.length))));
+    });
+    const hub = empById(HUB);
+    O.append(h('button', {type:'button', class:'ai-node ai-hub', style:'left:' + C.x + '%;top:' + C.y + '%', 'aria-label': hub.name + ': أعطه مهمة', onclick: () => onEmp(hub)},
+      h('span', {class:'ai-core'}, h('span', {class:'ai-core-ic', 'aria-hidden':'true'}, hub.icon), h('b', null, hub.name)),
+      h('small', null, 'النواة · ' + countWord(EMPS.length - 1) + ' حولها')));
+    return O;
+  }
   function desk(){
     const out = h('div', {'aria-live':'polite', style:'margin-top:12px'});
     let cur = EMPS[0];
+    let view = getView(), dept = null;
     const taskSel = h('select', {'aria-label':'المهمة'});
     const body = h('div');
-    const tabs = h('div', {class:'ai-emps'});
+    const tabs = h('div');
     const histBox = h('div');
     const paintHist = () => { const a = readLog().slice(0, 6); histBox.replaceChildren(a.length ? h('details', {style:'margin-top:12px'}, h('summary', {class:'small muted', style:'cursor:pointer'}, 'آخر المهام المنفّذة على هذا الجهاز'), list(a.map(x => x.emp + ': ' + x.task + ' — ' + new Date(x.at).toLocaleString('ar-SA-u-nu-latn-ca-gregory')))) : ''); };
+    const pick = e => { if (e.href){ location.hash = e.href; return; } cur = e; out.replaceChildren(); paint(); };
+    const card = e => h('button', {type:'button', class:'ai-emp' + (e === cur ? ' on' : ''), 'aria-pressed':String(e === cur), title: e.desc, onclick: () => pick(e)},
+      h('span', {class:'ai-emp-ic', 'aria-hidden':'true'}, e.icon), h('b', null, e.name), h('small', null, e.desc), h('em', null, h('i'), statOf(e)));
+    const sw = h('div', {class:'ai-viewsw', role:'group', 'aria-label':'طريقة العرض'});
+    const paintSw = () => sw.replaceChildren(...[['orbit', 'مركز القيادة'], ['grid', 'البطاقات']].map(([k, l]) =>
+      h('button', {type:'button', class:'btn sm' + (view === k ? ' primary' : ''), 'aria-pressed':String(view === k), onclick: () => { view = k; dept = null; setView(k); paint(); }}, l)));
     const paint = () => {
-      tabs.replaceChildren(...EMPS.map(e => {
-        let st = e.href ? 'يعمل تلقائيًا' : 'أعطه مهمة';
-        if (e.stat){ try { st = e.stat(); } catch(_){} }
-        return h('button', {type:'button', class:'ai-emp' + (e === cur ? ' on' : ''), 'aria-pressed':String(e === cur), title: e.desc,
-          onclick: () => { if (e.href){ location.hash = e.href; return; } cur = e; out.replaceChildren(); paint(); }},
-          h('span', {class:'ai-emp-ic', 'aria-hidden':'true'}, e.icon), h('b', null, e.name), h('small', null, e.desc), h('em', null, h('i'), st));
-      }));
+      paintSw();
+      if (view === 'orbit' && !dept) tabs.replaceChildren(orbitView(d => { dept = d; paint(); }, pick));
+      else if (view === 'orbit') tabs.replaceChildren(h('div', {class:'ai-dept', style:'--c:' + dept.c},
+        h('div', {class:'row', style:'gap:10px;align-items:center;margin-top:12px'}, h('button', {type:'button', class:'btn sm', onclick: () => { dept = null; paint(); }}, '→ كل الأقسام'), h('b', {style:'font-size:1.05rem'}, dept.icon + ' ' + dept.name)),
+        h('div', {class:'ai-emps'}, dept.emps.map(empById).filter(Boolean).map(card))));
+      else tabs.replaceChildren(h('div', {class:'ai-emps'}, EMPS.map(card)));
       if (cur.tasks){
         taskSel.replaceChildren(...Object.keys(cur.tasks).map(k => h('option', {value:k}, k)));
         const run = h('button', {type:'button', class:'btn primary', onclick: async () => {
@@ -218,13 +265,13 @@
           catch(e){ out.replaceChildren(box('bad', 'تعذر تنفيذ المهمة: ' + (e.message || e))); }
           finally { run.disabled = false; }
         }}, '▶ نفّذ');
-        body.replaceChildren(h('p', {class:'small muted', style:'margin:0 0 8px'}, cur.desc), h('div', {class:'row', style:'gap:8px;flex-wrap:wrap;align-items:end'}, field('المهمة', taskSel), run));
-      } else body.replaceChildren(h('p', {class:'small muted', style:'margin:0 0 8px'}, cur.desc + '. يجهّز الطلب كاملًا من بيانات السجل ويفتحه في حسابك على Claude (مجانًا).'), drafterForm(out));
+        body.replaceChildren(h('p', {class:'small muted', style:'margin:0 0 8px'}, h('b', null, cur.icon + ' ' + cur.name + ': '), cur.desc), h('div', {class:'row', style:'gap:8px;flex-wrap:wrap;align-items:end'}, field('المهمة', taskSel), run));
+      } else body.replaceChildren(h('p', {class:'small muted', style:'margin:0 0 8px'}, h('b', null, cur.icon + ' ' + cur.name + ': '), cur.desc + '. يجهّز الطلب كاملًا من بيانات السجل ويفتحه في حسابك على Claude (مجانًا).'), drafterForm(out));
     };
     paint(); paintHist();
     return h('section', {class:'panel ai-desk'},
-      h('h2', {style:'margin:0 0 4px;font-size:1.25rem'}, '🤖 الموظفون الإلكترونيون'),
-      h('p', {class:'small muted', style:'margin:0'}, 'كل الموظفين في مكان واحد. الثلاثة الأولى تعطيهم مهمة فيقومون بها، والباقون يعملون تلقائيًا — اضغط أي موظف لتفتح شغله.'),
+      h('div', {class:'row', style:'justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap'}, h('h2', {style:'margin:0;font-size:1.25rem'}, '🤖 الموظفون الإلكترونيون'), sw),
+      h('p', {class:'small muted', style:'margin:4px 0 0'}, 'اضغط أي قسم لترى موظفيه، أو النواة لتعطي موظف التقارير مهمة. الرقم الأحمر = ما ينتظر المتابعة.'),
       tabs, body, out, histBox);
   }
 
@@ -233,6 +280,17 @@
     + '.ai-emp{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:10px;row-gap:2px;align-items:start;text-align:start;padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s}'
     + '.ai-emp:hover{transform:translateY(-2px);box-shadow:0 10px 24px -16px rgba(0,0,0,.45)}.ai-emp.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}'
     + '.ai-emp-ic{grid-row:1/4;font-size:1.6rem;line-height:1}.ai-emp b{font-size:.98rem}.ai-emp small{color:var(--ink-2);font-size:.8rem;line-height:1.5}'
+    + '.ai-viewsw{display:flex;gap:6px}'
+    + '.ai-orbit{position:relative;width:100%;max-width:560px;aspect-ratio:1/1;margin:8px auto 4px;color:var(--ink)}.ai-orbit svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}'
+    + '.ai-node{position:absolute;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:3px;width:min(32%,150px);padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:center;cursor:pointer}'
+    + '.ai-node b{font-size:clamp(11px,2.5vw,13.5px);line-height:1.3}.ai-node small{font-size:clamp(10px,2vw,11.5px);color:var(--ink-2);line-height:1.25}'
+    + '.ai-disc{position:relative;display:grid;place-items:center;width:clamp(46px,11vw,66px);height:clamp(46px,11vw,66px);border-radius:50%;font-size:clamp(20px,5vw,28px);border:1.5px solid var(--c);background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--c) 30%,transparent),var(--surface) 72%);box-shadow:0 0 0 6px color-mix(in srgb,var(--c) 10%,transparent),0 0 22px color-mix(in srgb,var(--c) 30%,transparent);transition:transform .2s}'
+    + '.ai-node:hover .ai-disc,.ai-node:focus-visible .ai-disc{transform:scale(1.08)}'
+    + '.ai-badge{position:absolute;top:-5px;inset-inline-end:-8px;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:#ff453a;color:#fff;font-weight:700;font-size:11px;line-height:20px;text-align:center;font-variant-numeric:tabular-nums}'
+    + '.ai-hub{width:min(42%,200px)}.ai-core{position:relative;display:grid;place-items:center;align-content:center;gap:2px;width:clamp(96px,24vw,146px);height:clamp(96px,24vw,146px);border-radius:50%;background:radial-gradient(circle,rgba(255,214,10,.5) 0%,rgba(255,214,10,.16) 42%,transparent 70%)}'
+    + '.ai-core::before,.ai-core::after{content:"";position:absolute;inset:0;border-radius:50%;border:1.5px dashed rgba(255,214,10,.6);animation:aispin 26s linear infinite}.ai-core::after{inset:15%;border-style:solid;border-color:rgba(255,214,10,.35);animation-duration:40s;animation-direction:reverse}'
+    + '.ai-core-ic{font-size:clamp(22px,5.5vw,32px);line-height:1}.ai-core b{max-width:80%;font-size:clamp(11px,2.5vw,13px)}'
+    + '@keyframes aispin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.ai-core::before,.ai-core::after{animation:none}}'
     + '.ai-emp em{font-style:normal;font-size:.78rem;color:var(--ok,#1f7a4a);display:flex;align-items:center;gap:6px}.ai-emp em i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}';
   document.head.appendChild(css);
 
