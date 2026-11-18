@@ -44,11 +44,9 @@
       if(!core.entries(current).length)list.append(h('p',{class:'muted'},'لا توجد ذاكرة محفوظة لهذا السجل بعد.'));
     }
     const add=h('button',{class:'btn sm primary',disabled:S.readOnly||initial.deleted,onclick:()=>run(async()=>{const r=await save(mod,id,note.value);note.value='';return r})},'حفظ في ذاكرة السجل');
-    const sync=window.__CLOUD?.role()==='owner'?h('button',{class:'btn sm',onclick:async()=>{
-      status.textContent='جارٍ مزامنة الذاكرة المراجعة مع claude-mem على هذا الجهاز…';
-      try{const result=await bridge('/sync',{mod,id});status.textContent=result.empty?'لا توجد بنود مراجعة فعّالة؛ أزيلت النسخة المحلية السابقة.':'تمت مزامنة '+result.count+' بنود مع claude-mem على هذا الجهاز.'}catch(e){status.textContent='الذاكرة السحابية محفوظة. تعذرت المزامنة المحلية: '+e.message}
-    }},'مزامنة مع claude-mem'):null;
-    box.append(h('h3',null,'ذاكرة السجل والموظف'),h('p',{class:'small muted'},'تُحفظ الملاحظات والمحادثات هنا بصلاحيات السجل نفسه. راجع البنود ثم حدد ما تريد تضمينه في التحليل؛ لا تُرسل الذاكرة تلقائيًا. المزامنة المحلية تنسخ البنود المراجعة فقط إلى جهاز مدير النظام، وتحتاج إعادة المزامنة بعد تغييرها أو استبعادها.'),list,note,h('div',{class:'row'},add,sync),status);
+    // زر المزامنة مع claude-mem أُخفي: يحتاج جسرًا محليًا (server/memory) لا يعمل في الاستخدام اليومي.
+    const sync=null;
+    box.append(h('h3',null,'ذاكرة السجل والموظف'),h('p',{class:'small muted'},'تُحفظ الملاحظات والمحادثات هنا بصلاحيات السجل نفسه. راجع البنود ثم حدد ما تريد تضمينه في التحليل؛ لا تُرسل الذاكرة تلقائيًا.'),list,note,h('div',{class:'row'},add,sync),status);
     paint();return box;
   }
   function capture(mod,id,text,question){
