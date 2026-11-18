@@ -68,8 +68,18 @@
   const cs=p=>{const n=p.split('/').length+1;const docs=[...mem.keys()].filter(k=>k.startsWith(p+'/')&&k.split('/').length===n).map(ds);return{docs,size:docs.length,empty:!docs.length,docChanges:()=>[],metadata:{}}};
   let pend=null;function notify(paths){pend=pend||new Set();for(const p of paths)pend.add(p);setTimeout(()=>{const ch=pend;pend=null;if(!ch)return;for(const l of L){if(l.k==='d'?ch.has(l.p):[...ch].some(x=>x.startsWith(l.p+'/')&&x.split('/').length===l.p.split('/').length+1))l.k==='d'?l.fn(ds(l.p)):l.fn(cs(l.p))}},0)}
   function setStatus(t,cls){window.__SYNC={t,cls};const el=document.getElementById('syncPill');if(el){el.textContent=t;el.dataset.s=cls||''}}
-  async function loadAll(){const before=new Map(mem),fresh=new Map();let from=0;const size=1000;for(;;){const{data,error}=await sb.from('records').select('path,data').eq('owner',WS).order('path').range(from,from+size-1);if(error)throw error;for(const r of data)fresh.set(r.path,r.data);if(data.length<size)break;from+=size}
+  let syncCursor='',lastFullAt=0,lastRefreshAt=0,rtOk=false;
+  async function loadAll(){const before=new Map(mem),fresh=new Map();let from=0,cur='';const size=1000,startedAt=Date.now();for(;;){const{data,error}=await sb.from('records').select('path,data,updated_at').eq('owner',WS).order('path').range(from,from+size-1);if(error)throw error;for(const r of data){fresh.set(r.path,r.data);if(r.updated_at&&r.updated_at>cur)cur=r.updated_at}if(data.length<size)break;from+=size}
     const changed=[];for(const p of new Set([...before.keys(),...fresh.keys()])){if(mem.get(p)!==before.get(p))continue;const next=fresh.get(p);if(JSON.stringify(before.get(p))===JSON.stringify(next))continue;if(fresh.has(p))mem.set(p,next);else mem.delete(p);changed.push(p)}if(changed.length)notify(changed);
+    if(cur)syncCursor=cur;lastFullAt=startedAt;
+  }
+  /* تحديث تزايدي: يجلب فقط ما تغيّر منذ آخر مزامنة بتوقيت الخادم (مع هامش دقيقة). الحذف يصل عبر Realtime ويُضبط بالتحميل الكامل كل 30 دقيقة. */
+  async function loadSince(){
+    if(!syncCursor)return loadAll();
+    const before=new Map(mem),fresh=new Map(),since=new Date(Date.parse(syncCursor)-60000).toISOString();let from=0,cur=syncCursor;const size=1000;
+    for(;;){const{data,error}=await sb.from('records').select('path,data,updated_at').eq('owner',WS).gte('updated_at',since).order('updated_at').order('path').range(from,from+size-1);if(error)throw error;for(const r of data){fresh.set(r.path,r.data);if(r.updated_at&&r.updated_at>cur)cur=r.updated_at}if(data.length<size)break;from+=size}
+    const changed=[];for(const[p,next]of fresh){if(mem.get(p)!==before.get(p))continue;if(JSON.stringify(before.get(p))===JSON.stringify(next))continue;mem.set(p,next);changed.push(p)}
+    if(changed.length)notify(changed);syncCursor=cur;
   }
   function idbAll(store){return new Promise(res=>{const r=indexedDB.open('tamkeen-legal-local',1);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('docs'))d.createObjectStore('docs');if(!d.objectStoreNames.contains('blobs'))d.createObjectStore('blobs')};r.onerror=()=>res(new Map());r.onsuccess=()=>{const db=r.result;const out=new Map();try{const c=db.transaction(store).objectStore(store).openCursor();c.onsuccess=()=>{const cur=c.result;if(cur){out.set(cur.key,cur.value);cur.continue()}else res(out)};c.onerror=()=>res(out)}catch(e){res(out)}}})}
   async function migrateLocal(){if([...mem.keys()].some(k=>!/^(meta|audit)\//.test(k)))return 0;const docs=await idbAll('docs');if(!docs.size)return 0;setStatus('جارٍ رفع بيانات هذا الجهاز…','busy');
@@ -79,20 +89,21 @@
   async function backfillBlobs(){try{if(localStorage.getItem('tl_blobs_ws'))return}catch(e){}const bl=await idbAll('blobs');for(const[id,b]of bl){await sb.storage.from('files').upload('ws/'+id,b,{upsert:false,contentType:b.type||'application/octet-stream'}).catch(()=>{})}try{localStorage.setItem('tl_blobs_ws','1')}catch(e){}}
   function blocked(){return new Promise(()=>{const w=document.createElement('div');w.className='login-wrap';w.innerHTML=`<div class="login-card"><h1>الحساب غير مضاف</h1><p class="login-sub">الحساب <b dir="ltr">${String(email).replace(/@users\.tamkeen\.local$/,"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c])}</b> غير مضاف لمستخدمي البرنامج. اطلب من مسؤول البرنامج إضافته، ثم حدّث الصفحة.</p><button class="btn primary" id="lgRe">تحديث</button><button class="btn ghost sm" id="lgOut">الدخول بحساب آخر</button></div>`;document.body.append(w);w.querySelector('#lgRe').onclick=()=>location.reload();w.querySelector('#lgOut').onclick=async()=>{await sb.auth.signOut();setMode('');location.reload()}})}
   let refreshRunning=false;
-  async function refreshCloud(){
+  async function refreshCloud(force){
     if(!uid||refreshRunning||document.hidden)return;
+    if(!force&&rtOk&&Date.now()-lastRefreshAt<180000)return;
     refreshRunning=true;
-    try{await loadAll();setStatus('محدّث '+new Date().toLocaleTimeString('ar-SA-u-nu-latn',{hour:'2-digit',minute:'2-digit'}),'ok')}
+    try{if(!lastFullAt||Date.now()-lastFullAt>30*60000)await loadAll();else await loadSince();lastRefreshAt=Date.now();setStatus('محدّث '+new Date().toLocaleTimeString('ar-SA-u-nu-latn',{hour:'2-digit',minute:'2-digit'}),'ok')}
     catch{setStatus('تعذر التحديث — ستتم إعادة المحاولة تلقائيًا','warn')}
     finally{refreshRunning=false}
   }
   function startAutoRefresh(){
     setInterval(refreshCloud,60000);
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshCloud()});
-    window.addEventListener('online',refreshCloud);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshCloud(true)});
+    window.addEventListener('online',()=>refreshCloud(true));
   }
 
-  function subscribe(){sb.channel('records-ws').on('postgres_changes',{event:'*',schema:'public',table:'records',filter:'owner=eq.'+WS},pl=>{const n=pl.new,o=pl.old;if(pl.eventType==='DELETE'){if(o&&o.path){mem.delete(o.path);notify([o.path])}}else if(n&&n.path){mem.set(n.path,n.data);notify([n.path])}}).subscribe(st=>{if(st==='SUBSCRIBED'){setStatus('مزامنة مباشرة','ok');refreshCloud()}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT')setStatus('تحديث دوري كل دقيقة','warn')})}
+  function subscribe(){sb.channel('records-ws').on('postgres_changes',{event:'*',schema:'public',table:'records',filter:'owner=eq.'+WS},pl=>{const n=pl.new,o=pl.old;if(pl.eventType==='DELETE'){if(o&&o.path){mem.delete(o.path);notify([o.path])}}else if(n&&n.path){mem.set(n.path,n.data);notify([n.path])}}).subscribe(st=>{if(st==='SUBSCRIBED'){rtOk=true;setStatus('مزامنة مباشرة','ok');refreshCloud(true)}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){rtOk=false;setStatus('تحديث دوري كل دقيقة','warn')}})}
   const dr=p=>({id:p.split('/').pop(),path:p,
     get:async()=>{try{const{data,error}=await sb.from('records').select('data').eq('path',p).maybeSingle();if(error)throw error;if(data)mem.set(p,data.data);else mem.delete(p)}catch(e){}return ds(p)},
     set:async d=>{const v=clone(d);const{error}=await sb.from('records').upsert({owner:WS,path:p,data:v,updated_at:new Date().toISOString()},{onConflict:'owner,path'});if(error)throw err('unavailable',error.message);mem.set(p,v);notify([p])},
@@ -5112,11 +5123,12 @@ const uxIsInst=r=>!!r&&uxCtKind(r)==='تركيب';
 
 /* ========== 9) التحديث التلقائي عند نشر نسخة جديدة ========== */
 const UX_BUILD='20261107004027';
-async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=/const UX_BUILD='([^']+)'/.exec(t);if(!m||m[1]===UX_BUILD||m[1]==='__BUILD_ID__')return;
+let uxVer='',uxPend='';
+async function uxCheckUpdate(){try{if(location.protocol!=='https:')return;const r=await fetch(location.pathname,{method:'HEAD',cache:'no-store'});if(!r.ok)return;const v=r.headers.get('etag')||r.headers.get('last-modified')||'';if(!v)return;if(!uxVer){uxVer=v;return}if(v===uxVer){uxPend='';return}if(uxPend!==v){uxPend=v;return}
   const busy=()=>S.dirty||document.querySelector('dialog[open],.ux-drawer-wrap')||(document.activeElement&&document.activeElement.matches('input,textarea,select')&&document.activeElement.value);
   if(!busy()){location.reload();return}
   if(document.getElementById('uxUpd'))return;document.body.append(h('div',{id:'uxUpd',class:'ux-upd',role:'status'},icon('refresh'),h('span',null,'تحديث جديد للبرنامج جاهز'),h('button',{class:'btn sm primary',onclick:()=>{if(S.dirty&&!confirm('لديك تعديلات غير محفوظة. التحديث الآن؟'))return;location.reload()}},'تحديث الآن')))}catch(e){}}
-setInterval(uxCheckUpdate,90000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)uxCheckUpdate()});setTimeout(uxCheckUpdate,15000);
+setInterval(uxCheckUpdate,90000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)uxCheckUpdate()});setTimeout(uxCheckUpdate,3000);
 /* إزالة لوحة «دورة حياة العقد» */
 stepper=function(){return null};
 
